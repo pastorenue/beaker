@@ -1,0 +1,22 @@
+- Add integration to third-party applications. 
+  - (e.g. slack, Gmail, figma, confluence, jira etc)
+  - Data platform to get insights
+  - notetaking apps like notion or obsidian
+- AI Autonomous polling and analytics. Give feedback on ongoing experiments.
+- Add an Activity Hub for notifications and triggers
+- Add experiment categorization board to categorize by platform, type, etc.
+- Make platform AI native
+  - Automate Hypothesis generation (The Strategist)
+    - Insight Mining: Connect to platform with data (Snowflake, BigQuery). The AI scans for segments where performance is lagging)
+    - Idea Synthesis: Based on those insights, the plaform uses a "Reasoning Agent" to suggest 5 - 10 experiment ideas, with predicted scores
+    - 1-Pager Drafts: Based on the suggestions, the agent drafts a 1-pager on how the experiment should go
+    - Competitive Benchmarking: It can ingest your UI screenshorts or documentation and suggest industry-standard tests
+    - Telemetry Provision: It suggest possible telemetry touch points
+  - Autonomous "Closed-Loop" Testing:
+    - Multi-Armed Bandits (MAB): AI-native platforms move beyond 50-50 splits. They use Thompson Sampling or UCB algorithms to dynamically shift traffic to the winning variant in real time
+    - Agentic Execution: tweak prompts, temparature, or model version
+    - Auto-Termination: if a variant is tanking (e.g. 500 errors or a 50% drop in engagements), the AI kills the variant in milliseconds
+  - Developer-First "AI Context" (MCP Layer)
+    - MCP: Develop an mcp to allow other AI tools to "see" feature flags and experiments
+    - vibe-coding opportunities
+  -  
