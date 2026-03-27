@@ -7,9 +7,9 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"Manrope"', 'ui-sans-serif', 'system-ui'],
-                display: ['"Space Grotesk"', '"Manrope"', 'ui-sans-serif', 'system-ui'],
-                mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular'],
+                sans: ['"Instrument Sans"', 'ui-sans-serif', 'system-ui'],
+                display: ['"Instrument Serif"', 'ui-serif', 'Georgia'],
+                mono: ['"Cascadia Mono"', 'ui-monospace', 'SFMono-Regular'],
             },
             colors: {
                 primary: {
