@@ -172,13 +172,13 @@ export const HomeOverview: React.FC = () => {
                     </div>
                     <div className="mt-4 h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={experimentSeries}>
-                                <CartesianGrid stroke="rgba(148, 163, 184, 0.12)" strokeDasharray="3 3" />
-                                <XAxis dataKey="week" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} allowDecimals={false} />
+                            <LineChart data={experimentSeries} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                                <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                                <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                                 <Tooltip contentStyle={tooltipStyles} />
-                                <Line type="monotone" dataKey="active" stroke="#38bdf8" strokeWidth={2.4} dot={false} />
-                                <Line type="monotone" dataKey="created" stroke="#a855f7" strokeWidth={2.2} dot={false} />
+                                <Line type="monotone" dataKey="active" stroke="#38bdf8" strokeWidth={1.5} dot={false} />
+                                <Line type="monotone" dataKey="created" stroke="#a855f7" strokeWidth={1.5} dot={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
@@ -205,12 +205,12 @@ export const HomeOverview: React.FC = () => {
                     </div>
                     <div className="mt-4 h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={gateSeries}>
-                                <CartesianGrid stroke="rgba(148, 163, 184, 0.12)" strokeDasharray="3 3" />
-                                <XAxis dataKey="week" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} allowDecimals={false} />
+                            <BarChart data={gateSeries} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                                <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                                <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                                 <Tooltip contentStyle={tooltipStyles} />
-                                <Bar dataKey="gates" fill="#22c55e" radius={[8, 8, 4, 4]} />
+                                <Bar dataKey="gates" fill="#22c55e" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

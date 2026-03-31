@@ -85,14 +85,25 @@ export const CupedImpactAnalysis: React.FC<CupedImpactAnalysisProps> = ({
 
                                 return Object.values(variantData);
                             })()}
+                            margin={{ top: 8, right: 4, left: -16, bottom: 0 }}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                            <XAxis dataKey="name" stroke="#94a3b8" />
-                            <YAxis stroke="#94a3b8" domain={['auto', 'auto']} />
+                            <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: '#64748b' }}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: '#64748b' }}
+                                domain={['auto', 'auto']}
+                            />
                             <Tooltip content={<CustomTooltip formatNumber={formatNumber} />} />
-                            <Legend wrapperStyle={{ color: '#e2e8f0' }} />
-                            <Bar dataKey="Original" fill="#64748b" name="Original Mean" />
-                            <Bar dataKey="CUPED" fill="#818cf8" name="CUPED Mean" />
+                            <Legend wrapperStyle={{ color: '#e2e8f0', fontSize: 12 }} />
+                            <Bar dataKey="Original" fill="#64748b" name="Original Mean" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="CUPED" fill="#818cf8" name="CUPED Mean" radius={[3, 3, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-slate-500 mt-2 text-center">Adjusted means remove pre-experiment bias.</p>
@@ -119,14 +130,24 @@ export const CupedImpactAnalysis: React.FC<CupedImpactAnalysisProps> = ({
 
                                 return Object.values(variantData);
                             })()}
+                            margin={{ top: 8, right: 4, left: -16, bottom: 0 }}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                            <XAxis dataKey="name" stroke="#94a3b8" />
-                            <YAxis stroke="#94a3b8" />
+                            <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: '#64748b' }}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: '#64748b' }}
+                            />
                             <Tooltip content={<CustomTooltip formatNumber={formatNumber} />} />
-                            <Legend wrapperStyle={{ color: '#e2e8f0' }} />
-                            <Bar dataKey="Original" fill="#64748b" name="Original Variance" />
-                            <Bar dataKey="CUPED" fill="#34d399" name="CUPED Variance" />
+                            <Legend wrapperStyle={{ color: '#e2e8f0', fontSize: 12 }} />
+                            <Bar dataKey="Original" fill="#64748b" name="Original Variance" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="CUPED" fill="#34d399" name="CUPED Variance" radius={[3, 3, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-slate-500 mt-2 text-center">

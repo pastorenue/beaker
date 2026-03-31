@@ -30,14 +30,23 @@ export const SrmCard: React.FC<SrmCardProps> = ({ variants, summary, tooltipStyl
             </div>
             <div className="mt-4 h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={variants}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                        <XAxis dataKey="variant" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                    <BarChart data={variants} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                        <XAxis
+                            dataKey="variant"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
-                        <Bar dataKey="expected" fill="#38bdf8" name="Expected %" />
-                        <Bar dataKey="observed" fill="#f59e0b" name="Observed %" />
+                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }} />
+                        <Bar dataKey="expected" fill="#38bdf8" name="Expected %" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="observed" fill="#f59e0b" name="Observed %" radius={[3, 3, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

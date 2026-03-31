@@ -25,25 +25,40 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, tooltipS
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data}>
-                        <defs>
-                            <linearGradient id="exposureFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4} />
-                                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.05} />
-                            </linearGradient>
-                            <linearGradient id="assignFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.35} />
-                                <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                        <XAxis dataKey="time" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                    <AreaChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                        <XAxis
+                            dataKey="time"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
-                        <Area type="monotone" dataKey="assignments" stroke="#22c55e" fill="url(#assignFill)" />
-                        <Area type="monotone" dataKey="exposures" stroke="#38bdf8" fill="url(#exposureFill)" />
-                        <Line type="monotone" dataKey="conversions" stroke="#fbbf24" strokeWidth={2} />
+                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }} />
+                        <Area
+                            type="monotone"
+                            dataKey="assignments"
+                            stroke="#22c55e"
+                            fill="#22c55e"
+                            fillOpacity={0.06}
+                            strokeWidth={1.5}
+                            dot={false}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="exposures"
+                            stroke="#38bdf8"
+                            fill="#38bdf8"
+                            fillOpacity={0.06}
+                            strokeWidth={1.5}
+                            dot={false}
+                        />
+                        <Line type="monotone" dataKey="conversions" stroke="#fbbf24" strokeWidth={1.5} dot={false} />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

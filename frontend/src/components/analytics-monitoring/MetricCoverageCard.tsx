@@ -27,20 +27,32 @@ export const MetricCoverageCard: React.FC<MetricCoverageCardProps> = ({
                 <h3>Metric Coverage</h3>
                 <span className="badge-gray">Tracked metrics</span>
             </div>
-            <div className="mt-4 h-[280px]">
+            <div className="mt-4 h-[240px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                        <Pie data={slices} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={4}>
+                        <Pie
+                            data={slices}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={58}
+                            outerRadius={86}
+                            paddingAngle={3}
+                            strokeWidth={0}
+                        >
                             {slices.map((entry) => (
                                 <Cell key={entry.name} fill={entry.color} />
                             ))}
                         </Pie>
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
+                        <Legend
+                            wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }}
+                            iconSize={8}
+                            iconType="circle"
+                        />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="insights-tile flex items-center justify-between rounded-lg border border-slate-800/70 bg-slate-950/40 px-3 py-2">
                     <span className="text-slate-400">Total metrics</span>
                     <span className="font-semibold text-slate-100">{totals?.total_metrics ?? 0}</span>

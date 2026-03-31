@@ -25,16 +25,25 @@ export const GuardrailHealthChart: React.FC<GuardrailHealthChartProps> = ({ data
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                        <XAxis dataKey="day" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                    <LineChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                        <XAxis
+                            dataKey="day"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
-                        <ReferenceLine y={250} stroke="#f59e0b" strokeDasharray="4 4" />
-                        <Line type="monotone" dataKey="latency" stroke="#f59e0b" strokeWidth={2} />
-                        <Line type="monotone" dataKey="errorRate" stroke="#f87171" strokeWidth={2} />
-                        <Line type="monotone" dataKey="crashRate" stroke="#38bdf8" strokeWidth={2} />
+                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }} />
+                        <ReferenceLine y={250} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />
+                        <Line type="monotone" dataKey="latency" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                        <Line type="monotone" dataKey="errorRate" stroke="#f87171" strokeWidth={1.5} dot={false} />
+                        <Line type="monotone" dataKey="crashRate" stroke="#38bdf8" strokeWidth={1.5} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
