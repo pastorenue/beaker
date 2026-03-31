@@ -34,7 +34,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [isRailCollapsed, setIsRailCollapsed] = React.useState(false);
-    const [theme, setTheme] = React.useState<'dark' | 'light'>('dark');
+    const [theme, setTheme] = React.useState<'dark' | 'light'>('light');
     const [idleWarningVisible, setIdleWarningVisible] = React.useState(false);
     const [idleSecondsLeft, setIdleSecondsLeft] = React.useState(300);
     const idleWarningTimeoutRef = React.useRef<number | null>(null);

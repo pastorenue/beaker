@@ -201,6 +201,12 @@ impl CupedService {
             let adj_a = calc_a.run();
             let adj_b = calc_b.run();
 
+            let (tau_sq, alpha) = experiment
+                .hypothesis
+                .as_ref()
+                .map(|h| (h.expected_effect_size.powi(2), h.significance_level))
+                .unwrap_or((0.01, 0.05));
+
             let engine_result = stats::analyze_continuous(
                 experiment.analysis_engine.clone(),
                 adj_a.adjusted_mean,
@@ -209,6 +215,8 @@ impl CupedService {
                 adj_b.adjusted_mean,
                 adj_b.adjusted_std_dev,
                 adj_b.n_matched_users,
+                tau_sq,
+                alpha,
             )?;
 
             let avg_variance_reduction =

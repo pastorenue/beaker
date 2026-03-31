@@ -84,7 +84,7 @@ impl ExperimentService {
             user_groups: req.user_groups,
             primary_metric: req.primary_metric,
             start_date: None,
-            end_date: None,
+            end_date: req.end_date,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -259,6 +259,12 @@ impl ExperimentService {
                 .get(&variant.name)
                 .ok_or_else(|| anyhow!("No data for treatment variant"))?;
 
+            let (tau_sq, alpha) = experiment
+                .hypothesis
+                .as_ref()
+                .map(|h| (h.expected_effect_size.powi(2), h.significance_level))
+                .unwrap_or((0.01, 0.05));
+
             let result = match experiment.hypothesis.as_ref().unwrap().metric_type {
                 MetricType::Proportion => {
                     let engine_result = stats::analyze_proportion(
@@ -267,6 +273,8 @@ impl ExperimentService {
                         control_data.total,
                         treatment_data.successes,
                         treatment_data.total,
+                        tau_sq,
+                        alpha,
                     )?;
                     StatisticalResult {
                         experiment_id,
@@ -282,9 +290,11 @@ impl ExperimentService {
                         effect_size: engine_result.effect_size,
                         p_value: engine_result.p_value,
                         bayes_probability: engine_result.bayes_probability,
+                        e_value: engine_result.e_value,
+                        sequential_threshold: engine_result.sequential_threshold,
                         confidence_interval_lower: engine_result.ci_low,
                         confidence_interval_upper: engine_result.ci_high,
-                        is_significant: engine_result.p_value < 0.05,
+                        is_significant: engine_result.is_significant(alpha),
                         test_type: engine_result.test_type,
                         analysis_engine: experiment.analysis_engine.clone(),
                         calculated_at: Utc::now(),
@@ -299,6 +309,8 @@ impl ExperimentService {
                         treatment_data.mean,
                         treatment_data.std_dev,
                         treatment_data.total,
+                        tau_sq,
+                        alpha,
                     )?;
                     StatisticalResult {
                         experiment_id,
@@ -314,9 +326,11 @@ impl ExperimentService {
                         effect_size: engine_result.effect_size,
                         p_value: engine_result.p_value,
                         bayes_probability: engine_result.bayes_probability,
+                        e_value: engine_result.e_value,
+                        sequential_threshold: engine_result.sequential_threshold,
                         confidence_interval_lower: engine_result.ci_low,
                         confidence_interval_upper: engine_result.ci_high,
-                        is_significant: engine_result.p_value < 0.05,
+                        is_significant: engine_result.is_significant(alpha),
                         test_type: engine_result.test_type,
                         analysis_engine: experiment.analysis_engine.clone(),
                         calculated_at: Utc::now(),
@@ -632,6 +646,7 @@ fn row_to_experiment(row: ExperimentRow) -> Result<Experiment> {
 
     let analysis_engine = match row.analysis_engine.as_str() {
         "bayesian" => AnalysisEngine::Bayesian,
+        "sequential" => AnalysisEngine::Sequential,
         _ => AnalysisEngine::Frequentist,
     };
 

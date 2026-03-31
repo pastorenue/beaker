@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -20,6 +21,7 @@ pub struct CreateExperimentRequest {
     pub variants: Vec<Variant>,
     pub primary_metric: String,
     pub user_groups: Vec<Uuid>,
+    pub end_date: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize)]

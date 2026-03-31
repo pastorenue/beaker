@@ -21,6 +21,7 @@ export enum SamplingMethod {
 export enum AnalysisEngine {
     Frequentist = 'frequentist',
     Bayesian = 'bayesian',
+    Sequential = 'sequential',
 }
 
 export enum HealthCheckDirection {
@@ -105,6 +106,8 @@ export interface StatisticalResult {
     effect_size: number;
     p_value: number;
     bayes_probability?: number;
+    e_value?: number;
+    sequential_threshold?: number;
     confidence_interval_lower: number;
     confidence_interval_upper: number;
     is_significant: boolean;
@@ -186,6 +189,7 @@ export interface CreateExperimentRequest {
     variants: Variant[];
     primary_metric: string;
     user_groups: string[];
+    end_date?: string;
 }
 
 export interface CreateUserGroupRequest {
@@ -596,4 +600,109 @@ export interface AnalyticsOverviewResponse {
     metric_inventory: AnalyticsMetricInventoryItem[];
     alert_feed: AnalyticsAlertItem[];
     system_health: AnalyticsSystemHealth;
+}
+
+// ── AI Strategist types ────────────────────────────────────────────────────────
+
+export interface VariantSuggestion {
+    name: string;
+    description: string;
+    allocation_percent: number;
+    is_control: boolean;
+}
+
+export interface ExperimentSuggestion {
+    name: string;
+    description: string;
+    hypothesis_draft: string;
+    primary_metric: string;
+    predicted_impact_score: number;
+    experiment_type: ExperimentType;
+    variants: VariantSuggestion[];
+    telemetry_touchpoints: string[];
+}
+
+export interface OnePagerDraft {
+    experiment_name: string;
+    objective: string;
+    hypothesis: string;
+    success_metrics: string[];
+    guardrail_metrics: string[];
+    estimated_duration_days: number;
+    sample_size_estimate: number;
+    risks: string[];
+}
+
+export interface HypothesisDraft {
+    null_hypothesis: string;
+    alternative_hypothesis: string;
+    expected_effect_size: number;
+    metric_type: string;
+    significance_level: number;
+    power: number;
+    rationale: string;
+}
+
+export interface MetricSuggestion {
+    metric_name: string;
+    telemetry_event: string;
+    metric_type: string;
+    description: string;
+}
+
+export interface MetricSuggestionsResponse {
+    primary_metrics: MetricSuggestion[];
+    guardrail_metrics: MetricSuggestion[];
+}
+
+export interface ExperimentSummaryResponse {
+    experiment_id: string;
+    experiment_name: string;
+    summary: string;
+    status: string;
+}
+
+export interface DraftHypothesisRequest {
+    experiment_description: string;
+    metric_type: string;
+}
+
+export interface DraftOnePagerRequest {
+    experiment_id: string;
+}
+
+export interface SuggestMetricsRequest {
+    experiment_description: string;
+}
+
+// ── AI Insights types ──────────────────────────────────────────────────────────
+
+export interface AiPollingInsight {
+    id: string;
+    account_id: string;
+    experiment_id: string;
+    polled_at: string;
+    severity: 'info' | 'warning' | 'critical';
+    insight_type: 'regression' | 'winner' | 'srm' | 'guardrail' | 'progress';
+    headline: string;
+    detail: string;
+    ai_narrative?: string;
+    p_value?: number;
+    effect_size?: number;
+    sample_size?: number;
+    auto_actioned: boolean;
+    dismissed_at?: string;
+    created_at: string;
+}
+
+export interface InsightsListResponse {
+    insights: AiPollingInsight[];
+    total: number;
+}
+
+export interface InsightsSummaryResponse {
+    info: number;
+    warning: number;
+    critical: number;
+    total: number;
 }

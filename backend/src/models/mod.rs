@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod analytics;
 pub mod auth;
 pub mod events;
@@ -8,6 +9,7 @@ pub mod sessions;
 pub mod statistics;
 pub mod user_groups;
 
+pub use ai::*;
 pub use analytics::*;
 pub use auth::*;
 pub use events::*;

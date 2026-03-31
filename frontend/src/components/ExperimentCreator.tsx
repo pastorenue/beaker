@@ -55,6 +55,7 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
         ],
         primary_metric: '',
         user_groups: [],
+        end_date: undefined,
     });
 
     const { data: availableGroups = [] } = useQuery({
@@ -300,7 +301,12 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
     };
 
     const handleSubmit = () => {
-        onSubmit(formData);
+        const payload: CreateExperimentRequest = {
+            ...formData,
+            // Convert YYYY-MM-DD from <input type="date"> to ISO 8601 datetime
+            end_date: formData.end_date ? `${formData.end_date}T00:00:00Z` : undefined,
+        };
+        onSubmit(payload);
     };
 
     return (

@@ -242,6 +242,16 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                     </div>
                 </div>
             )}
+            <div>
+                <label className="label">Planned End Date</label>
+                <input
+                    type="date"
+                    className="input"
+                    required
+                    value={formData.end_date ?? ''}
+                    onChange={(e) => updateField('end_date', e.target.value || undefined)}
+                />
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label className="label">Experiment Type</label>
@@ -277,6 +287,7 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                     >
                         <option value={AnalysisEngine.Frequentist}>Frequentist</option>
                         <option value={AnalysisEngine.Bayesian}>Bayesian</option>
+                        <option value={AnalysisEngine.Sequential}>Sequential (mSPRT)</option>
                     </select>
                 </div>
             </div>

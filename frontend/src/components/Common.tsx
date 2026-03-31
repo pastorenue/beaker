@@ -129,31 +129,49 @@ interface SignificanceIndicatorProps {
     pValue: number;
     alpha?: number;
     bayesProbability?: number;
+    eValue?: number;
+    sequentialThreshold?: number;
 }
 
 export const SignificanceIndicator: React.FC<SignificanceIndicatorProps> = ({
     pValue,
     alpha = 0.05,
     bayesProbability,
+    eValue,
+    sequentialThreshold,
 }) => {
-    const isBayes = bayesProbability !== undefined && bayesProbability !== null;
-    const isSignificant = isBayes ? (bayesProbability ?? 0) >= 0.95 : pValue < alpha;
+    const isSequential = eValue != null;
+    const isBayes = !isSequential && bayesProbability !== undefined && bayesProbability !== null;
+    const threshold = sequentialThreshold ?? (1.0 / alpha);
+    const isSignificant = isSequential
+        ? eValue >= threshold
+        : isBayes
+          ? (bayesProbability ?? 0) >= (1.0 - alpha)
+          : pValue < alpha;
+
+    const label = isSequential
+        ? isSignificant
+            ? 'Decision: Reject H₀'
+            : 'Continue Testing'
+        : isBayes
+          ? isSignificant ? 'High Confidence' : 'Low Confidence'
+          : isSignificant ? 'Significant' : 'Not Significant';
+
+    const detail = isSequential
+        ? `(M_t = ${eValue !== undefined && !isNaN(eValue) ? eValue.toFixed(2) : '—'})`
+        : isBayes
+          ? `(P = ${bayesProbability !== null && bayesProbability !== undefined && !isNaN(bayesProbability) ? bayesProbability.toFixed(3) : '—'})`
+          : `(p = ${pValue !== null && pValue !== undefined && !isNaN(pValue) ? pValue.toFixed(4) : '—'})`;
 
     return (
         <div className="flex items-center gap-2">
             <div
-                className={`h-3 w-3 rounded-full ${isSignificant ? 'bg-emerald-400' : 'bg-slate-500'
-                    }`}
+                className={`h-3 w-3 rounded-full ${isSignificant ? 'bg-emerald-400' : 'bg-slate-500'}`}
             />
-            <span className={`text-sm font-medium ${isSignificant ? 'text-emerald-300' : 'text-slate-400'
-                }`}>
-                {isBayes ? (isSignificant ? 'High Confidence' : 'Low Confidence') : isSignificant ? 'Significant' : 'Not Significant'}
+            <span className={`text-sm font-medium ${isSignificant ? 'text-emerald-300' : 'text-slate-400'}`}>
+                {label}
             </span>
-            <span className="text-sm text-slate-500">
-                {isBayes
-                    ? `(P = ${bayesProbability !== null && bayesProbability !== undefined && !isNaN(bayesProbability) ? bayesProbability.toFixed(3) : '—'})`
-                    : `(p = ${pValue !== null && pValue !== undefined && !isNaN(pValue) ? pValue.toFixed(4) : '—'})`}
-            </span>
+            <span className="text-sm text-slate-500">{detail}</span>
         </div>
     );
 };

@@ -3,14 +3,29 @@ use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 use statrs::statistics::Statistics;
 
 use crate::models::AnalysisEngine;
+use super::sequential;
 
 pub struct EngineResult {
     pub effect_size: f64,
     pub p_value: f64,
     pub bayes_probability: Option<f64>,
+    pub e_value: Option<f64>,
+    pub sequential_threshold: Option<f64>,
     pub ci_low: f64,
     pub ci_high: f64,
     pub test_type: String,
+}
+
+impl EngineResult {
+    pub fn is_significant(&self, alpha: f64) -> bool {
+        if let Some(e_val) = self.e_value {
+            e_val >= (1.0 / alpha)
+        } else if let Some(prob) = self.bayes_probability {
+            prob >= (1.0 - alpha)
+        } else {
+            self.p_value < alpha
+        }
+    }
 }
 
 /// Calculate z-test for proportions (conversion rates)
@@ -179,6 +194,8 @@ pub fn analyze_proportion(
     total_a: usize,
     successes_b: usize,
     total_b: usize,
+    tau_sq: f64,
+    alpha: f64,
 ) -> Result<EngineResult> {
     match engine {
         AnalysisEngine::Bayesian => {
@@ -188,6 +205,8 @@ pub fn analyze_proportion(
                 effect_size,
                 p_value: 1.0 - probability,
                 bayes_probability: Some(probability),
+                e_value: None,
+                sequential_threshold: None,
                 ci_low,
                 ci_high,
                 test_type: "Bayesian (Beta-Binomial)".to_string(),
@@ -200,9 +219,27 @@ pub fn analyze_proportion(
                 effect_size,
                 p_value,
                 bayes_probability: None,
+                e_value: None,
+                sequential_threshold: None,
                 ci_low,
                 ci_high,
                 test_type: "Z-test for proportions".to_string(),
+            })
+        }
+        AnalysisEngine::Sequential => {
+            let (effect_size, _, ci_low, ci_high) =
+                z_test_proportions(successes_a, total_a, successes_b, total_b)?;
+            let (p_value, e_value) =
+                sequential::msprt_proportion(successes_a, total_a, successes_b, total_b, tau_sq)?;
+            Ok(EngineResult {
+                effect_size,
+                p_value,
+                bayes_probability: None,
+                e_value: Some(e_value),
+                sequential_threshold: Some(1.0 / alpha),
+                ci_low,
+                ci_high,
+                test_type: "mSPRT (Sequential)".to_string(),
             })
         }
     }
@@ -216,6 +253,8 @@ pub fn analyze_continuous(
     mean_b: f64,
     std_b: f64,
     n_b: usize,
+    tau_sq: f64,
+    alpha: f64,
 ) -> Result<EngineResult> {
     match engine {
         AnalysisEngine::Bayesian => {
@@ -225,6 +264,8 @@ pub fn analyze_continuous(
                 effect_size,
                 p_value: 1.0 - probability,
                 bayes_probability: Some(probability),
+                e_value: None,
+                sequential_threshold: None,
                 ci_low,
                 ci_high,
                 test_type: "Bayesian (Normal Approx)".to_string(),
@@ -237,9 +278,27 @@ pub fn analyze_continuous(
                 effect_size,
                 p_value,
                 bayes_probability: None,
+                e_value: None,
+                sequential_threshold: None,
                 ci_low,
                 ci_high,
                 test_type: "Welch's t-test".to_string(),
+            })
+        }
+        AnalysisEngine::Sequential => {
+            let (effect_size, _, ci_low, ci_high) =
+                t_test_summary(mean_a, std_a, n_a, mean_b, std_b, n_b)?;
+            let (p_value, e_value) =
+                sequential::msprt_continuous(mean_a, std_a, n_a, mean_b, std_b, n_b, tau_sq)?;
+            Ok(EngineResult {
+                effect_size,
+                p_value,
+                bayes_probability: None,
+                e_value: Some(e_value),
+                sequential_threshold: Some(1.0 / alpha),
+                ci_low,
+                ci_high,
+                test_type: "mSPRT (Sequential)".to_string(),
             })
         }
     }

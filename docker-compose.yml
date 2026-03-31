@@ -31,6 +31,13 @@ services:
       - LOG_ONLY_OTP=0
       - DEFAULT_ADMIN_EMAIL=admin@expothesis.local
       - DEFAULT_ADMIN_PASSWORD=admin
+      - MCP_ENABLED=true
+      - MCP_API_KEY=${MCP_API_KEY:-}
+      - MCP_ACCOUNT_ID=${MCP_ACCOUNT_ID:-}
+      - AI_POLLING_ENABLED=true
+      - AI_POLLING_INTERVAL_MINUTES=15
+      - AI_AUTO_STOP_REGRESSIONS=false
+      - AI_SEVERE_REGRESSION_THRESHOLD=-0.10
     depends_on:
       clickhouse:
         condition: service_healthy

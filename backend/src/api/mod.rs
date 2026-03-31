@@ -7,6 +7,7 @@ pub mod experiments;
 pub mod feature_flags;
 pub mod feature_gates;
 pub mod invites;
+pub mod mcp;
 pub mod sdk;
 pub mod track;
 pub mod user_groups;
@@ -17,6 +18,7 @@ use actix_web::web;
 use sqlx::PgPool;
 
 pub fn configure(cfg: &mut web::ServiceConfig, pool: PgPool, config: Config) {
+    let mcp_enabled = config.mcp_enabled;
     cfg.service(
         web::scope("/api")
             .wrap(AuthMiddleware::new(pool, config))
@@ -31,6 +33,11 @@ pub fn configure(cfg: &mut web::ServiceConfig, pool: PgPool, config: Config) {
             .configure(invites::configure)
             .configure(sdk::configure)
             .configure(ai::configure)
-            .configure(track::configure),
+            .configure(track::configure)
+            .configure(move |cfg| {
+                if mcp_enabled {
+                    mcp::configure(cfg);
+                }
+            }),
     );
 }

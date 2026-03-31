@@ -7,6 +7,8 @@ type DisplayResult = {
     effect_size: number;
     p_value: number;
     bayes_probability?: number;
+    e_value?: number;
+    sequential_threshold?: number;
     confidence_interval_lower: number;
     confidence_interval_upper: number;
     test_type: string;
@@ -36,6 +38,8 @@ export const StatisticalResultsCard: React.FC<StatisticalResultsCardProps> = ({
                             <SignificanceIndicator
                                 pValue={result.p_value}
                                 bayesProbability={result.bayes_probability}
+                                eValue={result.e_value}
+                                sequentialThreshold={result.sequential_threshold}
                             />
                         </div>
 
@@ -49,7 +53,11 @@ export const StatisticalResultsCard: React.FC<StatisticalResultsCardProps> = ({
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    {result.bayes_probability !== undefined ? 'Posterior P' : 'P-Value'}
+                                    {result.e_value !== undefined
+                                        ? 'Anytime P-Value'
+                                        : result.bayes_probability !== undefined
+                                          ? 'Posterior P'
+                                          : 'P-Value'}
                                 </p>
                                 <p className="text-xl font-semibold text-slate-100">
                                     {result.bayes_probability !== undefined

@@ -24,15 +24,24 @@ export const PrimaryMetricsChart: React.FC<PrimaryMetricsChartProps> = ({ data, 
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                        <XAxis dataKey="day" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                    <LineChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                        <XAxis
+                            dataKey="day"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
-                        <Line type="monotone" dataKey="conversion" stroke="#38bdf8" strokeWidth={2} />
-                        <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} />
-                        <Line type="monotone" dataKey="retention" stroke="#fbbf24" strokeWidth={2} />
+                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }} />
+                        <Line type="monotone" dataKey="conversion" stroke="#38bdf8" strokeWidth={1.5} dot={false} />
+                        <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={1.5} dot={false} />
+                        <Line type="monotone" dataKey="retention" stroke="#fbbf24" strokeWidth={1.5} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>

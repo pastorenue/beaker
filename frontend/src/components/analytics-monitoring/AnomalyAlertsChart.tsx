@@ -24,15 +24,24 @@ export const AnomalyAlertsChart: React.FC<AnomalyAlertsChartProps> = ({ data, to
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                        <XAxis dataKey="day" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                    <BarChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.07)" />
+                        <XAxis
+                            dataKey="day"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                        />
                         <Tooltip contentStyle={tooltipStyles} />
-                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)' }} />
-                        <Bar dataKey="critical" stackId="a" fill="#f87171" />
-                        <Bar dataKey="warning" stackId="a" fill="#fbbf24" />
-                        <Bar dataKey="info" stackId="a" fill="#38bdf8" />
+                        <Legend wrapperStyle={{ color: 'var(--chart-legend-text)', fontSize: 12 }} />
+                        <Bar dataKey="critical" stackId="a" fill="#f87171" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="warning" stackId="a" fill="#fbbf24" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="info" stackId="a" fill="#38bdf8" radius={[3, 3, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

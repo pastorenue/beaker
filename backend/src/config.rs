@@ -25,6 +25,15 @@ pub struct Config {
     pub jwt_ttl_minutes: i64,
     pub default_admin_email: Option<String>,
     pub default_admin_password: Option<String>,
+    // MCP config
+    pub mcp_enabled: bool,
+    pub mcp_api_key: Option<String>,
+    pub mcp_account_id: Option<String>,
+    // AI polling config
+    pub ai_polling_enabled: bool,
+    pub ai_polling_interval_minutes: u64,
+    pub ai_auto_stop_regressions: bool,
+    pub ai_severe_regression_threshold: f64,
 }
 
 impl Config {
@@ -112,6 +121,32 @@ impl Config {
             default_admin_password: std::env::var("DEFAULT_ADMIN_PASSWORD")
                 .ok()
                 .filter(|value| !value.is_empty()),
+            mcp_enabled: std::env::var("MCP_ENABLED")
+                .ok()
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(true),
+            mcp_api_key: std::env::var("MCP_API_KEY")
+                .ok()
+                .filter(|v| !v.is_empty()),
+            mcp_account_id: std::env::var("MCP_ACCOUNT_ID")
+                .ok()
+                .filter(|v| !v.is_empty()),
+            ai_polling_enabled: std::env::var("AI_POLLING_ENABLED")
+                .ok()
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(true),
+            ai_polling_interval_minutes: std::env::var("AI_POLLING_INTERVAL_MINUTES")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(15),
+            ai_auto_stop_regressions: std::env::var("AI_AUTO_STOP_REGRESSIONS")
+                .ok()
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false),
+            ai_severe_regression_threshold: std::env::var("AI_SEVERE_REGRESSION_THRESHOLD")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(-0.10),
         }
     }
 }
