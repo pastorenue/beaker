@@ -1,9 +1,16 @@
 use actix_web::{web, HttpResponse, Responder};
+use chrono::Utc;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::config::Config;
+use crate::middleware::auth::AuthedUser;
+use crate::models::ai::{DraftHypothesisRequest, DraftOnePagerRequest, SuggestMetricsRequest};
+use crate::services::{AnalyticsService, ExperimentService};
+use crate::services::ai_service::AiService;
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatMessage {
@@ -47,7 +54,17 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/ai")
             .route("/chat", web::post().to(chat))
             .route("/chat/stream", web::post().to(chat_stream))
-            .route("/models", web::get().to(models)),
+            .route("/models", web::get().to(models))
+            // AI Strategist endpoints
+            .route("/suggest-experiments", web::post().to(suggest_experiments))
+            .route("/draft-hypothesis", web::post().to(draft_hypothesis))
+            .route("/draft-1pager", web::post().to(draft_one_pager))
+            .route("/suggest-metrics", web::post().to(suggest_metrics))
+            .route("/summarize-experiment/{id}", web::post().to(summarize_experiment))
+            // AI Insights endpoints
+            .route("/insights", web::get().to(list_insights))
+            .route("/insights/summary", web::get().to(insights_summary))
+            .route("/insights/{id}/dismiss", web::post().to(dismiss_insight)),
     );
 }
 
@@ -233,4 +250,261 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
     HttpResponse::Ok()
         .content_type("text/event-stream")
         .streaming(stream)
+}
+
+// ── AI Strategist ──────────────────────────────────────────────────────────────
+
+async fn suggest_experiments(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    experiment_service: web::Data<ExperimentService>,
+    analytics_service: web::Data<AnalyticsService>,
+    user: web::ReqData<AuthedUser>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    match ai
+        .suggest_experiments(&experiment_service, &analytics_service, user.account_id)
+        .await
+    {
+        Ok(suggestions) => HttpResponse::Ok().json(suggestions),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn draft_hypothesis(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    payload: web::Json<DraftHypothesisRequest>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    match ai.draft_hypothesis(payload.into_inner()).await {
+        Ok(draft) => HttpResponse::Ok().json(draft),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn draft_one_pager(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    experiment_service: web::Data<ExperimentService>,
+    user: web::ReqData<AuthedUser>,
+    payload: web::Json<DraftOnePagerRequest>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    match ai
+        .draft_one_pager(
+            &experiment_service,
+            user.account_id,
+            payload.experiment_id,
+        )
+        .await
+    {
+        Ok(draft) => HttpResponse::Ok().json(draft),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn suggest_metrics(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    payload: web::Json<SuggestMetricsRequest>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    match ai.suggest_metrics(&payload.experiment_description).await {
+        Ok(suggestions) => HttpResponse::Ok().json(suggestions),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn summarize_experiment(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    experiment_service: web::Data<ExperimentService>,
+    user: web::ReqData<AuthedUser>,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    let experiment_id = path.into_inner();
+    match ai
+        .summarize_experiment(&experiment_service, user.account_id, experiment_id)
+        .await
+    {
+        Ok(summary) => HttpResponse::Ok().json(summary),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+// ── AI Insights ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct InsightsQuery {
+    experiment_id: Option<Uuid>,
+    severity: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
+async fn list_insights(
+    pg: web::Data<PgPool>,
+    user: web::ReqData<AuthedUser>,
+    query: web::Query<InsightsQuery>,
+) -> impl Responder {
+    let limit = query.limit.unwrap_or(50).min(200);
+    let offset = query.offset.unwrap_or(0);
+
+    let rows = if let Some(exp_id) = query.experiment_id {
+        sqlx::query_as::<_, InsightRow>(
+            r#"
+            SELECT id, account_id, experiment_id, polled_at, severity, insight_type,
+                   headline, detail, ai_narrative, p_value, effect_size, sample_size,
+                   auto_actioned, dismissed_at, created_at
+            FROM ai_polling_insights
+            WHERE account_id = $1 AND experiment_id = $2 AND dismissed_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(user.account_id)
+        .bind(exp_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pg.get_ref())
+        .await
+    } else if let Some(sev) = &query.severity {
+        sqlx::query_as::<_, InsightRow>(
+            r#"
+            SELECT id, account_id, experiment_id, polled_at, severity, insight_type,
+                   headline, detail, ai_narrative, p_value, effect_size, sample_size,
+                   auto_actioned, dismissed_at, created_at
+            FROM ai_polling_insights
+            WHERE account_id = $1 AND severity = $2 AND dismissed_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(user.account_id)
+        .bind(sev)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pg.get_ref())
+        .await
+    } else {
+        sqlx::query_as::<_, InsightRow>(
+            r#"
+            SELECT id, account_id, experiment_id, polled_at, severity, insight_type,
+                   headline, detail, ai_narrative, p_value, effect_size, sample_size,
+                   auto_actioned, dismissed_at, created_at
+            FROM ai_polling_insights
+            WHERE account_id = $1 AND dismissed_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(user.account_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pg.get_ref())
+        .await
+    };
+
+    match rows {
+        Ok(insights) => {
+            let total = insights.len() as i64;
+            HttpResponse::Ok().json(serde_json::json!({
+                "insights": insights,
+                "total": total
+            }))
+        }
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn insights_summary(
+    pg: web::Data<PgPool>,
+    user: web::ReqData<AuthedUser>,
+) -> impl Responder {
+    let result = sqlx::query(
+        r#"
+        SELECT
+            COUNT(*) FILTER (WHERE severity = 'info') AS info_count,
+            COUNT(*) FILTER (WHERE severity = 'warning') AS warning_count,
+            COUNT(*) FILTER (WHERE severity = 'critical') AS critical_count,
+            COUNT(*) AS total
+        FROM ai_polling_insights
+        WHERE account_id = $1 AND dismissed_at IS NULL
+        "#,
+    )
+    .bind(user.account_id)
+    .fetch_one(pg.get_ref())
+    .await;
+
+    match result {
+        Ok(row) => {
+            use sqlx::Row;
+            HttpResponse::Ok().json(serde_json::json!({
+                "info": row.get::<i64, _>("info_count"),
+                "warning": row.get::<i64, _>("warning_count"),
+                "critical": row.get::<i64, _>("critical_count"),
+                "total": row.get::<i64, _>("total")
+            }))
+        }
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn dismiss_insight(
+    pg: web::Data<PgPool>,
+    user: web::ReqData<AuthedUser>,
+    path: web::Path<Uuid>,
+) -> impl Responder {
+    let insight_id = path.into_inner();
+    let result = sqlx::query(
+        "UPDATE ai_polling_insights SET dismissed_at = $1 WHERE id = $2 AND account_id = $3",
+    )
+    .bind(Utc::now())
+    .bind(insight_id)
+    .bind(user.account_id)
+    .execute(pg.get_ref())
+    .await;
+
+    match result {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+// Row mapping for sqlx
+#[derive(Debug, sqlx::FromRow, Serialize)]
+struct InsightRow {
+    id: Uuid,
+    account_id: Uuid,
+    experiment_id: Uuid,
+    polled_at: chrono::DateTime<Utc>,
+    severity: String,
+    insight_type: String,
+    headline: String,
+    detail: String,
+    ai_narrative: Option<String>,
+    p_value: Option<f64>,
+    effect_size: Option<f64>,
+    sample_size: Option<i64>,
+    auto_actioned: bool,
+    dismissed_at: Option<chrono::DateTime<Utc>>,
+    created_at: chrono::DateTime<Utc>,
 }

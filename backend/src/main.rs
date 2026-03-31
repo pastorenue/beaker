@@ -2,11 +2,13 @@ use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use log::info;
 use sqlx::Row;
+use std::sync::Arc;
 use uuid::Uuid;
 
 mod api;
 mod config;
 mod db;
+mod mcp;
 mod middleware;
 mod models;
 mod services;
@@ -15,10 +17,11 @@ mod utils;
 
 use config::Config;
 use db::{connect_postgres, ClickHouseClient};
+use mcp::server::McpServer;
 use services::{
     AnalyticsService, AuthService, CupedService, EventService, ExperimentService,
-    FeatureFlagService, FeatureGateService, InviteService, SdkTokenService, TrackingService,
-    UserGroupService,
+    FeatureFlagService, FeatureGateService, InviteService, PollingService, SdkTokenService,
+    TrackingService, UserGroupService,
 };
 
 #[actix_web::main]
@@ -101,6 +104,23 @@ async fn main() -> std::io::Result<()> {
         config.session_ttl_minutes,
     ));
 
+    // MCP server (shared across requests)
+    let mcp_server = web::Data::new(McpServer::new(
+        Arc::new(ExperimentService::new(pg_pool.clone(), db_with_auth.clone())),
+        Arc::new(FeatureFlagService::new(pg_pool.clone())),
+        Arc::new(FeatureGateService::new(pg_pool.clone())),
+        Arc::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone())),
+    ));
+
+    // Spawn AI polling background task
+    if config.ai_polling_enabled {
+        let polling = PollingService::new(pg_pool.clone(), db_client.clone(), config.clone());
+        tokio::spawn(async move {
+            polling.run_loop().await;
+        });
+        info!("AI polling service spawned");
+    }
+
     let port = config.server_port;
 
     info!("Server starting on 0.0.0.0:{}", port);
@@ -128,6 +148,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(auth_service_data.clone())
             .app_data(sdk_token_service_data.clone())
             .app_data(tracking_service.clone())
+            .app_data(mcp_server.clone())
             .configure(|cfg| api::configure(cfg, pg_pool.clone(), config.clone()))
     })
     .bind(("0.0.0.0", port))?

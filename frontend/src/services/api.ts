@@ -5,6 +5,7 @@ import type {
   AiChatRequest,
   AiChatResponse,
   AiModelsResponse,
+  AiPollingInsight,
   AnalyticsOverviewResponse,
   AssignUserRequest,
   AuthStatusResponse,
@@ -17,25 +18,35 @@ import type {
   CreateUserGroupRequest,
   CupedConfig,
   CupedConfigRequest,
+  DraftHypothesisRequest,
+  DraftOnePagerRequest,
   EndSessionRequest,
   EvaluateFeatureGateRequest,
   Experiment,
   ExperimentAnalysis,
+  ExperimentSuggestion,
+  ExperimentSummaryResponse,
   FeatureFlag,
   FeatureGate,
   FeatureGateEvaluationResponse,
+  HypothesisDraft,
   IngestEventRequest,
+  InsightsListResponse,
+  InsightsSummaryResponse,
   InviteDetailsResponse,
   ListSessionsResponse,
   LoginRequest,
   MetricEvent,
+  MetricSuggestionsResponse,
   MoveUserGroupRequest,
+  OnePagerDraft,
   RegisterRequest,
   RotateSdkTokensRequest,
   SdkTokensResponse,
   Session,
   StartSessionRequest,
   StartSessionResponse,
+  SuggestMetricsRequest,
   TotpSetupResponse,
   TrackEventRequest,
   TrackReplayRequest,
@@ -262,6 +273,33 @@ export const analyticsApi = {
 export const aiApi = {
   chat: (data: AiChatRequest) => api.post<AiChatResponse>("/ai/chat", data),
   models: () => api.get<AiModelsResponse>("/ai/models"),
+};
+
+// AI Strategist
+export const aiStrategistApi = {
+  suggestExperiments: () =>
+    api.post<ExperimentSuggestion[]>("/ai/suggest-experiments"),
+  draftHypothesis: (data: DraftHypothesisRequest) =>
+    api.post<HypothesisDraft>("/ai/draft-hypothesis", data),
+  draftOnePager: (data: DraftOnePagerRequest) =>
+    api.post<OnePagerDraft>("/ai/draft-1pager", data),
+  suggestMetrics: (data: SuggestMetricsRequest) =>
+    api.post<MetricSuggestionsResponse>("/ai/suggest-metrics", data),
+  summarizeExperiment: (id: string) =>
+    api.post<ExperimentSummaryResponse>(`/ai/summarize-experiment/${id}`),
+};
+
+// AI Insights
+export const aiInsightsApi = {
+  list: (params?: {
+    experiment_id?: string;
+    severity?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get<InsightsListResponse>("/ai/insights", { params }),
+  summary: () => api.get<InsightsSummaryResponse>("/ai/insights/summary"),
+  dismiss: (id: string) =>
+    api.post<{ ok: boolean }>(`/ai/insights/${id}/dismiss`),
 };
 
 // Auth

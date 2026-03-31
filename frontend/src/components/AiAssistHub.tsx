@@ -1,8 +1,9 @@
 import React from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { aiApi, experimentApi, featureFlagApi, featureGateApi } from '../services/api';
+import { aiApi, aiStrategistApi, experimentApi, featureFlagApi, featureGateApi } from '../services/api';
 import { AssistCards } from './ai-assist/AssistCards';
 import { ChatPanel } from './ai-assist/ChatPanel';
+import { InsightsFeed } from './ai-assist/InsightsFeed';
 import { TotpPanel } from './ai-assist/TotpPanel';
 import { useAccount } from '../contexts/AccountContext';
 
@@ -241,7 +242,39 @@ export const AiAssistHub: React.FC = () => {
                 />
 
                 <div className="space-y-6">
-                    <AssistCards cards={[]} />
+                    <AssistCards
+                        onSuggestExperiments={async () => {
+                            const resp = await aiStrategistApi.suggestExperiments();
+                            setMessages((prev) => [
+                                ...prev,
+                                {
+                                    role: 'assistant',
+                                    text: `Here are ${resp.data.length} experiment suggestions:\n\n${resp.data
+                                        .map(
+                                            (s, i) =>
+                                                `${i + 1}. **${s.name}** (${s.experiment_type})\n   ${s.description}\n   Hypothesis: ${s.hypothesis_draft}`,
+                                        )
+                                        .join('\n\n')}`,
+                                },
+                            ]);
+                        }}
+                        onDraftHypothesis={async () => {
+                            const resp = await aiStrategistApi.draftHypothesis({
+                                experiment_description:
+                                    'A general A/B test for improving user engagement',
+                                metric_type: 'proportion',
+                            });
+                            setMessages((prev) => [
+                                ...prev,
+                                {
+                                    role: 'assistant',
+                                    text: `**Hypothesis Draft**\n\nNull: ${resp.data.null_hypothesis}\nAlternative: ${resp.data.alternative_hypothesis}\nEffect size: ${resp.data.expected_effect_size}\nRationale: ${resp.data.rationale}`,
+                                },
+                            ]);
+                        }}
+                        isBusy={isStreaming || chatMutation.isPending}
+                    />
+                    <InsightsFeed />
                     <TotpPanel
                         totpSecret={totpSecret}
                         totpUrl={totpUrl}

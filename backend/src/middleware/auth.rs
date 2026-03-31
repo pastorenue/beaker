@@ -98,6 +98,46 @@ where
                 return service.call(req).await.map(|res| res.map_into_left_body());
             }
 
+            // MCP-Api-Key auth path — resolves account_id from config
+            if path.starts_with("/api/mcp") {
+                let mcp_key = req
+                    .headers()
+                    .get("MCP-Api-Key")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("");
+
+                let configured_key = config.mcp_api_key.as_deref().unwrap_or("");
+                if !configured_key.is_empty() && mcp_key == configured_key {
+                    let account_id = config
+                        .mcp_account_id
+                        .as_deref()
+                        .and_then(|s| Uuid::parse_str(s).ok())
+                        .unwrap_or_else(Uuid::nil);
+
+                    // Look up any admin user for this account
+                    let membership = sqlx::query(
+                        "SELECT user_id, role FROM account_memberships WHERE account_id = $1 ORDER BY created_at ASC LIMIT 1",
+                    )
+                    .bind(account_id)
+                    .fetch_optional(&pool)
+                    .await
+                    .unwrap_or(None);
+
+                    let (user_id, role) = match membership {
+                        Some(rec) => (rec.get::<Uuid, _>("user_id"), rec.get::<String, _>("role")),
+                        None => (Uuid::nil(), "admin".to_string()),
+                    };
+
+                    req.extensions_mut().insert(AuthedUser {
+                        user_id,
+                        account_id,
+                        role,
+                    });
+                    return service.call(req).await.map(|res| res.map_into_left_body());
+                }
+                // Fall through to normal JWT auth if key doesn't match
+            }
+
             let auth_header = req
                 .headers()
                 .get("Authorization")
