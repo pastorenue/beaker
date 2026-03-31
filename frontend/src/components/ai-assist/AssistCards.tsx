@@ -90,7 +90,7 @@ export const AssistCards: React.FC<AssistCardsProps> = ({
                     </div>
                     <p className="mt-3 text-sm text-slate-300">{card.description}</p>
                     <div className="mt-4 flex items-center gap-4">
-                        <Link to={card.link} className="inline-flex items-center text-cyan-300 hover:text-cyan-200">
+                        <Link to={card.link} className="inline-flex items-center text-slate-300 hover:text-slate-200">
                             {card.linkText}
                         </Link>
                         {card.onAction && card.actionLabel && (

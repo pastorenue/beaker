@@ -289,16 +289,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                         </svg>
                     </button>
                     <Link to="/home" className="sidebar-brand">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-900 font-bold">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold">
                             Ex
                         </div>
                         <div>
                             <div className="text-lg font-semibold">Expothesis</div>
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Labs</div>
+                            <div className="text-xs capitalize text-slate-500">Labs</div>
                         </div>
                     </Link>
-
-                    <div className="sidebar-pill">Experiment Suite</div>
 
                     <div className="px-3 pb-4">
                         <div className="relative">
@@ -337,7 +335,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                                     onClick={() => setIsSidebarOpen(false)}
                                     aria-label={item.label}
                                 >
-                                    <span className="text-cyan-200/80">{item.icon}</span>
+                                    <span className="text-slate-200/80">{item.icon}</span>
                                     <span className={isRailCollapsed ? 'md:sr-only' : ''}>
                                         {item.label}
                                     </span>
@@ -351,13 +349,13 @@ function Layout({ children }: { children: React.ReactNode }) {
 
                     <div className="mt-auto space-y-4">
                         <div className="panel">
-                            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">System</p>
+                            <p className="text-xs capitalize text-slate-500">System</p>
                             <p className="mt-2 text-sm text-slate-300">Realtime analytics</p>
                             <p className="text-xs text-slate-500">Streaming updates every 5s</p>
                         </div>
                         <div className="sidebar-actions">
                             <Link to="/settings" className="sidebar-link group relative">
-                                <span className="text-cyan-200/80">
+                                <span className="text-slate-200/80">
                                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                                         <path
                                             strokeLinecap="round"
@@ -411,7 +409,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="meta-chip">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-cyan-200">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-slate-200">
                                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 9V4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5V9M3 21h18M4 21v-9.5A1.5 1.5 0 0 1 5.5 10h13A1.5 1.5 0 0 1 20 11.5V21" />
                                     </svg>
@@ -423,7 +421,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                                 </div>
                             </div>
                             <div className="meta-chip">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-200 font-semibold">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-500/20 text-slate-200 font-semibold">
                                     {(userProfile?.email?.[0] || '?').toUpperCase()}
                                 </div>
                                 <div className="leading-tight">

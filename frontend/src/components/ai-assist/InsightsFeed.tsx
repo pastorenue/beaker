@@ -66,7 +66,7 @@ function InsightCard({
                 )}
                 <Link
                     to={`/experiments/${insight.experiment_id}`}
-                    className="text-cyan-400 hover:text-cyan-300 ml-auto"
+                    className="text-cyan-400 hover:text-slate-300 ml-auto"
                 >
                     View experiment →
                 </Link>

@@ -56,14 +56,14 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, tren
         <div className="card animate-fade-in">
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{title}</p>
+                    <p className="text-xs text-slate-500">{title}</p>
                     <p className="mt-2 text-3xl font-semibold text-slate-100">{value}</p>
                     {subtitle && (
                         <p className={`mt-1 text-sm ${getTrendColor()}`}>{subtitle}</p>
                     )}
                 </div>
                 {icon && (
-                    <div className="rounded-full bg-cyan-500/10 p-3 text-cyan-300">
+                    <div className="rounded-full bg-gray-500/10 p-3 text-slate-300">
                         {icon}
                     </div>
                 )}
@@ -146,22 +146,22 @@ export const SignificanceIndicator: React.FC<SignificanceIndicatorProps> = ({
     const isSignificant = isSequential
         ? eValue >= threshold
         : isBayes
-          ? (bayesProbability ?? 0) >= (1.0 - alpha)
-          : pValue < alpha;
+            ? (bayesProbability ?? 0) >= (1.0 - alpha)
+            : pValue < alpha;
 
     const label = isSequential
         ? isSignificant
             ? 'Decision: Reject H₀'
             : 'Continue Testing'
         : isBayes
-          ? isSignificant ? 'High Confidence' : 'Low Confidence'
-          : isSignificant ? 'Significant' : 'Not Significant';
+            ? isSignificant ? 'High Confidence' : 'Low Confidence'
+            : isSignificant ? 'Significant' : 'Not Significant';
 
     const detail = isSequential
         ? `(M_t = ${eValue !== undefined && !isNaN(eValue) ? eValue.toFixed(2) : '—'})`
         : isBayes
-          ? `(P = ${bayesProbability !== null && bayesProbability !== undefined && !isNaN(bayesProbability) ? bayesProbability.toFixed(3) : '—'})`
-          : `(p = ${pValue !== null && pValue !== undefined && !isNaN(pValue) ? pValue.toFixed(4) : '—'})`;
+            ? `(P = ${bayesProbability !== null && bayesProbability !== undefined && !isNaN(bayesProbability) ? bayesProbability.toFixed(3) : '—'})`
+            : `(p = ${pValue !== null && pValue !== undefined && !isNaN(pValue) ? pValue.toFixed(4) : '—'})`;
 
     return (
         <div className="flex items-center gap-2">

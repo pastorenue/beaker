@@ -83,16 +83,16 @@ export function ExperimentDetailPage() {
 
     const experimentContext = experiment && analysis
         ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}` +
-          (analysis.results[0]
-              ? ` | p-value: ${analysis.results[0].p_value.toFixed(4)} | Significant: ${analysis.results[0].is_significant}`
-              : '')
+        (analysis.results[0]
+            ? ` | p-value: ${analysis.results[0].p_value.toFixed(4)} | Significant: ${analysis.results[0].is_significant}`
+            : '')
         : experiment
-          ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}`
-          : undefined;
+            ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}`
+            : undefined;
 
     return (
         <div className="space-y-6">
-            <Link to="/dashboard" className="inline-flex items-center text-cyan-300 hover:text-cyan-200">
+            <Link to="/dashboard" className="inline-flex items-center text-slate-300 hover:text-slate-200">
                 ← Back to Experiments
             </Link>
 
@@ -146,7 +146,7 @@ export function ExperimentDetailPage() {
             {/* Floating AI Support button */}
             <button
                 onClick={() => setIsAiDrawerOpen(true)}
-                className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-cyan-400 transition-colors"
+                className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-gray-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-cyan-400 transition-colors"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"

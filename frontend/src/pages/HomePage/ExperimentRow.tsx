@@ -63,7 +63,7 @@ export function ExperimentRow({
               <div className="mt-1 h-1 w-full rounded-full bg-slate-700">
                 {progress !== null ? (
                   <div
-                    className="h-1 rounded-full bg-cyan-500"
+                    className="h-1 rounded-full bg-gray-500"
                     style={{ width: `${progress}%` }}
                   />
                 ) : (

@@ -45,14 +45,14 @@ export const StatisticalResultsCard: React.FC<StatisticalResultsCardProps> = ({
 
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Effect Size</p>
+                                <p className="text-xs text-slate-500">Effect Size</p>
                                 <p className="text-xl font-semibold text-slate-100">
                                     {result.effect_size > 0 ? '+' : ''}
                                     {formatPercent(result.effect_size)}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <p className="text-xs text-slate-500">
                                     {result.e_value !== undefined
                                         ? 'Anytime P-Value'
                                         : result.bayes_probability !== undefined
@@ -66,7 +66,7 @@ export const StatisticalResultsCard: React.FC<StatisticalResultsCardProps> = ({
                                 </p>
                             </div>
                             <div className="col-span-2">
-                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                <p className="text-xs text-slate-500">
                                     {result.bayes_probability !== undefined
                                         ? '95% Credible Interval'
                                         : '95% Confidence Interval'}

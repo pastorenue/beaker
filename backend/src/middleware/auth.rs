@@ -92,7 +92,10 @@ where
             if path == "/health"
                 || path.starts_with("/api/auth")
                 || path.starts_with("/api/invites")
-                || path.starts_with("/api/track")
+                || path == "/api/track/session/start"
+                || path == "/api/track/session/end"
+                || path == "/api/track/event"
+                || (path == "/api/track/replay" && req.method() == actix_web::http::Method::POST)
                 || path.starts_with("/api/sdk/feature-flags")
             {
                 return service.call(req).await.map(|res| res.map_into_left_body());

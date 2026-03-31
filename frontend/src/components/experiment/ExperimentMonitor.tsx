@@ -82,7 +82,7 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
                 <HypothesisCard experiment={experiment} />
                 <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Traffic</p>
+                        <p className="text-xs font-semibold text-slate-500">Traffic</p>
                         <span className="text-xs text-slate-400">{experiment.variants.length} variants</span>
                     </div>
                     <TrafficDistribution experiment={experiment} />

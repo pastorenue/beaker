@@ -74,7 +74,7 @@ export const CreateGroupForm: React.FC<CreateGroupFormProps> = ({
                 </div>
                 <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-3">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AI Rule Copilot</p>
+                        <p className="text-xs text-slate-400">AI Rule Copilot</p>
                         <span className="badge-gray">Draft JSON</span>
                     </div>
                     <p className="mt-2 text-sm text-slate-300">Describe your targeting rule in plain language.</p>

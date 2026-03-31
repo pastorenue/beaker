@@ -79,7 +79,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
 }) => {
     return (
         <div className="simulation-output flow-surface mt-6 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-            <div className="mb-3 flex items-center justify-between text-xs title tracking-[0.2em] text-slate-500">
+            <div className="mb-3 flex items-center justify-between text-xs title text-slate-500">
                 <span>Simulation Output</span>
                 <span
                     className={
@@ -91,7 +91,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
             </div>
             <div className="relative mb-4 flex flex-wrap items-center gap-3 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
-                    <span className="title tracking-[0.2em] text-slate-500">From</span>
+                    <span className="title text-slate-500">From</span>
                     <button
                         ref={startRef}
                         className="flow-pill rounded-lg border border-slate-700/70 bg-slate-950/70 px-3 py-1 text-xs text-slate-200"
@@ -105,7 +105,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                     </button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="title tracking-[0.2em] text-slate-500">To</span>
+                    <span className="title text-slate-500">To</span>
                     <button
                         ref={endRef}
                         className="flow-pill rounded-lg border border-slate-700/70 bg-slate-950/70 px-3 py-1 text-xs text-slate-200"
@@ -143,7 +143,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                             >
                                 ◀
                             </button>
-                            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <span className="text-xs font-semibold text-slate-400">
                                 {pickerMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                             </span>
                             <button
@@ -158,7 +158,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                         {renderCalendar()}
                         <div className="mt-4 grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <div className="text-[0.55rem] uppercase tracking-[0.2em] text-slate-500">Hour</div>
+                                <div className="text-[0.55rem] text-slate-500">Hour</div>
                                 <select
                                     value={pickerValue.getHours()}
                                     onChange={(event) => {
@@ -177,7 +177,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-[0.55rem] uppercase tracking-[0.2em] text-slate-500">Minute</div>
+                                <div className="text-[0.55rem] text-slate-500">Minute</div>
                                 <select
                                     value={pickerValue.getMinutes() - (pickerValue.getMinutes() % 3)}
                                     onChange={(event) => {

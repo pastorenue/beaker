@@ -14,6 +14,7 @@ export const UserSettings: React.FC = () => {
     const [totpEnabled, setTotpEnabled] = React.useState(false);
     const [totpError, setTotpError] = React.useState<string | null>(null);
     const [totpSuccess, setTotpSuccess] = React.useState<string | null>(null);
+    const [activeSdkTab, setActiveSdkTab] = React.useState<'tokens' | 'feature_flags'>('tokens');
     const userId = window.localStorage.getItem('expothesis-user-id') ?? '';
     const { data, isLoading } = useQuery({
         queryKey: ['sdk-tokens', activeAccountId],
@@ -172,7 +173,7 @@ export const UserSettings: React.FC = () => {
                         </div>
                         {totpSetup && (
                             <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 text-sm text-slate-300">
-                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Scan QR</p>
+                                <p className="text-xs text-slate-500">Scan QR</p>
                                 <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center">
                                     <div className="flex h-36 w-36 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/70">
                                         <img
@@ -184,11 +185,11 @@ export const UserSettings: React.FC = () => {
                                         />
                                     </div>
                                     <div className="flex-1 space-y-2">
-                                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Secret</div>
+                                        <div className="text-xs text-slate-500">Secret</div>
                                         <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-200">
                                             {totpSetup.secret}
                                         </div>
-                                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">OTPAuth URL</div>
+                                        <div className="text-xs text-slate-500">OTPAuth URL</div>
                                         <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-[0.65rem] text-slate-300">
                                             {totpSetup.otpauth_url}
                                         </div>
@@ -223,126 +224,149 @@ export const UserSettings: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="card">
-                    <h3>SDK Tokens</h3>
-                    <p className="mt-2 text-sm text-slate-400">
-                        Use these tokens in your client SDKs for tracking and feature flags.
-                    </p>
-                    <div className="mt-4 space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking API Key</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="badge-gray">{isLoading ? 'Loading' : 'Active'}</span>
-                                    <button
-                                        className="btn-secondary h-8 px-3 text-xs"
-                                        onClick={() => setPendingRotate('tracking')}
-                                        disabled={rotateMutation.isPending}
-                                    >
-                                        Regenerate
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="relative">
-                                <input className="input pr-9" value={trackingKey} readOnly />
-                                <button
-                                    type="button"
-                                    className="icon-action absolute right-2 top-1/2 -translate-y-1/2"
-                                    onClick={() => handleCopy(trackingKey, 'tracking')}
-                                    aria-label="Copy tracking key"
-                                >
-                                    {copiedKey === 'tracking' ? (
-                                        <span className="copy-burst" aria-hidden="true">
-                                            <span className="copy-burst-label">Copied</span>
-                                            <span className="copy-bubble copy-bubble-1" />
-                                            <span className="copy-bubble copy-bubble-2" />
-                                            <span className="copy-bubble copy-bubble-3" />
-                                            <span className="copy-bubble copy-bubble-4" />
-                                        </span>
-                                    ) : (
-                                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                        </svg>
-                                    )}
-                                    {copiedKey === 'tracking' && <span className="sr-only">Copied</span>}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Feature Flags Key</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="badge-info">SDK</span>
-                                    <button
-                                        className="btn-secondary h-8 px-3 text-xs"
-                                        onClick={() => setPendingRotate('feature_flags')}
-                                        disabled={rotateMutation.isPending}
-                                    >
-                                        Regenerate
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="relative">
-                                <input className="input pr-9" value={featureFlagsKey} readOnly />
-                                <button
-                                    type="button"
-                                    className="icon-action absolute right-2 top-1/2 -translate-y-1/2"
-                                    onClick={() => handleCopy(featureFlagsKey, 'feature_flags')}
-                                    aria-label="Copy feature flags key"
-                                >
-                                    {copiedKey === 'feature_flags' ? (
-                                        <span className="copy-burst" aria-hidden="true">
-                                            <span className="copy-burst-label">Copied</span>
-                                            <span className="copy-bubble copy-bubble-1" />
-                                            <span className="copy-bubble copy-bubble-2" />
-                                            <span className="copy-bubble copy-bubble-3" />
-                                            <span className="copy-bubble copy-bubble-4" />
-                                        </span>
-                                    ) : (
-                                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                        </svg>
-                                    )}
-                                    {copiedKey === 'feature_flags' && <span className="sr-only">Copied</span>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="card">
-                    <h3>Feature Flags SDK</h3>
-                    <p className="mt-2 text-sm text-slate-400">
-                        Evaluate flags by user attributes with the lightweight client.
-                    </p>
-                    <pre className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200">
-                        {`import { ExpothesisFeatureFlags } from '@/sdk/featureFlags';
-
-const flags = new ExpothesisFeatureFlags({
-    endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
-    apiKey: '${featureFlagsKey || 'YOUR_KEY'}'
-});
-
-const result = await flags.evaluate({
-    userId: 'user_123',
-    attributes: { plan: 'pro', region: 'us' }
-});
-
-const isNewNavEnabled = await flags.isEnabled('new-nav', {
-    userId: 'user_123',
-    attributes: { plan: 'pro' }
-}); `}
-                    </pre>
+            <div className="card">
+                <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+                    <h3>SDK & Integrations</h3>
                     <button
-                        className="btn-secondary mt-4"
+                        className="btn-secondary h-8 px-3 text-xs"
                         onClick={() => setPendingRotate('all')}
                         disabled={rotateMutation.isPending}
                     >
                         Regenerate All Tokens
                     </button>
+                </div>
+
+                <div className="mt-4 flex gap-6 border-b border-slate-800/60">
+                    <button
+                        className={`pb-3 text-sm font-medium transition-colors ${activeSdkTab === 'tokens' ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                        onClick={() => setActiveSdkTab('tokens')}
+                    >
+                        API Tokens
+                    </button>
+                    <button
+                        className={`pb-3 text-sm font-medium transition-colors ${activeSdkTab === 'feature_flags' ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                        onClick={() => setActiveSdkTab('feature_flags')}
+                    >
+                        Feature Flags SDK Reference
+                    </button>
+                </div>
+
+                <div className="mt-6">
+                    {activeSdkTab === 'tokens' && (
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-400">
+                                Use these tokens in your client SDKs for tracking and feature flags.
+                            </p>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Tracking API Key</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="badge-gray">{isLoading ? 'Loading' : 'Active'}</span>
+                                            <button
+                                                className="btn-secondary h-8 px-3 text-xs"
+                                                onClick={() => setPendingRotate('tracking')}
+                                                disabled={rotateMutation.isPending}
+                                            >
+                                                Regenerate
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input className="input pr-9" value={trackingKey} readOnly />
+                                        <button
+                                            type="button"
+                                            className="icon-action absolute right-2 top-1/2 -translate-y-1/2"
+                                            onClick={() => handleCopy(trackingKey, 'tracking')}
+                                            aria-label="Copy tracking key"
+                                        >
+                                            {copiedKey === 'tracking' ? (
+                                                <span className="copy-burst" aria-hidden="true">
+                                                    <span className="copy-burst-label">Copied</span>
+                                                    <span className="copy-bubble copy-bubble-1" />
+                                                    <span className="copy-bubble copy-bubble-2" />
+                                                    <span className="copy-bubble copy-bubble-3" />
+                                                    <span className="copy-bubble copy-bubble-4" />
+                                                </span>
+                                            ) : (
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                                </svg>
+                                            )}
+                                            {copiedKey === 'tracking' && <span className="sr-only">Copied</span>}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Feature Flags Key</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="badge-info">SDK</span>
+                                            <button
+                                                className="btn-secondary h-8 px-3 text-xs"
+                                                onClick={() => setPendingRotate('feature_flags')}
+                                                disabled={rotateMutation.isPending}
+                                            >
+                                                Regenerate
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input className="input pr-9" value={featureFlagsKey} readOnly />
+                                        <button
+                                            type="button"
+                                            className="icon-action absolute right-2 top-1/2 -translate-y-1/2"
+                                            onClick={() => handleCopy(featureFlagsKey, 'feature_flags')}
+                                            aria-label="Copy feature flags key"
+                                        >
+                                            {copiedKey === 'feature_flags' ? (
+                                                <span className="copy-burst" aria-hidden="true">
+                                                    <span className="copy-burst-label">Copied</span>
+                                                    <span className="copy-bubble copy-bubble-1" />
+                                                    <span className="copy-bubble copy-bubble-2" />
+                                                    <span className="copy-bubble copy-bubble-3" />
+                                                    <span className="copy-bubble copy-bubble-4" />
+                                                </span>
+                                            ) : (
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                                </svg>
+                                            )}
+                                            {copiedKey === 'feature_flags' && <span className="sr-only">Copied</span>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSdkTab === 'feature_flags' && (
+                        <div>
+                            <p className="text-sm text-slate-400">
+                                Evaluate flags by user attributes with the lightweight client.
+                            </p>
+                            <pre className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">
+                                {\`import {ExpothesisFeatureFlags} from '@/sdk/featureFlags';
+
+                                const flags = new ExpothesisFeatureFlags({
+                                    endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
+                                apiKey: '\${featureFlagsKey || 'YOUR_KEY'}'
+});
+
+                                const result = await flags.evaluate({
+                                    userId: 'user_123',
+                                attributes: {plan: 'pro', region: 'us' }
+});
+
+                                const isNewNavEnabled = await flags.isEnabled('new-nav', {
+                                    userId: 'user_123',
+                                attributes: {plan: 'pro' }
+}); \`}
+                            </pre>
+                        </div>
+                    )}
                 </div>
             </div>
             {pendingRotate && (
@@ -440,7 +464,7 @@ const AccountManager: React.FC<{ accounts: Account[] }> = ({ accounts }) => {
             </div>
 
             <div className="space-y-2">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Your accounts</div>
+                <div className="text-xs text-slate-500">Your accounts</div>
                 <div className="divide-y divide-slate-800/60 rounded-xl border border-slate-800/70 bg-slate-950/40">
                     {accounts.length === 0 && (
                         <div className="px-4 py-3 text-sm text-slate-400">No accounts yet.</div>
@@ -449,7 +473,7 @@ const AccountManager: React.FC<{ accounts: Account[] }> = ({ accounts }) => {
                         <div key={account.id} className="flex items-center justify-between px-4 py-3 text-sm">
                             <div>
                                 <div className="font-semibold text-slate-100">{account.name}</div>
-                                <div className="text-xs uppercase tracking-[0.15em] text-slate-500">{account.role}</div>
+                                <div className="text-xs text-slate-500">{account.role}</div>
                             </div>
                             <span className="rounded-full bg-slate-800/70 px-3 py-1 text-xs text-slate-300">
                                 {account.id.slice(0, 8)}…
@@ -460,7 +484,7 @@ const AccountManager: React.FC<{ accounts: Account[] }> = ({ accounts }) => {
             </div>
 
             <div className="space-y-2">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Invite Team Members</div>
+                <div className="text-xs text-slate-500">Invite Team Members</div>
                 <InviteManager />
             </div>
         </div>

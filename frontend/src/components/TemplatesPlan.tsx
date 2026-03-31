@@ -435,7 +435,7 @@ export const TemplatesPlan: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-3">
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Approvals</div>
+                            <div className="text-xs text-slate-500">Approvals</div>
                             {approvals.map((item, index) => (
                                 <div
                                     key={`approval-${index}`}
@@ -695,7 +695,7 @@ export const TemplatesPlan: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-3">
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Guardrails</div>
+                            <div className="text-xs text-slate-500">Guardrails</div>
                             {guardrails.map((item, index) => (
                                 <div
                                     key={`guardrail-${index}`}
@@ -787,7 +787,7 @@ export const TemplatesPlan: React.FC = () => {
                             onChange={(event) => setBlockers(event.target.value)}
                         />
                         <div className="space-y-3">
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Risks & Mitigations</div>
+                            <div className="text-xs text-slate-500">Risks & Mitigations</div>
                             {risks.map((item, index) => (
                                 <div
                                     key={`risk-${index}`}
@@ -1009,7 +1009,7 @@ export const TemplatesPlan: React.FC = () => {
                             onChange={(event) => setKeyTables(event.target.value)}
                         />
                         <div className="space-y-3">
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Segment Analysis</div>
+                            <div className="text-xs text-slate-500">Segment Analysis</div>
                             {segments.map((item, index) => (
                                 <div
                                     key={`segment-${index}`}
@@ -1099,7 +1099,7 @@ export const TemplatesPlan: React.FC = () => {
                             onChange={(event) => setDecision(event.target.value)}
                         />
                         <div className="space-y-3">
-                            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Follow-up Actions</div>
+                            <div className="text-xs text-slate-500">Follow-up Actions</div>
                             {actions.map((item, index) => (
                                 <div
                                     key={`action-${index}`}

@@ -8,8 +8,8 @@ type StatusBannerProps = {
 export const StatusBanner: React.FC<StatusBannerProps> = ({ status }) => {
     if (status === ExperimentStatus.Draft) {
         return (
-            <div className="mt-4 rounded-xl bg-cyan-500/10 p-3 border border-cyan-500/20">
-                <p className="text-sm text-cyan-200">
+            <div className="mt-4 rounded-xl bg-gray-500/10 p-3 border border-cyan-500/20">
+                <p className="text-sm text-slate-200">
                     ℹ️ This experiment is in draft mode. Click "Start Experiment" to begin collecting data.
                 </p>
             </div>

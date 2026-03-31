@@ -36,7 +36,7 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
                         </span>
-                        <span className="text-xs font-semibold text-emerald-200 uppercase tracking-[0.3em]">Live</span>
+                        <span className="text-xs font-semibold text-emerald-200">Live</span>
                     </div>
                 )}
             </div>
@@ -47,7 +47,7 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
                 <span className="badge-gray">Type: {experiment.experiment_type}</span>
                 {experiment.analysis_engine === 'sequential' && eValue != null && (
                     <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.15em] ${
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                             eValue >= (sequentialThreshold ?? 20)
                                 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
                                 : 'border-slate-600/40 bg-slate-800/50 text-slate-400'

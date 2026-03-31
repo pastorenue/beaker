@@ -11,7 +11,7 @@ import type { FlowEdge, FlowNode } from './simulation/types';
 import { useAccount } from '../contexts/AccountContext';
 
 const nodeColorByKind: Record<FlowNode['kind'], { border: string; badge: string }> = {
-    'trigger-start': { border: 'border-cyan-400/70', badge: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/50' },
+    'trigger-start': { border: 'border-cyan-400/70', badge: 'bg-gray-500/20 text-slate-200 border-cyan-400/50' },
     'trigger-run': { border: 'border-emerald-400/70', badge: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50' },
     experiment: { border: 'border-indigo-400/70', badge: 'bg-indigo-500/20 text-indigo-200 border-indigo-400/50' },
     'user-group': { border: 'border-amber-400/70', badge: 'bg-amber-500/20 text-amber-200 border-amber-400/50' },
@@ -20,7 +20,7 @@ const nodeColorByKind: Record<FlowNode['kind'], { border: string; badge: string 
 };
 
 const nodeBadgeClass = (kind: FlowNode['kind']) =>
-    `inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6rem] font-semibold title tracking-[0.18em] ${nodeColorByKind[kind].badge}`;
+    `inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6rem] font-semibold title ${nodeColorByKind[kind].badge}`;
 
 const NODE_WIDTH = 176;
 const NODE_HEIGHT = 72;
@@ -215,7 +215,7 @@ export const SimulationStudio: React.FC = () => {
         return (
             <div className="grid grid-cols-7 gap-1 text-xs text-slate-300">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((label) => (
-                    <div key={label} className="text-center text-[0.55rem] uppercase tracking-[0.2em] text-slate-500">
+                    <div key={label} className="text-center text-[0.55rem] text-slate-500">
                         {label}
                     </div>
                 ))}
@@ -1103,7 +1103,7 @@ export const SimulationStudio: React.FC = () => {
                                     className="flow-canvas relative mt-4 min-h-[520px] overflow-hidden rounded-2xl border border-slate-800/70 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.5),rgba(2,6,23,0.9))] p-6"
                                 >
                                     <div className="absolute right-6 top-6 z-20 flex items-center gap-3 rounded-full border border-slate-700/60 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.7)]">
-                                        <span className="text-[0.5rem] uppercase tracking-[0.3em] text-slate-400">Zoom</span>
+                                        <span className="text-[0.5rem] text-slate-400">Zoom</span>
                                         <input
                                             type="range"
                                             min={0.6}
@@ -1276,7 +1276,7 @@ export const SimulationStudio: React.FC = () => {
                                                             </button>
                                                         </div>
                                                     )}
-                                                    <div className="mt-2 flex items-center justify-between text-[0.66rem] title tracking-[0.2em] text-slate-500">
+                                                    <div className="mt-2 flex items-center justify-between text-[0.66rem] title text-slate-500">
                                                         <span>{node.kind.replace('-', ' ')}</span>
                                                         <span>{pendingFrom === node.id ? 'link' : ''}</span>
                                                     </div>
@@ -1304,7 +1304,7 @@ export const SimulationStudio: React.FC = () => {
                                                                 ? 'border-amber-400/70 text-amber-300'
                                                                 : incoming
                                                                     ? 'border-emerald-400/70 text-emerald-300'
-                                                                    : 'border-cyan-400/40 text-cyan-200'
+                                                                    : 'border-cyan-400/40 text-slate-200'
                                                                 }`}
                                                             onClick={(event) => {
                                                                 event.stopPropagation();

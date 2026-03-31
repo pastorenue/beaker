@@ -3,23 +3,28 @@ FROM node:20-alpine as builder
 
 WORKDIR /app
 
-COPY package.json .
-# We don't have package-lock.json yet as we didn't run npm install
-# COPY package-lock.json .
+# Copy frontend config
+COPY frontend/package.json ./frontend/
 
+# Copy sdk and frontend source
+COPY sdk/typescript ./sdk/typescript
+COPY frontend ./frontend
+
+# Install SDK dependencies
+WORKDIR /app/sdk/typescript
 RUN npm install
 
-COPY . .
-
+WORKDIR /app/frontend
+RUN npm install
 RUN npm run build
 
 # Runtime stage
 FROM nginx:alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
 # Copy custom nginx config to handle client-side routing
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

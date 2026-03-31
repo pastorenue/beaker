@@ -35,7 +35,7 @@ export const SimulationConfigPanel: React.FC<SimulationConfigPanelProps> = ({
     return (
         <div className="flow-surface mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800/80 bg-slate-950/60 px-5 py-4 text-sm text-slate-200">
             <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold title tracking-[0.22em] text-slate-100 uppercase">
+                <span className="text-xs font-semibold title text-slate-100">
                     Simulation Config
                 </span>
                 <button

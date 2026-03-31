@@ -22,11 +22,11 @@ export const GroupGrid: React.FC<GroupGridProps> = ({ groups, selectedGroupId, o
                     <p className="mb-3 text-sm text-slate-400">{group.description}</p>
                     <div className="flex items-center justify-between soft-divider pt-3">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Users</p>
+                            <p className="text-xs text-slate-500">Users</p>
                             <p className="text-lg font-bold text-slate-100">{group.size.toLocaleString()}</p>
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Assignment</p>
+                            <p className="text-xs text-slate-500">Assignment</p>
                             <p className="badge-info text-xs">{group.assignment_rule}</p>
                         </div>
                     </div>

@@ -68,8 +68,8 @@ export const VariantsStep: React.FC<VariantsStepProps> = ({
             <button onClick={addVariant} className="btn-secondary w-full">
                 + Add Variant
             </button>
-            <div className="rounded-xl bg-cyan-500/10 p-3 border border-cyan-500/20">
-                <p className="text-sm text-cyan-200">
+            <div className="rounded-xl bg-gray-500/10 p-3 border border-cyan-500/20">
+                <p className="text-sm text-slate-200">
                     Total Allocation:{' '}
                     <span className="font-bold">{totalAllocation.toFixed(1)}%</span>
                     {totalAllocation !== 100 && <span className="ml-2 text-amber-200">⚠ Must equal 100%</span>}

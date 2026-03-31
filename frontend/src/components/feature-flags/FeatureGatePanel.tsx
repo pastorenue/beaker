@@ -54,7 +54,7 @@ export const FeatureGatePanel: React.FC<FeatureGatePanelProps> = ({
                     <p className="mt-3 text-sm text-slate-400">Select a feature flag to manage its gates.</p>
                 )}
                 {selectedFlag && (
-                    <p className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-500">{selectedFlag.name}</p>
+                    <p className="mt-2 text-xs text-slate-500">{selectedFlag.name}</p>
                 )}
             </div>
 

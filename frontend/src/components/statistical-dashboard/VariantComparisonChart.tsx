@@ -126,7 +126,7 @@ export const VariantComparisonChart: React.FC<VariantComparisonChartProps> = ({ 
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full text-sm text-slate-200">
-                    <thead className="bg-slate-900/60 text-xs uppercase tracking-[0.16em] text-slate-500">
+                    <thead className="bg-slate-900/60 text-xs text-slate-500">
                         <tr>
                             <th className="px-3 py-2 text-left">Pair</th>
                             <th className="px-3 py-2 text-left">Means (A/B)</th>

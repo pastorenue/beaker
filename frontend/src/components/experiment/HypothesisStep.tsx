@@ -85,7 +85,7 @@ export const HypothesisStep: React.FC<HypothesisStepProps> = ({
             </div>
             <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-3">
                 <div className="flex items-center justify-between">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AI Hypothesis Draft</p>
+                    <p className="text-xs text-slate-400">AI Hypothesis Draft</p>
                     <span className="badge-gray">Auto-fill</span>
                 </div>
                 <p className="mt-2 text-sm text-slate-300">

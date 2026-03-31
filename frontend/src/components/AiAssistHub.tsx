@@ -21,7 +21,7 @@ export const AiAssistHub: React.FC = () => {
             {/* Floating AI Assist button */}
             <button
                 onClick={() => setIsAiDrawerOpen(true)}
-                className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-cyan-400 transition-colors"
+                className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-gray-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-cyan-400 transition-colors"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"

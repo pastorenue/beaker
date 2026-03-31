@@ -179,7 +179,7 @@ export class ExpothesisTracker {
     private startReplayRecording() {
         this.resetReplaySnapshotState();
         this.stopRecord = record({
-            emit: (event) => {
+            emit: (event: any) => {
                 const payload = event as EventPayload;
                 if (payload?.type === 2 && !this.replayHasFullSnapshot) {
                     this.replayHasFullSnapshot = true;
@@ -348,8 +348,8 @@ export class ExpothesisTracker {
         const keepalive = path === '/session/end';
         const timeoutId = isReplay
             ? window.setTimeout(() => {
-                  controller?.abort();
-              }, 10000)
+                controller?.abort();
+            }, 10000)
             : undefined;
         try {
             const response = await fetch(`${this.endpoint}${path}`, {

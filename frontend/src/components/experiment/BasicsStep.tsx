@@ -98,13 +98,13 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                                     return (
                                         <span
                                             key={group.id}
-                                            className="chip-pill inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-cyan-400 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200"
+                                            className="chip-pill inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-cyan-400 bg-gray-500/10 px-3 py-1 text-xs font-semibold text-slate-200"
                                         >
                                             {group.name}
                                             <button
                                                 type="button"
                                                 onClick={() => toggleUserGroup(group.id)}
-                                                className="text-cyan-200/70 hover:text-cyan-100"
+                                                className="text-slate-200/70 hover:text-cyan-100"
                                                 aria-label={`Remove ${group.name}`}
                                             >
                                                 ×
@@ -169,13 +169,13 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                             .map((metric) => (
                                 <span
                                     key={metric}
-                                    className="chip-pill inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-cyan-400 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200"
+                                    className="chip-pill inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-cyan-400 bg-gray-500/10 px-3 py-1 text-xs font-semibold text-slate-200"
                                 >
                                     {metric}
                                     <button
                                         type="button"
                                         onClick={() => removePrimaryMetric(metric)}
-                                        className="text-cyan-200/70 hover:text-cyan-100"
+                                        className="text-slate-200/70 hover:text-cyan-100"
                                         aria-label={`Remove ${metric}`}
                                     >
                                         ×
@@ -225,7 +225,7 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
             {suggestedMetrics.length > 0 && (
                 <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-3">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AI Suggestions</p>
+                        <p className="text-xs text-slate-400">AI Suggestions</p>
                         <span className="badge-gray">Based on history</span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">

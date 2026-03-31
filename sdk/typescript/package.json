@@ -1,0 +1,16 @@
+{
+    "name": "@expothesis/sdk",
+    "version": "1.0.0",
+    "description": "Expothesis Typescript SDK",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "rrweb": "^2.0.0-alpha.11"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
+}

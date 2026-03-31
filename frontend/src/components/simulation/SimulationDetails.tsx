@@ -61,13 +61,13 @@ export const SimulationDetails: React.FC<SimulationDetailsProps> = ({
                                 { label: 'Signals Processed', value: signalCount.toLocaleString() || '0' },
                             ].map((item) => (
                                 <div key={item.label} className="panel">
-                                    <p className="text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                                    <p className="text-[1rem] text-slate-400">{item.label}</p>
                                     <p className="mt-3 text-2xl font-semibold text-slate-50">{item.value}</p>
                                 </div>
                             ))}
                         </div>
                         <div className="flow-surface mt-6 rounded-2xl border border-slate-800/70 bg-slate-950/60 p-5">
-                            <div className="flex items-center justify-between text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">
+                            <div className="flex items-center justify-between text-[1rem] text-slate-400">
                                 <span>Latest Signals</span>
                                 <span className="text-emerald-300">Streaming</span>
                             </div>
@@ -93,25 +93,25 @@ export const SimulationDetails: React.FC<SimulationDetailsProps> = ({
                         <h3 className="mb-4 text-base">Action Inputs</h3>
                         <div className="space-y-4">
                             <div className="panel">
-                                <p className="text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">Experiment</p>
+                                <p className="text-[1rem] text-slate-400">Experiment</p>
                                 <p className="mt-2 text-base font-semibold text-slate-50">
                                     {selectedExperiment?.name || 'Add an experiment node'}
                                 </p>
                             </div>
                             <div className="panel">
-                                <p className="text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">Audience</p>
+                                <p className="text-[1rem] text-slate-400">Audience</p>
                                 <p className="mt-2 text-base font-semibold text-slate-50">
                                     {selectedGroups[0]?.name || 'Add a user group node'}
                                 </p>
                             </div>
                             <div className="panel">
-                                <p className="text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">Hypothesis</p>
+                                <p className="text-[1rem] text-slate-400">Hypothesis</p>
                                 <p className="mt-2 text-base font-semibold text-slate-50">
                                     {hypothesisNodes[0]?.data?.hypothesis || selectedExperiment?.hypothesis?.alternative_hypothesis || 'No hypothesis configured.'}
                                 </p>
                             </div>
                             <div className="panel">
-                                <p className="text-[0.8rem] uppercase tracking-[0.18em] text-slate-400">Primary Metric</p>
+                                <p className="text-[1rem] text-slate-400">Primary Metric</p>
                                 <p className="mt-2 text-base font-semibold text-slate-50">
                                     {metricNodes[0]?.data?.metric || selectedExperiment?.primary_metric || 'Not set'}
                                 </p>
@@ -124,13 +124,13 @@ export const SimulationDetails: React.FC<SimulationDetailsProps> = ({
                         {selectedNode ? (
                             <div className="space-y-4">
                                 <div className="panel">
-                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Node</p>
+                                    <p className="text-xs text-slate-500">Node</p>
                                     <p className="mt-2 text-sm font-semibold text-slate-100">{selectedNode.label}</p>
                                     <p className="mt-1 text-xs text-slate-500">{selectedNode.kind.replace('-', ' ')}</p>
                                 </div>
                                 {selectedNode.data?.experimentId && (
                                     <div className="panel">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Experiment</p>
+                                        <p className="text-xs text-slate-500">Experiment</p>
                                         <p className="mt-2 text-sm font-semibold text-slate-100">
                                             {experiments.find((exp) => exp.id === selectedNode.data?.experimentId)?.name}
                                         </p>
@@ -138,7 +138,7 @@ export const SimulationDetails: React.FC<SimulationDetailsProps> = ({
                                 )}
                                 {selectedNode.data?.groupId && (
                                     <div className="panel">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">User Group</p>
+                                        <p className="text-xs text-slate-500">User Group</p>
                                         <p className="mt-2 text-sm font-semibold text-slate-100">
                                             {userGroups.find((group) => group.id === selectedNode.data?.groupId)?.name}
                                         </p>
@@ -146,13 +146,13 @@ export const SimulationDetails: React.FC<SimulationDetailsProps> = ({
                                 )}
                                 {selectedNode.data?.hypothesis && (
                                     <div className="panel">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Hypothesis</p>
+                                        <p className="text-xs text-slate-500">Hypothesis</p>
                                         <p className="mt-2 text-sm font-semibold text-slate-100">{selectedNode.data.hypothesis}</p>
                                     </div>
                                 )}
                                 {selectedNode.data?.metric && (
                                     <div className="panel">
-                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Metric</p>
+                                        <p className="text-xs text-slate-500">Metric</p>
                                         <p className="mt-2 text-sm font-semibold text-slate-100">{selectedNode.data.metric}</p>
                                     </div>
                                 )}

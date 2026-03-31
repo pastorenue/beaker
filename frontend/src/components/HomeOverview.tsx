@@ -145,7 +145,7 @@ export const HomeOverview: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Welcome back</p>
+                <p className="text-xs text-slate-400">Welcome back</p>
                 <h1 className="mt-2">Home</h1>
                 <p className="mt-1 text-slate-400">Weekly pulse of experiment velocity and feature gate activity.</p>
             </div>
@@ -156,7 +156,7 @@ export const HomeOverview: React.FC = () => {
                         <h3>Experiments ({timeframe[0].toUpperCase() + timeframe.slice(1)})</h3>
                         <div className="flex items-center gap-2">
                             <span className="badge-gray">Active vs Created</span>
-                            <div className="flex items-center rounded-full border border-slate-800/70 bg-slate-900/60 p-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                            <div className="flex items-center rounded-full border border-slate-800/70 bg-slate-900/60 p-1 text-[0.65rem] font-semibold text-slate-300">
                                 {(['daily', 'weekly', 'monthly'] as const).map((value) => (
                                     <button
                                         key={value}
@@ -189,7 +189,7 @@ export const HomeOverview: React.FC = () => {
                         <h3>Feature Gates ({timeframe[0].toUpperCase() + timeframe.slice(1)})</h3>
                         <div className="flex items-center gap-2">
                             <span className="badge-gray">Created gates</span>
-                            <div className="flex items-center rounded-full border border-slate-800/70 bg-slate-900/60 p-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                            <div className="flex items-center rounded-full border border-slate-800/70 bg-slate-900/60 p-1 text-[0.65rem] font-semibold text-slate-300">
                                 {(['daily', 'weekly', 'monthly'] as const).map((value) => (
                                     <button
                                         key={value}

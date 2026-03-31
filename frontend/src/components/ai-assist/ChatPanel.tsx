@@ -46,11 +46,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     {messages.map((message, idx) => (
                         <div
                             key={idx}
-                            className={`max-w-[85%] rounded-xl px-3 py-2 ${
-                                message.role === 'user'
-                                    ? 'ml-auto bg-cyan-500/10 text-cyan-100'
+                            className={`max-w-[85%] rounded-xl px-3 py-2 ${message.role === 'user'
+                                    ? 'ml-auto bg-gray-500/10 text-cyan-100'
                                     : 'bg-slate-900/60 text-slate-200'
-                            }`}
+                                }`}
                         >
                             {message.text}
                         </div>

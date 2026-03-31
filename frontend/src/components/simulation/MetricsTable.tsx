@@ -64,7 +64,7 @@ export const MetricsTable: React.FC<MetricsTableProps> = ({ rows }) => {
     return (
         <div className="overflow-x-auto rounded-xl border border-slate-800/70 bg-slate-950/60">
             <table className="min-w-full text-sm text-slate-200">
-                <thead className="bg-slate-900/60 text-xs uppercase tracking-[0.16em] text-slate-500">
+                <thead className="bg-slate-900/60 text-xs text-slate-500">
                     <tr>
                         <th className="px-4 py-3 text-left">Metric</th>
                         <th className="px-4 py-3 text-left">Baseline</th>

@@ -68,70 +68,94 @@ export const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="landing-page">
-            <header className="landing-header">
-                <div className="landing-brand">
-                    <span className="landing-brand-mark">Ex</span>
-                    <div>
-                        <div className="landing-brand-name">Expothesis</div>
-                        <div className="landing-brand-tag">Experiment Intelligence</div>
-                    </div>
-                </div>
-                <div className="landing-header-actions">
-                    <Link to="/" className="landing-link">Home</Link>
+        <div className="lp flex min-h-screen flex-col items-center justify-center p-6">
+            <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
+                <div className="lp-nav-inner justify-between">
+                    <Link to="/" className="lp-logo">
+                        <span className="lp-logo-mark">Ex</span>
+                        <span className="lp-logo-text">Expothesis</span>
+                    </Link>
+                    <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>
             </header>
-            <div className="flex min-h-screen items-center justify-center px-6 py-10">
-                <div className="card w-full max-w-md">
-                    <h2 className="mb-2">{step === 'login' ? 'Sign in' : 'Verify OTP'}</h2>
-                    <p className="text-sm text-slate-400">
+
+            <div className="w-full max-w-[420px] space-y-8 relative z-10 pt-16">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                        {step === 'login' ? 'Sign in to Expothesis' : 'Verify your sign-in'}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
                         {step === 'login'
-                            ? 'Use your email and password to continue.'
-                            : 'Enter the code from your authenticator app.'}
+                            ? 'Secure access to your experimentation control plane.'
+                            : 'Enter the code from your authenticator app to continue.'}
                     </p>
-                    {error && <div className="mt-3 text-sm text-rose-300">{error}</div>}
-                    <div className="mt-4 space-y-3">
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/60 bg-white p-8 shadow-xl shadow-slate-200/40">
+                    {error && <div className="mb-4 rounded-lg bg-red-50/80 p-3 text-sm text-red-600 border border-red-100">{error}</div>}
+                    <div className="space-y-4">
                         {step === 'login' ? (
                             <>
-                                <input
-                                    type="email"
-                                    className="input"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Email"
-                                />
-                                <input
-                                    type="password"
-                                    className="input"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Password"
-                                />
-                                <button className="btn-primary w-full" onClick={handleLogin}>
-                                    Continue
+                                <div>
+                                    <input
+                                        type="email"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="Email address"
+                                    />
+                                </div>
+                                <div>
+                                    <input
+                                        type="password"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Password"
+                                    />
+                                </div>
+                                <button className="lp-btn lp-btn-primary w-full !py-3 !text-sm mt-2" onClick={handleLogin}>
+                                    Sign In →
                                 </button>
-                                <p className="text-sm text-slate-400">
-                                    No account? <Link to="/register" className="text-cyan-300">Create one</Link>
-                                </p>
+                                <div className="pt-4 text-center text-sm text-slate-500">
+                                    No account? <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Create one</Link>
+                                </div>
                             </>
                         ) : (
                             <>
                                 {totpEnabled && (
                                     <input
                                         type="text"
-                                        className="input"
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                         value={totp}
                                         onChange={(e) => setTotp(e.target.value)}
                                         placeholder="Authenticator code"
                                     />
                                 )}
-                                <button className="btn-primary w-full" onClick={handleVerify}>
-                                    Verify & Sign in
+                                <button className="lp-btn lp-btn-primary w-full !py-3 !text-sm mt-2" onClick={handleVerify}>
+                                    Verify & Sign in →
                                 </button>
                             </>
                         )}
                     </div>
                 </div>
+
+                {step === 'login' && (
+                    <div className="grid grid-cols-3 gap-6 border-t border-slate-200 pt-8 text-center text-[1rem] text-slate-500">
+                        <div>
+                            <span className="block font-semibold text-slate-700">Feature flags</span>
+                            Target precisely.
+                        </div>
+                        <div>
+                            <span className="block font-semibold text-slate-700">A/B testing</span>
+                            CUPED built-in.
+                        </div>
+                        <div>
+                            <span className="block font-semibold text-slate-700">Analytics</span>
+                            Live lift tracking.
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -192,51 +216,71 @@ export const RegisterPage: React.FC = () => {
     };
 
     return (
-        <div className="landing-page">
-            <header className="landing-header">
-                <div className="landing-brand">
-                    <span className="landing-brand-mark">Ex</span>
-                    <div>
-                        <div className="landing-brand-name">Expothesis</div>
-                        <div className="landing-brand-tag">Experiment Intelligence</div>
-                    </div>
-                </div>
-                <div className="landing-header-actions">
-                    <Link to="/" className="landing-link">Home</Link>
+        <div className="lp flex min-h-screen flex-col items-center justify-center p-6">
+            <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
+                <div className="lp-nav-inner justify-between">
+                    <Link to="/" className="lp-logo">
+                        <span className="lp-logo-mark">Ex</span>
+                        <span className="lp-logo-text">Expothesis</span>
+                    </Link>
+                    <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>
             </header>
-            <div className="flex min-h-screen items-center justify-center px-6 py-10">
-                <div className="card w-full max-w-md">
-                    <h2 className="mb-2">{inviteDetails ? 'Accept Invitation' : 'Create account'}</h2>
-                    <p className="text-sm text-slate-400">
+
+            <div className="w-full max-w-[420px] space-y-8 relative z-10 pt-16">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                        {inviteDetails ? 'Accept Invitation' : 'Create account'}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
                         {inviteDetails
                             ? `You've been invited to join ${inviteDetails.account_name}. Create your account to continue.`
                             : 'Create your account to start experimenting.'}
                     </p>
-                    {error && <div className="mt-3 text-sm text-rose-300">{error}</div>}
-                    <div className="mt-4 space-y-3">
-                        <>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/60 bg-white p-8 shadow-xl shadow-slate-200/40">
+                    {error && <div className="mb-4 rounded-lg bg-red-50/80 p-3 text-sm text-red-600 border border-red-100">{error}</div>}
+                    <div className="space-y-4">
+                        <div>
                             <input
                                 type="email"
-                                className="input"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Email"
+                                placeholder="Email address"
                             />
+                        </div>
+                        <div>
                             <input
                                 type="password"
-                                className="input"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Password"
                             />
-                            <button className="btn-primary w-full" onClick={handleRegister}>
-                                {inviteDetails ? 'Accept & Continue' : 'Register'}
-                            </button>
-                            <p className="text-sm text-slate-400">
-                                Already have an account? <Link to="/login" className="text-cyan-300">Sign in</Link>
-                            </p>
-                        </>
+                        </div>
+                        <button className="lp-btn lp-btn-primary w-full !py-3 !text-sm mt-2" onClick={handleRegister}>
+                            {inviteDetails ? 'Accept & Continue →' : 'Register →'}
+                        </button>
+                        <div className="pt-4 text-center text-sm text-slate-500">
+                            Already have an account? <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Sign in</Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6 border-t border-slate-200 pt-8 text-center text-[1rem] text-slate-500">
+                    <div>
+                        <span className="block font-semibold text-slate-700">Frictionless</span>
+                        Setup in minutes.
+                    </div>
+                    <div>
+                        <span className="block font-semibold text-slate-700">Smarter tests</span>
+                        With CUPED.
+                    </div>
+                    <div>
+                        <span className="block font-semibold text-slate-700">Live stream</span>
+                        Realtime data.
                     </div>
                 </div>
             </div>

@@ -27,7 +27,7 @@ export const MetricsInventoryTable: React.FC<MetricsInventoryTableProps> = ({
                 <span className="badge-gray">Tracking + guardrails</span>
             </div>
             <div className="mt-4 overflow-hidden rounded-xl border border-slate-800/70">
-                <div className="grid grid-cols-[1.4fr_0.8fr_0.6fr_0.6fr_0.7fr] gap-3 bg-slate-950/60 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <div className="grid grid-cols-[1.4fr_0.8fr_0.6fr_0.6fr_0.7fr] gap-3 bg-slate-950/60 px-4 py-3 text-xs font-semibold text-slate-400">
                     <span>Metric</span>
                     <span>Category</span>
                     <span>Freshness</span>

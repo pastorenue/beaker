@@ -56,7 +56,7 @@ export const AccountSetupWizard: React.FC = () => {
             <div className="flex min-h-screen items-center justify-center px-6">
                 <div className="card w-full max-w-md text-center">
                     <div className="mb-4 flex justify-center">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-500/20 text-cyan-400">
                             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -80,8 +80,8 @@ export const AccountSetupWizard: React.FC = () => {
             <div className="card w-full max-w-md">
                 <div className="mb-6">
                     <div className="flex space-x-2">
-                        <div className={`h-1 flex-1 rounded-full ${step === 'account_create' ? 'bg-cyan-500' : 'bg-slate-700'}`} />
-                        <div className={`h-1 flex-1 rounded-full ${step === 'invite_members' ? 'bg-cyan-500' : 'bg-slate-700'}`} />
+                        <div className={`h-1 flex-1 rounded-full ${step === 'account_create' ? 'bg-gray-500' : 'bg-slate-700'}`} />
+                        <div className={`h-1 flex-1 rounded-full ${step === 'invite_members' ? 'bg-gray-500' : 'bg-slate-700'}`} />
                     </div>
                 </div>
 
@@ -95,7 +95,7 @@ export const AccountSetupWizard: React.FC = () => {
                         </p>
                         <div className="space-y-4">
                             <div>
-                                <label className="mb-1 block text-xs font-semibold uppercase text-slate-400">Account Name</label>
+                                <label className="mb-1 block text-xs font-semibold text-slate-400">Account Name</label>
                                 <input
                                     type="text"
                                     className="input"

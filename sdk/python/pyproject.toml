@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "expothesis-sdk"
+version = "1.0.0"
+description = "Expothesis Python SDK for Tracking and Feature Flags"
+authors = [
+    { name = "Expothesis", email = "hello@expothesis.com" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.25.0",
+]
+
+[project.urls]
+Homepage = "https://expothesis.com"
+
+[tool.hatch.build.targets.wheel]
+packages = ["expothesis"]

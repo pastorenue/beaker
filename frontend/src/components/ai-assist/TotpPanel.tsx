@@ -54,7 +54,7 @@ export const TotpPanel: React.FC<TotpPanelProps> = ({
             </div>
             {totpSecret && (
                 <div className="mt-3 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-sm text-slate-300">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Secret</div>
+                    <div className="text-xs text-slate-400">Secret</div>
                     <div className="mt-1 font-mono break-all">{totpSecret}</div>
                     {totpUrl && <div className="mt-2 text-xs text-slate-400">otpauth: {totpUrl}</div>}
                     <input
