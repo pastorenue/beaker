@@ -14,7 +14,9 @@ export const UserSettings: React.FC = () => {
     const [totpEnabled, setTotpEnabled] = React.useState(false);
     const [totpError, setTotpError] = React.useState<string | null>(null);
     const [totpSuccess, setTotpSuccess] = React.useState<string | null>(null);
+    const [activeSettingsTab, setActiveSettingsTab] = React.useState<'profile' | 'accounts' | 'security'>('profile');
     const [activeSdkTab, setActiveSdkTab] = React.useState<'tokens' | 'feature_flags'>('tokens');
+    const [activeLangTab, setActiveLangTab] = React.useState<'typescript' | 'python'>('typescript');
     const userId = window.localStorage.getItem('expothesis-user-id') ?? '';
     const { data, isLoading } = useQuery({
         queryKey: ['sdk-tokens', activeAccountId],
@@ -129,111 +131,120 @@ export const UserSettings: React.FC = () => {
                 </p>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="card">
-                    <h3>Profile</h3>
-                    <p className="mt-2 text-sm text-slate-400">Update your display name and contact details.</p>
-                    <div className="mt-4 space-y-3">
-                        <div className="space-y-1">
-                            <label className="label">Name</label>
-                            <input className="input" defaultValue="Admin Operator" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="label">Email</label>
-                            <input className="input" defaultValue="admin@expothesis.local" />
-                        </div>
-                    </div>
+            <div className="card">
+                <div className="border-b border-slate-800/60 pb-3">
+                    <h3>Account Settings</h3>
                 </div>
-                <div className="card">
-                    <h3>Accounts</h3>
-                    <p className="mt-2 text-sm text-slate-400">
-                        Switch between accounts and create new ones.
-                    </p>
-                    <AccountManager accounts={accounts} />
+                <div className="mt-4 flex gap-6 border-b border-slate-800/60">
+                    {(['profile', 'accounts', 'security'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            className={`pb-3 text-sm font-medium capitalize transition-colors ${activeSettingsTab === tab ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                            onClick={() => setActiveSettingsTab(tab)}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
-                <div className="card">
-                    <h3>Security</h3>
-                    <p className="mt-2 text-sm text-slate-400">Manage password resets and two-factor auth.</p>
-                    <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm">
-                            <div>
-                                <p className="font-semibold text-slate-100">Authenticator app</p>
-                                <p className="text-xs text-slate-500">{totpEnabled ? 'Enabled' : 'Not configured'}</p>
+
+                <div className="mt-6">
+                    {activeSettingsTab === 'profile' && (
+                        <div className="space-y-3">
+                            <p className="text-sm text-slate-400">Update your display name and contact details.</p>
+                            <div className="space-y-1">
+                                <label className="label">Name</label>
+                                <input className="input" defaultValue="Admin Operator" />
                             </div>
-                            <div className="flex items-center gap-2">
-                                {totpEnabled && (
-                                    <button className="btn-secondary" onClick={handleTotpDisable}>
-                                        Remove
-                                    </button>
-                                )}
-                                <button className="btn-secondary" onClick={handleTotpSetup}>
-                                    {totpSetup ? 'Regenerate' : 'Set up'}
-                                </button>
+                            <div className="space-y-1">
+                                <label className="label">Email</label>
+                                <input className="input" defaultValue="admin@expothesis.local" />
                             </div>
                         </div>
-                        {totpSetup && (
-                            <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 text-sm text-slate-300">
-                                <p className="text-xs text-slate-500">Scan QR</p>
-                                <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center">
-                                    <div className="flex h-36 w-36 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/70">
-                                        <img
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                                                totpSetup.otpauth_url,
-                                            )}`}
-                                            alt="Authenticator QR"
-                                            className="h-32 w-32 rounded-lg"
-                                        />
-                                    </div>
-                                    <div className="flex-1 space-y-2">
-                                        <div className="text-xs text-slate-500">Secret</div>
-                                        <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-200">
-                                            {totpSetup.secret}
-                                        </div>
-                                        <div className="text-xs text-slate-500">OTPAuth URL</div>
-                                        <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-[0.65rem] text-slate-300">
-                                            {totpSetup.otpauth_url}
-                                        </div>
-                                    </div>
+                    )}
+
+                    {activeSettingsTab === 'accounts' && (
+                        <div>
+                            <p className="mb-4 text-sm text-slate-400">Switch between accounts and create new ones.</p>
+                            <AccountManager accounts={accounts} />
+                        </div>
+                    )}
+
+                    {activeSettingsTab === 'security' && (
+                        <div className="space-y-3">
+                            <p className="text-sm text-slate-400">Manage password resets and two-factor auth.</p>
+                            <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm">
+                                <div>
+                                    <p className="font-semibold text-slate-100">Authenticator app</p>
+                                    <p className="text-xs text-slate-500">{totpEnabled ? 'Enabled' : 'Not configured'}</p>
                                 </div>
-                                <div className="mt-4 space-y-2">
-                                    <label className="label">Enter code to verify</label>
-                                    <input
-                                        className="input"
-                                        value={totpCode}
-                                        onChange={(e) => setTotpCode(e.target.value)}
-                                        placeholder="123456"
-                                    />
-                                    <div className="flex items-center gap-2">
-                                        <button className="btn-primary" onClick={handleTotpVerify}>
-                                            Verify Authenticator
+                                <div className="flex items-center gap-2">
+                                    {totpEnabled && (
+                                        <button className="btn-secondary" onClick={handleTotpDisable}>
+                                            Remove
                                         </button>
-                                        {totpSuccess && <span className="text-xs text-emerald-300">{totpSuccess}</span>}
-                                        {totpError && <span className="text-xs text-rose-300">{totpError}</span>}
-                                    </div>
+                                    )}
+                                    <button className="btn-secondary" onClick={handleTotpSetup}>
+                                        {totpSetup ? 'Regenerate' : 'Set up'}
+                                    </button>
                                 </div>
                             </div>
-                        )}
-                        <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm">
-                            <div>
-                                <p className="font-semibold text-slate-100">Password</p>
-                                <p className="text-xs text-slate-500">Last updated 2 days ago</p>
+                            {totpSetup && (
+                                <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 text-sm text-slate-300">
+                                    <p className="text-xs text-slate-500">Scan QR</p>
+                                    <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center">
+                                        <div className="flex h-36 w-36 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/70">
+                                            <img
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                                                    totpSetup.otpauth_url,
+                                                )}`}
+                                                alt="Authenticator QR"
+                                                className="h-32 w-32 rounded-lg"
+                                            />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="text-xs text-slate-500">Secret</div>
+                                            <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-xs text-slate-200">
+                                                {totpSetup.secret}
+                                            </div>
+                                            <div className="text-xs text-slate-500">OTPAuth URL</div>
+                                            <div className="rounded-lg border border-slate-800/70 bg-slate-950/60 px-3 py-2 text-[0.65rem] text-slate-300">
+                                                {totpSetup.otpauth_url}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 space-y-2">
+                                        <label className="label">Enter code to verify</label>
+                                        <input
+                                            className="input"
+                                            value={totpCode}
+                                            onChange={(e) => setTotpCode(e.target.value)}
+                                            placeholder="123456"
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <button className="btn-primary" onClick={handleTotpVerify}>
+                                                Verify Authenticator
+                                            </button>
+                                            {totpSuccess && <span className="text-xs text-emerald-300">{totpSuccess}</span>}
+                                            {totpError && <span className="text-xs text-rose-300">{totpError}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm">
+                                <div>
+                                    <p className="font-semibold text-slate-100">Password</p>
+                                    <p className="text-xs text-slate-500">Last updated 2 days ago</p>
+                                </div>
+                                <button className="btn-secondary">Reset</button>
                             </div>
-                            <button className="btn-secondary">Reset</button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
             <div className="card">
-                <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+                <div className="border-b border-slate-800/60 pb-3">
                     <h3>SDK & Integrations</h3>
-                    <button
-                        className="btn-secondary h-8 px-3 text-xs"
-                        onClick={() => setPendingRotate('all')}
-                        disabled={rotateMutation.isPending}
-                    >
-                        Regenerate All Tokens
-                    </button>
                 </div>
 
                 <div className="mt-4 flex gap-6 border-b border-slate-800/60">
@@ -254,9 +265,18 @@ export const UserSettings: React.FC = () => {
                 <div className="mt-6">
                     {activeSdkTab === 'tokens' && (
                         <div className="space-y-4">
-                            <p className="text-sm text-slate-400">
-                                Use these tokens in your client SDKs for tracking and feature flags.
-                            </p>
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm text-slate-400">
+                                    Use these tokens in your client SDKs for tracking and feature flags.
+                                </p>
+                                <button
+                                    className="btn-secondary h-8 px-3 text-xs"
+                                    onClick={() => setPendingRotate('all')}
+                                    disabled={rotateMutation.isPending}
+                                >
+                                    Regenerate All Tokens
+                                </button>
+                            </div>
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -343,11 +363,26 @@ export const UserSettings: React.FC = () => {
                     )}
 
                     {activeSdkTab === 'feature_flags' && (
-                        <div>
+                        <div className="space-y-4">
                             <p className="text-sm text-slate-400">
                                 Evaluate flags by user attributes with the lightweight client.
                             </p>
-                            <pre className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`import { ExpothesisFeatureFlags } from '@expothesis/sdk';
+                            <div className="flex gap-4 border-b border-slate-800/60">
+                                <button
+                                    className={`pb-2 text-xs font-medium transition-colors ${activeLangTab === 'typescript' ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                                    onClick={() => setActiveLangTab('typescript')}
+                                >
+                                    TypeScript
+                                </button>
+                                <button
+                                    className={`pb-2 text-xs font-medium transition-colors ${activeLangTab === 'python' ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                                    onClick={() => setActiveLangTab('python')}
+                                >
+                                    Python
+                                </button>
+                            </div>
+                            {activeLangTab === 'typescript' && (
+                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`import { ExpothesisFeatureFlags } from '@expothesis/sdk';
 
 const flags = new ExpothesisFeatureFlags({
   endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
@@ -363,6 +398,26 @@ const isNewNavEnabled = await flags.isEnabled('new-nav', {
   userId: 'user_123',
   attributes: { plan: 'pro' },
 });`}</pre>
+                            )}
+                            {activeLangTab === 'python' && (
+                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`from expothesis import FeatureFlags
+
+flags = FeatureFlags(
+    endpoint="http://localhost:8080/api/sdk/feature-flags/evaluate",
+    api_key="${featureFlagsKey !== '—' ? featureFlagsKey : 'YOUR_FEATURE_FLAGS_KEY'}",
+)
+
+result = flags.evaluate(
+    user_id="user_123",
+    attributes={"plan": "pro", "region": "us"},
+)
+
+is_new_nav_enabled = flags.is_enabled(
+    "new-nav",
+    user_id="user_123",
+    attributes={"plan": "pro"},
+)`}</pre>
+                            )}
                         </div>
                     )}
                 </div>
