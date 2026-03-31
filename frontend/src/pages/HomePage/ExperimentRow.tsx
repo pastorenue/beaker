@@ -51,6 +51,7 @@ export function ExperimentRow({
             if (!exp.start_date || !exp.end_date) return null;
             const start = new Date(exp.start_date).getTime();
             const end = new Date(exp.end_date).getTime();
+            if (end <= start) return 0;
             const now = Date.now();
             return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
           })();
