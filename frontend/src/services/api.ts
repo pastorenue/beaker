@@ -5,7 +5,6 @@ import type {
   AiChatRequest,
   AiChatResponse,
   AiModelsResponse,
-  AiPollingInsight,
   AnalyticsOverviewResponse,
   AssignUserRequest,
   AuthStatusResponse,

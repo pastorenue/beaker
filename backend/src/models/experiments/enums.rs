@@ -31,6 +31,7 @@ pub enum SamplingMethod {
 pub enum AnalysisEngine {
     Frequentist,
     Bayesian,
+    Sequential,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

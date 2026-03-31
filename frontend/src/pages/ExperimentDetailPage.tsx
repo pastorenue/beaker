@@ -101,6 +101,8 @@ export function ExperimentDetailPage() {
                             onOpenConfig={() => setShowCupedConfig(true)}
                             cupedError={analysis.cuped_error}
                             hasCupedResults={Boolean(analysis.cuped_adjusted_results)}
+                            eValue={analysis.results[0]?.e_value}
+                            sequentialThreshold={analysis.results[0]?.sequential_threshold}
                         />
                     ) : null
                 }

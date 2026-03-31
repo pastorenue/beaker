@@ -19,6 +19,8 @@ pub struct StatisticalResult {
     pub effect_size: f64,
     pub p_value: f64,
     pub bayes_probability: Option<f64>,
+    pub e_value: Option<f64>,
+    pub sequential_threshold: Option<f64>,
     pub confidence_interval_lower: f64,
     pub confidence_interval_upper: f64,
     pub is_significant: bool,

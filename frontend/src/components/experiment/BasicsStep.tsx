@@ -277,6 +277,7 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                     >
                         <option value={AnalysisEngine.Frequentist}>Frequentist</option>
                         <option value={AnalysisEngine.Bayesian}>Bayesian</option>
+                        <option value={AnalysisEngine.Sequential}>Sequential (mSPRT)</option>
                     </select>
                 </div>
             </div>

@@ -9,6 +9,8 @@ type StatisticalHeaderProps = {
     onOpenConfig: () => void;
     cupedError?: string | null;
     hasCupedResults: boolean;
+    eValue?: number | null;
+    sequentialThreshold?: number | null;
     className?: string;
 };
 
@@ -20,6 +22,8 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
     onOpenConfig,
     cupedError,
     hasCupedResults,
+    eValue,
+    sequentialThreshold,
     className,
 }) => {
     return (
@@ -41,6 +45,17 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
                 <span className="badge-info">Engine: {experiment.analysis_engine}</span>
                 <span className="badge-gray">Sampling: {experiment.sampling_method}</span>
                 <span className="badge-gray">Type: {experiment.experiment_type}</span>
+                {experiment.analysis_engine === 'sequential' && eValue != null && (
+                    <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.15em] ${
+                            eValue >= (sequentialThreshold ?? 20)
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                                : 'border-slate-600/40 bg-slate-800/50 text-slate-400'
+                        }`}
+                    >
+                        E-Value: {eValue.toFixed(2)} / {(sequentialThreshold ?? 20).toFixed(0)} threshold
+                    </span>
+                )}
 
                 <div className="ml-auto flex items-center gap-3">
                     {onToggleCuped && (

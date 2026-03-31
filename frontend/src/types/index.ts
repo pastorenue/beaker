@@ -21,6 +21,7 @@ export enum SamplingMethod {
 export enum AnalysisEngine {
     Frequentist = 'frequentist',
     Bayesian = 'bayesian',
+    Sequential = 'sequential',
 }
 
 export enum HealthCheckDirection {
@@ -105,6 +106,8 @@ export interface StatisticalResult {
     effect_size: number;
     p_value: number;
     bayes_probability?: number;
+    e_value?: number;
+    sequential_threshold?: number;
     confidence_interval_lower: number;
     confidence_interval_upper: number;
     is_significant: boolean;
