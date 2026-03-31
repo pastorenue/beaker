@@ -50,6 +50,7 @@ impl McpServer {
             "list_experiments",
             "get_experiment",
             "get_experiment_analysis",
+            "create_experiment",
             "start_experiment",
             "pause_experiment",
             "stop_experiment",
