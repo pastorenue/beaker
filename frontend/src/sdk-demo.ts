@@ -1,5 +1,5 @@
 import './sdk-demo.css';
-import { ExpothesisTracker } from '../../sdk/typescript/src/expothesis';
+import { ExpothesisTracker } from './sdk/expothesis';
 
 const endpointInput = document.querySelector<HTMLInputElement>('#endpoint');
 const apiKeyInput = document.querySelector<HTMLInputElement>('#apiKey');
