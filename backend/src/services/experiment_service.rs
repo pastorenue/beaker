@@ -85,6 +85,7 @@ impl ExperimentService {
             primary_metric: req.primary_metric,
             start_date: None,
             end_date: req.end_date,
+            jira_issue_key: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -199,7 +200,8 @@ impl ExperimentService {
                       feature_flag_id, feature_gate_id, health_checks::text AS health_checks,
                       hypothesis::text AS hypothesis,
                       variants::text AS variants, user_groups::text AS user_groups,
-                      primary_metric, start_date, end_date, created_at, updated_at
+                      primary_metric, start_date, end_date, jira_issue_key,
+                      created_at, updated_at
                FROM experiments
                WHERE id = $1 AND account_id = $2"#,
         )
@@ -219,7 +221,8 @@ impl ExperimentService {
                       feature_flag_id, feature_gate_id, health_checks::text AS health_checks,
                       hypothesis::text AS hypothesis,
                       variants::text AS variants, user_groups::text AS user_groups,
-                      primary_metric, start_date, end_date, created_at, updated_at
+                      primary_metric, start_date, end_date, jira_issue_key,
+                      created_at, updated_at
                FROM experiments
                WHERE account_id = $1
                ORDER BY updated_at DESC"#,
@@ -614,6 +617,7 @@ pub struct ExperimentRow {
     pub primary_metric: String,
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
+    pub jira_issue_key: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -675,6 +679,7 @@ fn row_to_experiment(row: ExperimentRow) -> Result<Experiment> {
         primary_metric: row.primary_metric,
         start_date: row.start_date,
         end_date: row.end_date,
+        jira_issue_key: row.jira_issue_key,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

@@ -3,12 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { experimentApi } from '../services/api';
 import { ExperimentMonitor } from '../components/experiment/ExperimentMonitor';
+import { JiraIssuePanel } from '../components/experiment/JiraIssuePanel';
 import { StatisticalDashboard } from '../components/StatisticalDashboard';
 import { StatisticalHeader } from '../components/statistical-dashboard/StatisticalHeader';
 import { CupedConfigurationModal } from '../components/CupedConfigurationModal';
 import { LoadingSpinner } from '../components/Common';
 import { useAccount } from '../contexts/AccountContext';
 import { AiSupportDrawer } from '../components/ai-assist/AiSupportDrawer';
+import type { Experiment } from '../types';
 
 export function ExperimentDetailPage() {
     const { activeAccountId } = useAccount();
@@ -17,6 +19,7 @@ export function ExperimentDetailPage() {
     const [useCuped, setUseCuped] = React.useState(false);
     const [showCupedConfig, setShowCupedConfig] = React.useState(false);
     const [isAiDrawerOpen, setIsAiDrawerOpen] = React.useState(false);
+    const [experimentOverride, setExperimentOverride] = React.useState<Experiment | null>(null);
 
     const getMutationErrorMessage = (error: unknown) => {
         const err = error as { response?: { data?: { error?: string } }; message?: string };
@@ -79,15 +82,19 @@ export function ExperimentDetailPage() {
 
     if (expLoading) return <LoadingSpinner fullHeight />;
     if (!experiment) return <div>Experiment not found</div>;
-    const isPolling = analysisLoading || (!!experiment && experiment.status === 'running');
 
-    const experimentContext = experiment && analysis
-        ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}` +
+    // Merge any local overrides (e.g. jira_issue_key updates) with server data
+    const activeExperiment: Experiment = experimentOverride ?? experiment;
+
+    const isPolling = analysisLoading || (!!activeExperiment && activeExperiment.status === 'running');
+
+    const experimentContext = activeExperiment && analysis
+        ? `Experiment: "${activeExperiment.name}" | Engine: ${activeExperiment.analysis_engine} | Status: ${activeExperiment.status}` +
         (analysis.results[0]
             ? ` | p-value: ${analysis.results[0].p_value.toFixed(4)} | Significant: ${analysis.results[0].is_significant}`
             : '')
-        : experiment
-            ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}`
+        : activeExperiment
+            ? `Experiment: "${activeExperiment.name}" | Engine: ${activeExperiment.analysis_engine} | Status: ${activeExperiment.status}`
             : undefined;
 
     return (
@@ -97,7 +104,7 @@ export function ExperimentDetailPage() {
             </Link>
 
             <ExperimentMonitor
-                experiment={experiment}
+                experiment={activeExperiment}
                 onStart={() => startMutation.mutate()}
                 onPause={() => pauseMutation.mutate()}
                 onStop={() => stopMutation.mutate()}
@@ -105,7 +112,7 @@ export function ExperimentDetailPage() {
                 extraTopContent={
                     analysis ? (
                         <StatisticalHeader
-                            experiment={experiment}
+                            experiment={activeExperiment}
                             isPolling={isPolling}
                             useCuped={useCuped}
                             onToggleCuped={setUseCuped}
@@ -117,6 +124,11 @@ export function ExperimentDetailPage() {
                         />
                     ) : null
                 }
+            />
+
+            <JiraIssuePanel
+                experiment={activeExperiment}
+                onUpdated={(updated) => setExperimentOverride(updated)}
             />
 
             {analysisLoading && <LoadingSpinner />}
@@ -135,7 +147,7 @@ export function ExperimentDetailPage() {
                 />
             )}
 
-            {experiment.status === 'draft' && (
+            {activeExperiment.status === 'draft' && (
                 <div className="card">
                     <p className="text-slate-300">
                         ℹ️ Start the experiment to begin collecting data and viewing analysis results.

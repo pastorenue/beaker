@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi, sdkApi, accountApi } from '../services/api';
 import type { RotateSdkTokensRequest, TotpSetupResponse, Account } from '../types';
 import { useAccount } from '../contexts/AccountContext';
+import { IntegrationsPanel } from './IntegrationsPanel';
 
 export const UserSettings: React.FC = () => {
     const { activeAccountId } = useAccount();
@@ -15,7 +16,7 @@ export const UserSettings: React.FC = () => {
     const [totpError, setTotpError] = React.useState<string | null>(null);
     const [totpSuccess, setTotpSuccess] = React.useState<string | null>(null);
     const [activeSettingsTab, setActiveSettingsTab] = React.useState<'profile' | 'accounts' | 'security'>('profile');
-    const [activeSdkTab, setActiveSdkTab] = React.useState<'tokens' | 'feature_flags'>('tokens');
+    const [activeSdkTab, setActiveSdkTab] = React.useState<'tokens' | 'feature_flags' | 'integrations'>('tokens');
     const [activeLangTab, setActiveLangTab] = React.useState<'typescript' | 'python'>('typescript');
     const userId = window.localStorage.getItem('expothesis-user-id') ?? '';
     const { data, isLoading } = useQuery({
@@ -260,6 +261,12 @@ export const UserSettings: React.FC = () => {
                     >
                         Feature Flags SDK Reference
                     </button>
+                    <button
+                        className={`pb-3 text-sm font-medium transition-colors ${activeSdkTab === 'integrations' ? 'border-b-2 border-indigo-500 text-indigo-400' : 'border-b-2 border-transparent text-slate-500 hover:text-slate-300'}`}
+                        onClick={() => setActiveSdkTab('integrations')}
+                    >
+                        Integrations
+                    </button>
                 </div>
 
                 <div className="mt-6">
@@ -360,6 +367,10 @@ export const UserSettings: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {activeSdkTab === 'integrations' && (
+                        <IntegrationsPanel />
                     )}
 
                     {activeSdkTab === 'feature_flags' && (

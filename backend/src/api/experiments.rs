@@ -2,7 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use uuid::Uuid;
 
 use crate::models::*;
-use crate::services::{CupedService, ExperimentService};
+use crate::services::{CupedService, ExperimentService, NotificationService};
 use crate::utils::*;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
@@ -17,7 +17,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}/stop", web::post().to(stop_experiment))
             .route("/{id}/analysis", web::get().to(get_analysis))
             .route("/{id}/cuped/config", web::get().to(get_cuped_config))
-            .route("/{id}/cuped/config", web::post().to(save_cuped_config)),
+            .route("/{id}/cuped/config", web::post().to(save_cuped_config))
+            .route("/{id}/jira/create-issue", web::post().to(jira_create_issue))
+            .route("/{id}/jira/link", web::put().to(jira_link_issue))
+            .route("/{id}/jira/link", web::delete().to(jira_unlink_issue)),
     );
 }
 
@@ -76,6 +79,7 @@ async fn get_experiment(
 
 async fn start_experiment(
     service: web::Data<ExperimentService>,
+    notification_service: web::Data<NotificationService>,
     id: web::Path<Uuid>,
     http: HttpRequest,
 ) -> impl Responder {
@@ -86,7 +90,15 @@ async fn start_experiment(
         .start_experiment(user.account_id, id.into_inner())
         .await
     {
-        Ok(experiment) => HttpResponse::Ok().json(experiment),
+        Ok(experiment) => {
+            let ns = notification_service.clone().into_inner();
+            let exp_clone = experiment.clone();
+            let account_id = user.account_id;
+            tokio::spawn(async move {
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "running").await;
+            });
+            HttpResponse::Ok().json(experiment)
+        }
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),
@@ -114,6 +126,7 @@ async fn restart_experiment(
 
 async fn pause_experiment(
     service: web::Data<ExperimentService>,
+    notification_service: web::Data<NotificationService>,
     id: web::Path<Uuid>,
     http: HttpRequest,
 ) -> impl Responder {
@@ -124,7 +137,15 @@ async fn pause_experiment(
         .pause_experiment(user.account_id, id.into_inner())
         .await
     {
-        Ok(experiment) => HttpResponse::Ok().json(experiment),
+        Ok(experiment) => {
+            let ns = notification_service.clone().into_inner();
+            let exp_clone = experiment.clone();
+            let account_id = user.account_id;
+            tokio::spawn(async move {
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "paused").await;
+            });
+            HttpResponse::Ok().json(experiment)
+        }
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),
@@ -133,6 +154,7 @@ async fn pause_experiment(
 
 async fn stop_experiment(
     service: web::Data<ExperimentService>,
+    notification_service: web::Data<NotificationService>,
     id: web::Path<Uuid>,
     http: HttpRequest,
 ) -> impl Responder {
@@ -143,7 +165,15 @@ async fn stop_experiment(
         .stop_experiment(user.account_id, id.into_inner())
         .await
     {
-        Ok(experiment) => HttpResponse::Ok().json(experiment),
+        Ok(experiment) => {
+            let ns = notification_service.clone().into_inner();
+            let exp_clone = experiment.clone();
+            let account_id = user.account_id;
+            tokio::spawn(async move {
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped").await;
+            });
+            HttpResponse::Ok().json(experiment)
+        }
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),
@@ -220,6 +250,109 @@ async fn save_cuped_config(
     {
         Ok(config) => HttpResponse::Created().json(config),
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Jira routes
+// ---------------------------------------------------------------------------
+
+async fn jira_create_issue(
+    pool: web::Data<sqlx::PgPool>,
+    notification_service: web::Data<NotificationService>,
+    id: web::Path<Uuid>,
+    req: web::Json<CreateJiraIssueRequest>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+
+    let experiment_id = id.into_inner();
+    let req = req.into_inner();
+
+    let result = notification_service
+        .create_jira_issue(
+            user.account_id,
+            req.summary,
+            req.description,
+            req.issue_type,
+            req.project_key,
+        )
+        .await;
+
+    match result {
+        Ok(resp) => {
+            // Store the issue key on the experiment
+            if let Err(e) = sqlx::query(
+                "UPDATE experiments SET jira_issue_key = $1 \
+                 WHERE id = $2 AND account_id = $3",
+            )
+            .bind(&resp.issue_key)
+            .bind(experiment_id)
+            .bind(user.account_id)
+            .execute(pool.get_ref())
+            .await
+            {
+                log::warn!("Failed to save jira_issue_key to experiment: {}", e);
+            }
+            HttpResponse::Ok().json(resp)
+        }
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn jira_link_issue(
+    pool: web::Data<sqlx::PgPool>,
+    id: web::Path<Uuid>,
+    req: web::Json<LinkJiraIssueRequest>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+
+    match sqlx::query(
+        "UPDATE experiments SET jira_issue_key = $1 \
+         WHERE id = $2 AND account_id = $3",
+    )
+    .bind(&req.jira_issue_key)
+    .bind(id.into_inner())
+    .bind(user.account_id)
+    .execute(pool.get_ref())
+    .await
+    {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn jira_unlink_issue(
+    pool: web::Data<sqlx::PgPool>,
+    id: web::Path<Uuid>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+
+    match sqlx::query(
+        "UPDATE experiments SET jira_issue_key = NULL \
+         WHERE id = $1 AND account_id = $2",
+    )
+    .bind(id.into_inner())
+    .bind(user.account_id)
+    .execute(pool.get_ref())
+    .await
+    {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": e.to_string()
         })),
     }

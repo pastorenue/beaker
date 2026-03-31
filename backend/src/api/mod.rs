@@ -6,6 +6,7 @@ pub mod events;
 pub mod experiments;
 pub mod feature_flags;
 pub mod feature_gates;
+pub mod integrations;
 pub mod invites;
 pub mod mcp;
 pub mod sdk;
@@ -34,6 +35,7 @@ pub fn configure(cfg: &mut web::ServiceConfig, pool: PgPool, config: Config) {
             .configure(sdk::configure)
             .configure(ai::configure)
             .configure(track::configure)
+            .configure(integrations::configure)
             .configure(move |cfg| {
                 if mcp_enabled {
                     mcp::configure(cfg);

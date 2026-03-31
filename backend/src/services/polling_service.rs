@@ -9,16 +9,18 @@ use crate::db::ClickHouseClient;
 use crate::models::ExperimentStatus;
 use crate::services::ai_service::AiService;
 use crate::services::experiment_service::ExperimentService;
+use crate::services::notification_service::NotificationService;
 
 pub struct PollingService {
     pg: PgPool,
     experiment_service: ExperimentService,
     ai_service: AiService,
+    notification_service: NotificationService,
     config: Config,
 }
 
 impl PollingService {
-    pub fn new(pg: PgPool, ch: ClickHouseClient, config: Config) -> Self {
+    pub fn new(pg: PgPool, ch: ClickHouseClient, config: Config, notification_service: NotificationService) -> Self {
         let db_with_auth = ch.with_database("expothesis");
         let experiment_service = ExperimentService::new(pg.clone(), db_with_auth);
         let ai_service = AiService::new(pg.clone(), config.clone());
@@ -26,6 +28,7 @@ impl PollingService {
             pg,
             experiment_service,
             ai_service,
+            notification_service,
             config,
         }
     }
@@ -189,6 +192,31 @@ impl PollingService {
             .await?;
 
             info!("Persisted {} insight for experiment {}", severity, experiment.id);
+
+            // Fire Slack notification (fire-and-forget)
+            if matches!(severity, "critical" | "warning") {
+                let ns = self.notification_service.clone();
+                let exp_name = experiment.name.clone();
+                let exp_id = experiment.id;
+                let sev = severity.to_string();
+                let hl = headline.clone();
+                let det = detail.clone();
+                tokio::spawn(async move {
+                    ns.notify_ai_insight(account_id, &exp_name, exp_id, &sev, &hl, &det).await;
+                });
+            }
+
+            // Fire winner Slack notification
+            if insight_type == "winner" {
+                let ns = self.notification_service.clone();
+                let exp_clone = experiment.clone();
+                let variant_b = result.variant_b.clone();
+                let effect = result.effect_size;
+                let pval = result.p_value;
+                tokio::spawn(async move {
+                    ns.notify_winner_detected(account_id, &exp_clone, &variant_b, effect, pval).await;
+                });
+            }
         }
 
         // SRM check — look for sample ratio mismatch across variants
