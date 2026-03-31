@@ -1,6 +1,7 @@
 import axios from "axios";
 import type {
   Account,
+  AccountIntegration,
   ActivityEvent,
   AiChatRequest,
   AiChatResponse,
@@ -14,6 +15,8 @@ import type {
   CreateFeatureFlagRequest,
   CreateFeatureGateRequest,
   CreateInviteRequest,
+  CreateJiraIssueRequest,
+  CreateJiraIssueResponse,
   CreateUserGroupRequest,
   CupedConfig,
   CupedConfigRequest,
@@ -33,6 +36,8 @@ import type {
   InsightsListResponse,
   InsightsSummaryResponse,
   InviteDetailsResponse,
+  JiraTestConnectionResponse,
+  LinkJiraIssueRequest,
   ListSessionsResponse,
   LoginRequest,
   MetricEvent,
@@ -51,6 +56,8 @@ import type {
   TrackReplayRequest,
   UpdateFeatureFlagRequest,
   UpdateUserGroupRequest,
+  UpsertJiraIntegrationRequest,
+  UpsertSlackIntegrationRequest,
   UserGroup,
   VerifyOtpRequest,
 } from "../types";
@@ -133,6 +140,15 @@ export const experimentApi = {
 
   saveCupedConfig: (id: string, data: CupedConfigRequest) =>
     api.post<CupedConfig>(`/experiments/${id}/cuped/config`, data),
+
+  createJiraIssue: (id: string, data: CreateJiraIssueRequest) =>
+    api.post<CreateJiraIssueResponse>(`/experiments/${id}/jira/create-issue`, data),
+
+  linkJiraIssue: (id: string, data: LinkJiraIssueRequest) =>
+    api.put<{ ok: boolean }>(`/experiments/${id}/jira/link`, data),
+
+  unlinkJiraIssue: (id: string) =>
+    api.delete<{ ok: boolean }>(`/experiments/${id}/jira/link`),
 };
 
 // Events
@@ -322,6 +338,19 @@ export const sdkApi = {
   getTokens: () => api.get<SdkTokensResponse>("/sdk/tokens"),
   rotateTokens: (data: RotateSdkTokensRequest) =>
     api.post<SdkTokensResponse>("/sdk/tokens/rotate", data),
+};
+
+// Integrations
+export const integrationApi = {
+  list: () => api.get<AccountIntegration[]>("/integrations"),
+  upsertSlack: (data: UpsertSlackIntegrationRequest) =>
+    api.put<AccountIntegration>("/integrations/slack", data),
+  upsertJira: (data: UpsertJiraIntegrationRequest) =>
+    api.put<AccountIntegration>("/integrations/jira", data),
+  delete: (type: "slack" | "jira") =>
+    api.delete<void>(`/integrations/${type}`),
+  testJira: () =>
+    api.post<JiraTestConnectionResponse>("/integrations/jira/test"),
 };
 
 export default api;

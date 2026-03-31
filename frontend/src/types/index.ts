@@ -78,6 +78,7 @@ export interface Experiment {
     primary_metric: string;
     start_date?: string;
     end_date?: string;
+    jira_issue_key?: string;
     created_at: string;
     updated_at: string;
 }
@@ -705,4 +706,60 @@ export interface InsightsSummaryResponse {
     warning: number;
     critical: number;
     total: number;
+}
+
+// ── Integrations types ────────────────────────────────────────────────────────
+
+export type IntegrationType = 'slack' | 'jira';
+
+export interface SlackIntegrationConfig {
+    webhook_url: string;
+}
+
+export interface JiraIntegrationConfig {
+    site_url: string;
+    email: string;
+    api_token: string;
+    project_key?: string;
+}
+
+export interface AccountIntegration {
+    id: string;
+    account_id: string;
+    integration_type: IntegrationType;
+    enabled: boolean;
+    config: SlackIntegrationConfig | JiraIntegrationConfig | Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UpsertSlackIntegrationRequest {
+    enabled?: boolean;
+    config: SlackIntegrationConfig;
+}
+
+export interface UpsertJiraIntegrationRequest {
+    enabled?: boolean;
+    config: JiraIntegrationConfig;
+}
+
+export interface CreateJiraIssueRequest {
+    summary: string;
+    description?: string;
+    issue_type?: string;
+    project_key?: string;
+}
+
+export interface CreateJiraIssueResponse {
+    issue_key: string;
+    issue_url: string;
+}
+
+export interface LinkJiraIssueRequest {
+    jira_issue_key: string;
+}
+
+export interface JiraTestConnectionResponse {
+    ok: boolean;
+    display_name: string;
 }

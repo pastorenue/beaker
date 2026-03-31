@@ -20,8 +20,8 @@ use db::{connect_postgres, ClickHouseClient};
 use mcp::server::McpServer;
 use services::{
     AnalyticsService, AuthService, CupedService, EventService, ExperimentService,
-    FeatureFlagService, FeatureGateService, InviteService, PollingService, SdkTokenService,
-    TrackingService, UserGroupService,
+    FeatureFlagService, FeatureGateService, InviteService, NotificationService, PollingService,
+    SdkTokenService, TrackingService, UserGroupService,
 };
 
 #[actix_web::main]
@@ -103,6 +103,7 @@ async fn main() -> std::io::Result<()> {
         db_with_auth.clone(),
         config.session_ttl_minutes,
     ));
+    let notification_service = web::Data::new(NotificationService::new(pg_pool.clone()));
 
     // MCP server (shared across requests)
     let mcp_server = web::Data::new(McpServer::new(
@@ -114,7 +115,12 @@ async fn main() -> std::io::Result<()> {
 
     // Spawn AI polling background task
     if config.ai_polling_enabled {
-        let polling = PollingService::new(pg_pool.clone(), db_client.clone(), config.clone());
+        let polling = PollingService::new(
+            pg_pool.clone(),
+            db_client.clone(),
+            config.clone(),
+            NotificationService::new(pg_pool.clone()),
+        );
         tokio::spawn(async move {
             polling.run_loop().await;
         });
@@ -148,6 +154,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(auth_service_data.clone())
             .app_data(sdk_token_service_data.clone())
             .app_data(tracking_service.clone())
+            .app_data(notification_service.clone())
             .app_data(mcp_server.clone())
             .configure(|cfg| api::configure(cfg, pg_pool.clone(), config.clone()))
     })
