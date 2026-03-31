@@ -347,24 +347,22 @@ export const UserSettings: React.FC = () => {
                             <p className="text-sm text-slate-400">
                                 Evaluate flags by user attributes with the lightweight client.
                             </p>
-                            <pre className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">
-                                {\`import {ExpothesisFeatureFlags} from '@/sdk/featureFlags';
+                            <pre className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`import { ExpothesisFeatureFlags } from '@expothesis/sdk';
 
-                                const flags = new ExpothesisFeatureFlags({
-                                    endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
-                                apiKey: '\${featureFlagsKey || 'YOUR_KEY'}'
+const flags = new ExpothesisFeatureFlags({
+  endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
+  apiKey: '${featureFlagsKey !== '—' ? featureFlagsKey : 'YOUR_FEATURE_FLAGS_KEY'}',
 });
 
-                                const result = await flags.evaluate({
-                                    userId: 'user_123',
-                                attributes: {plan: 'pro', region: 'us' }
+const result = await flags.evaluate({
+  userId: 'user_123',
+  attributes: { plan: 'pro', region: 'us' },
 });
 
-                                const isNewNavEnabled = await flags.isEnabled('new-nav', {
-                                    userId: 'user_123',
-                                attributes: {plan: 'pro' }
-}); \`}
-                            </pre>
+const isNewNavEnabled = await flags.isEnabled('new-nav', {
+  userId: 'user_123',
+  attributes: { plan: 'pro' },
+});`}</pre>
                         </div>
                     )}
                 </div>
@@ -508,8 +506,9 @@ const InviteManager: React.FC = () => {
             setSuccess(`Invitation sent to ${email} `);
             setError(null);
         },
-        onError: (err: any) => {
-            setError(err.response?.data?.error || 'Failed to send invitation');
+        onError: (err: unknown) => {
+            const e = err as { response?: { data?: { error?: string } } };
+            setError(e.response?.data?.error || 'Failed to send invitation');
             setSuccess(null);
         }
     });
