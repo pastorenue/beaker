@@ -18,6 +18,8 @@ pub fn msprt_proportion(
     if total_a == 0 || total_b == 0 {
         return Ok((1.0, 0.0));
     }
+    // tau_sq = 0 collapses the martingale to M_t = 1 always; enforce a minimum.
+    let tau_sq = tau_sq.max(1e-6);
     let n_a = total_a as f64;
     let n_b = total_b as f64;
     let p_hat_a = successes_a as f64 / n_a;
@@ -56,6 +58,8 @@ pub fn msprt_continuous(
     if n_a == 0 || n_b == 0 {
         return Ok((1.0, 0.0));
     }
+    // tau_sq = 0 collapses the martingale to M_t = 1 always; enforce a minimum.
+    let tau_sq = tau_sq.max(1e-6);
     let n_a_f = n_a as f64;
     let n_b_f = n_b as f64;
 

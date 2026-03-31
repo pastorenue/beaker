@@ -259,11 +259,13 @@ impl ExperimentService {
                 .get(&variant.name)
                 .ok_or_else(|| anyhow!("No data for treatment variant"))?;
 
-            let hypothesis = experiment.hypothesis.as_ref().unwrap();
-            let tau_sq = hypothesis.expected_effect_size.powi(2);
-            let alpha = hypothesis.significance_level;
+            let (tau_sq, alpha) = experiment
+                .hypothesis
+                .as_ref()
+                .map(|h| (h.expected_effect_size.powi(2), h.significance_level))
+                .unwrap_or((0.01, 0.05));
 
-            let result = match hypothesis.metric_type {
+            let result = match experiment.hypothesis.as_ref().unwrap().metric_type {
                 MetricType::Proportion => {
                     let engine_result = stats::analyze_proportion(
                         experiment.analysis_engine.clone(),

@@ -140,7 +140,7 @@ export const SignificanceIndicator: React.FC<SignificanceIndicatorProps> = ({
     eValue,
     sequentialThreshold,
 }) => {
-    const isSequential = eValue !== undefined;
+    const isSequential = eValue != null;
     const isBayes = !isSequential && bayesProbability !== undefined && bayesProbability !== null;
     const threshold = sequentialThreshold ?? (1.0 / alpha);
     const isSignificant = isSequential
