@@ -47,7 +47,7 @@ export function ExperimentsTable({
           onClick={() => onSort("start_date")}
           className="flex items-center gap-2 text-left"
         >
-          Start Date
+          Timeline
           <span className="text-xs">
             {sortConfig.key === "start_date"
               ? sortConfig.direction === "asc"

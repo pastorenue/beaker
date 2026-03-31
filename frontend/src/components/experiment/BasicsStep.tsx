@@ -242,6 +242,16 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                     </div>
                 </div>
             )}
+            <div>
+                <label className="label">Planned End Date</label>
+                <input
+                    type="date"
+                    className="input"
+                    required
+                    value={formData.end_date ?? ''}
+                    onChange={(e) => updateField('end_date', e.target.value || undefined)}
+                />
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label className="label">Experiment Type</label>

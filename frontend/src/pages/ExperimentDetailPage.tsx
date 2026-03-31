@@ -8,6 +8,7 @@ import { StatisticalHeader } from '../components/statistical-dashboard/Statistic
 import { CupedConfigurationModal } from '../components/CupedConfigurationModal';
 import { LoadingSpinner } from '../components/Common';
 import { useAccount } from '../contexts/AccountContext';
+import { AiSupportDrawer } from '../components/ai-assist/AiSupportDrawer';
 
 export function ExperimentDetailPage() {
     const { activeAccountId } = useAccount();
@@ -15,6 +16,7 @@ export function ExperimentDetailPage() {
     const queryClient = useQueryClient();
     const [useCuped, setUseCuped] = React.useState(false);
     const [showCupedConfig, setShowCupedConfig] = React.useState(false);
+    const [isAiDrawerOpen, setIsAiDrawerOpen] = React.useState(false);
 
     const getMutationErrorMessage = (error: unknown) => {
         const err = error as { response?: { data?: { error?: string } }; message?: string };
@@ -79,6 +81,15 @@ export function ExperimentDetailPage() {
     if (!experiment) return <div>Experiment not found</div>;
     const isPolling = analysisLoading || (!!experiment && experiment.status === 'running');
 
+    const experimentContext = experiment && analysis
+        ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}` +
+          (analysis.results[0]
+              ? ` | p-value: ${analysis.results[0].p_value.toFixed(4)} | Significant: ${analysis.results[0].is_significant}`
+              : '')
+        : experiment
+          ? `Experiment: "${experiment.name}" | Engine: ${experiment.analysis_engine} | Status: ${experiment.status}`
+          : undefined;
+
     return (
         <div className="space-y-6">
             <Link to="/dashboard" className="inline-flex items-center text-cyan-300 hover:text-cyan-200">
@@ -131,6 +142,28 @@ export function ExperimentDetailPage() {
                     </p>
                 </div>
             )}
+
+            {/* Floating AI Support button */}
+            <button
+                onClick={() => setIsAiDrawerOpen(true)}
+                className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-cyan-400 transition-colors"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                >
+                    <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.633l2.051-.683a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684Z" />
+                </svg>
+                AI Support
+            </button>
+
+            <AiSupportDrawer
+                isOpen={isAiDrawerOpen}
+                onClose={() => setIsAiDrawerOpen(false)}
+                experimentContext={experimentContext}
+            />
         </div>
     );
 }

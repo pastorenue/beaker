@@ -189,6 +189,7 @@ export interface CreateExperimentRequest {
     variants: Variant[];
     primary_metric: string;
     user_groups: string[];
+    end_date?: string;
 }
 
 export interface CreateUserGroupRequest {

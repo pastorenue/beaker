@@ -39,9 +39,40 @@ export function ExperimentRow({
       <span className="text-slate-300">
         {exp.feature_gate_id ? <span className="badge-info">Linked</span> : "—"}
       </span>
-      <span className="text-slate-300">
-        {exp.start_date ? new Date(exp.start_date).toLocaleDateString() : "—"}
-      </span>
+      <div className="text-slate-300">
+        {(() => {
+          const startFormatted = exp.start_date
+            ? new Date(exp.start_date).toLocaleDateString()
+            : "—";
+          const endFormatted = exp.end_date
+            ? new Date(exp.end_date).toLocaleDateString()
+            : null;
+          const progress = (() => {
+            if (!exp.start_date || !exp.end_date) return null;
+            const start = new Date(exp.start_date).getTime();
+            const end = new Date(exp.end_date).getTime();
+            const now = Date.now();
+            return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+          })();
+          return (
+            <>
+              <span className="text-xs text-slate-400">
+                {startFormatted} → {endFormatted ?? "—"}
+              </span>
+              <div className="mt-1 h-1 w-full rounded-full bg-slate-700">
+                {progress !== null ? (
+                  <div
+                    className="h-1 rounded-full bg-cyan-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                ) : (
+                  <div className="h-1 w-full rounded-full bg-slate-600 opacity-40" />
+                )}
+              </div>
+            </>
+          );
+        })()}
+      </div>
       <span className="text-slate-300">Unassigned</span>
       <span className="text-slate-300">{exp.variants.length}</span>
       <StatusBadge status={exp.status} format="title" />

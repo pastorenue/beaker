@@ -84,7 +84,7 @@ impl ExperimentService {
             user_groups: req.user_groups,
             primary_metric: req.primary_metric,
             start_date: None,
-            end_date: None,
+            end_date: req.end_date,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

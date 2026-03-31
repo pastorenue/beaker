@@ -55,6 +55,7 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
         ],
         primary_metric: '',
         user_groups: [],
+        end_date: undefined,
     });
 
     const { data: availableGroups = [] } = useQuery({
