@@ -4,6 +4,7 @@ use crate::services::targeting::TargetingEngine;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::info;
+use reqwest::Client;
 use sqlx::PgPool;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -12,11 +13,16 @@ use uuid::Uuid;
 pub struct UserGroupService {
     pg: PgPool,
     ch: ClickHouseClient,
+    http_client: Client,
 }
 
 impl UserGroupService {
     pub fn new(pg: PgPool, ch: ClickHouseClient) -> Self {
-        Self { pg, ch }
+        Self {
+            pg,
+            ch,
+            http_client: Client::new(),
+        }
     }
 
     pub async fn create_user_group(
@@ -26,6 +32,9 @@ impl UserGroupService {
     ) -> Result<UserGroup> {
         info!("Creating user group: {}", req.name);
 
+        let data_source_type = req.data_source_type.unwrap_or_else(|| "none".to_string());
+        let data_source_config = req.data_source_config.unwrap_or(serde_json::json!({}));
+
         let group = UserGroup {
             account_id,
             id: Uuid::new_v4(),
@@ -33,6 +42,8 @@ impl UserGroupService {
             description: req.description,
             assignment_rule: req.assignment_rule,
             size: 0,
+            data_source_type,
+            data_source_config,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -50,12 +61,16 @@ impl UserGroupService {
             description: String,
             assignment_rule: String,
             size: i32,
+            data_source_type: String,
+            data_source_config: Option<String>,
             created_at: chrono::DateTime<chrono::Utc>,
             updated_at: chrono::DateTime<chrono::Utc>,
         }
 
         let r = sqlx::query_as::<_, Row>(
-            r#"SELECT id, account_id, name, description, assignment_rule, size, created_at, updated_at
+            r#"SELECT id, account_id, name, description, assignment_rule, size,
+                      data_source_type, data_source_config::text AS data_source_config,
+                      created_at, updated_at
                FROM user_groups
                WHERE id = $1 AND account_id = $2"#,
         )
@@ -65,6 +80,10 @@ impl UserGroupService {
         .await
         .context("Failed to fetch user group")?;
 
+        let data_source_config: serde_json::Value =
+            serde_json::from_str(r.data_source_config.as_deref().unwrap_or("{}"))
+                .unwrap_or(serde_json::json!({}));
+
         Ok(UserGroup {
             account_id: r.account_id,
             id: r.id,
@@ -72,6 +91,8 @@ impl UserGroupService {
             description: r.description,
             assignment_rule: r.assignment_rule,
             size: r.size as usize,
+            data_source_type: r.data_source_type,
+            data_source_config,
             created_at: r.created_at,
             updated_at: r.updated_at,
         })
@@ -86,12 +107,16 @@ impl UserGroupService {
             description: String,
             assignment_rule: String,
             size: i32,
+            data_source_type: String,
+            data_source_config: Option<String>,
             created_at: chrono::DateTime<chrono::Utc>,
             updated_at: chrono::DateTime<chrono::Utc>,
         }
 
         let rows = sqlx::query_as::<_, Row>(
-            r#"SELECT id, account_id, name, description, assignment_rule, size, created_at, updated_at
+            r#"SELECT id, account_id, name, description, assignment_rule, size,
+                      data_source_type, data_source_config::text AS data_source_config,
+                      created_at, updated_at
                FROM user_groups
                WHERE account_id = $1
                ORDER BY updated_at DESC"#,
@@ -103,15 +128,22 @@ impl UserGroupService {
 
         Ok(rows
             .into_iter()
-            .map(|r| UserGroup {
-                account_id: r.account_id,
-                id: r.id,
-                name: r.name,
-                description: r.description,
-                assignment_rule: r.assignment_rule,
-                size: r.size as usize,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
+            .map(|r| {
+                let data_source_config: serde_json::Value =
+                    serde_json::from_str(r.data_source_config.as_deref().unwrap_or("{}"))
+                        .unwrap_or(serde_json::json!({}));
+                UserGroup {
+                    account_id: r.account_id,
+                    id: r.id,
+                    name: r.name,
+                    description: r.description,
+                    assignment_rule: r.assignment_rule,
+                    size: r.size as usize,
+                    data_source_type: r.data_source_type,
+                    data_source_config,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                }
             })
             .collect::<Vec<_>>())
     }
@@ -132,6 +164,12 @@ impl UserGroupService {
         }
         if let Some(assignment_rule) = req.assignment_rule {
             group.assignment_rule = assignment_rule;
+        }
+        if let Some(data_source_type) = req.data_source_type {
+            group.data_source_type = data_source_type;
+        }
+        if let Some(data_source_config) = req.data_source_config {
+            group.data_source_config = data_source_config;
         }
 
         group.updated_at = Utc::now();
@@ -272,6 +310,172 @@ impl UserGroupService {
         })
     }
 
+    pub async fn get_group_users(
+        &self,
+        account_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Vec<String>> {
+        let group = self.get_user_group(account_id, group_id).await?;
+
+        let user_ids = match group.data_source_type.as_str() {
+            "csv" => {
+                let config: CsvDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid CSV data source config")?;
+                config.user_ids
+            }
+            "looker" => {
+                let config: LookerDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid Looker data source config")?;
+                self.sync_from_looker(&config).await?
+            }
+            "postgres_query" => {
+                let config: PostgresDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid PostgreSQL data source config")?;
+                self.sync_from_postgres(&config).await?
+            }
+            other => {
+                anyhow::bail!("Cannot retrieve users for data_source_type '{}'", other);
+            }
+        };
+
+        Ok(user_ids)
+    }
+
+    pub async fn sync_user_group(
+        &self,
+        account_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<SyncGroupResponse> {
+        let mut group = self.get_user_group(account_id, group_id).await?;
+
+        let user_ids: Vec<String> = match group.data_source_type.as_str() {
+            "csv" => {
+                let config: CsvDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid CSV data source config")?;
+                if config.user_ids.len() > 100_000 {
+                    anyhow::bail!("CSV data source exceeds maximum of 100,000 user IDs");
+                }
+                config.user_ids
+            }
+            "looker" => {
+                let config: LookerDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid Looker data source config")?;
+                self.sync_from_looker(&config).await?
+            }
+            "postgres_query" => {
+                let config: PostgresDataSourceConfig =
+                    serde_json::from_value(group.data_source_config.clone())
+                        .context("Invalid PostgreSQL data source config")?;
+                self.sync_from_postgres(&config).await?
+            }
+            other => {
+                anyhow::bail!("Cannot sync group with data_source_type '{}'", other);
+            }
+        };
+
+        let synced_count = user_ids.len();
+        group.size = synced_count;
+        group.updated_at = Utc::now();
+        self.upsert_user_group(&group).await?;
+
+        Ok(SyncGroupResponse {
+            group_id,
+            synced_user_count: synced_count,
+            data_source_type: group.data_source_type.clone(),
+        })
+    }
+
+    async fn sync_from_looker(&self, config: &LookerDataSourceConfig) -> Result<Vec<String>> {
+        // Authenticate with Looker API
+        let login_url = format!("{}/api/4.0/login", config.api_url.trim_end_matches('/'));
+        let login_resp: serde_json::Value = self
+            .http_client
+            .post(&login_url)
+            .form(&[
+                ("client_id", config.client_id.as_str()),
+                ("client_secret", config.client_secret.as_str()),
+            ])
+            .send()
+            .await
+            .context("Failed to connect to Looker API")?
+            .json()
+            .await
+            .context("Failed to parse Looker login response")?;
+
+        let token = login_resp["access_token"]
+            .as_str()
+            .context("Missing access_token in Looker login response")?
+            .to_string();
+
+        // Run the Look and get JSON results
+        let look_url = format!(
+            "{}/api/4.0/looks/{}/run/json",
+            config.api_url.trim_end_matches('/'),
+            config.look_id
+        );
+        let rows: Vec<serde_json::Value> = self
+            .http_client
+            .get(&look_url)
+            .bearer_auth(&token)
+            .query(&[("limit", "100000")])
+            .send()
+            .await
+            .context("Failed to run Looker Look")?
+            .json()
+            .await
+            .context("Failed to parse Looker Look response")?;
+
+        // Extract the first string field from each row
+        let user_ids: Vec<String> = rows
+            .into_iter()
+            .filter_map(|row| {
+                row.as_object()
+                    .and_then(|obj| obj.values().next())
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+            })
+            .collect();
+
+        Ok(user_ids)
+    }
+
+    async fn sync_from_postgres(&self, config: &PostgresDataSourceConfig) -> Result<Vec<String>> {
+        let trimmed = config.query.trim().to_uppercase();
+        if !trimmed.starts_with("SELECT") {
+            anyhow::bail!("PostgreSQL query must start with SELECT");
+        }
+
+        let user_ids: Vec<String> = if config.is_internal {
+            sqlx::query_scalar::<_, String>(&config.query)
+                .fetch_all(&self.pg)
+                .await
+                .context("Failed to execute internal PostgreSQL query")?
+                .into_iter()
+                .take(100_000)
+                .collect()
+        } else {
+            let conn_str = config
+                .connection_string
+                .as_deref()
+                .context("External PostgreSQL requires a connection_string")?;
+            let pool = sqlx::PgPool::connect(conn_str)
+                .await
+                .context("Failed to connect to external PostgreSQL")?;
+            let results = sqlx::query_scalar::<_, String>(&config.query)
+                .fetch_all(&pool)
+                .await
+                .context("Failed to execute external PostgreSQL query")?;
+            pool.close().await;
+            results.into_iter().take(100_000).collect()
+        };
+
+        Ok(user_ids)
+    }
+
     // ------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------
@@ -279,14 +483,17 @@ impl UserGroupService {
     async fn upsert_user_group(&self, group: &UserGroup) -> Result<()> {
         sqlx::query(
             r#"INSERT INTO user_groups
-                (id, account_id, name, description, assignment_rule, size, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                (id, account_id, name, description, assignment_rule, size,
+                 data_source_type, data_source_config, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                ON CONFLICT (id) DO UPDATE SET
-                 name            = EXCLUDED.name,
-                 description     = EXCLUDED.description,
-                 assignment_rule = EXCLUDED.assignment_rule,
-                 size            = EXCLUDED.size,
-                 updated_at      = EXCLUDED.updated_at"#,
+                 name               = EXCLUDED.name,
+                 description        = EXCLUDED.description,
+                 assignment_rule    = EXCLUDED.assignment_rule,
+                 size               = EXCLUDED.size,
+                 data_source_type   = EXCLUDED.data_source_type,
+                 data_source_config = EXCLUDED.data_source_config,
+                 updated_at         = EXCLUDED.updated_at"#,
         )
         .bind(group.id)
         .bind(group.account_id)
@@ -294,6 +501,8 @@ impl UserGroupService {
         .bind(&group.description)
         .bind(&group.assignment_rule)
         .bind(group.size as i32)
+        .bind(&group.data_source_type)
+        .bind(&group.data_source_config)
         .bind(group.created_at)
         .bind(group.updated_at)
         .execute(&self.pg)
@@ -400,6 +609,8 @@ impl UserGroupService {
             primary_metric: r.primary_metric.unwrap_or_default(),
             start_date: None,
             end_date: None,
+            jira_issue_key: None,
+            requires_existing_users: false,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         })

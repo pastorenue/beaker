@@ -66,6 +66,8 @@ impl ExperimentService {
         let mut hypothesis = req.hypothesis;
         hypothesis.minimum_sample_size = Some(required_sample);
 
+        let requires_existing_users = req.requires_existing_users.unwrap_or(false);
+
         let experiment = Experiment {
             account_id,
             id: Uuid::new_v4(),
@@ -86,6 +88,7 @@ impl ExperimentService {
             start_date: None,
             end_date: req.end_date,
             jira_issue_key: None,
+            requires_existing_users,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -201,7 +204,7 @@ impl ExperimentService {
                       hypothesis::text AS hypothesis,
                       variants::text AS variants, user_groups::text AS user_groups,
                       primary_metric, start_date, end_date, jira_issue_key,
-                      created_at, updated_at
+                      requires_existing_users, created_at, updated_at
                FROM experiments
                WHERE id = $1 AND account_id = $2"#,
         )
@@ -222,7 +225,7 @@ impl ExperimentService {
                       hypothesis::text AS hypothesis,
                       variants::text AS variants, user_groups::text AS user_groups,
                       primary_metric, start_date, end_date, jira_issue_key,
-                      created_at, updated_at
+                      requires_existing_users, created_at, updated_at
                FROM experiments
                WHERE account_id = $1
                ORDER BY updated_at DESC"#,
@@ -386,27 +389,28 @@ impl ExperimentService {
                  sampling_method, analysis_engine, sampling_seed,
                  feature_flag_id, feature_gate_id, health_checks, hypothesis,
                  variants, user_groups, primary_metric,
-                 start_date, end_date, created_at, updated_at)
+                 start_date, end_date, requires_existing_users, created_at, updated_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-                       $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                       $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
                ON CONFLICT (id) DO UPDATE SET
-                 name            = EXCLUDED.name,
-                 description     = EXCLUDED.description,
-                 status          = EXCLUDED.status,
-                 experiment_type = EXCLUDED.experiment_type,
-                 sampling_method = EXCLUDED.sampling_method,
-                 analysis_engine = EXCLUDED.analysis_engine,
-                 sampling_seed   = EXCLUDED.sampling_seed,
-                 feature_flag_id = EXCLUDED.feature_flag_id,
-                 feature_gate_id = EXCLUDED.feature_gate_id,
-                 health_checks   = EXCLUDED.health_checks,
-                 hypothesis      = EXCLUDED.hypothesis,
-                 variants        = EXCLUDED.variants,
-                 user_groups     = EXCLUDED.user_groups,
-                 primary_metric  = EXCLUDED.primary_metric,
-                 start_date      = EXCLUDED.start_date,
-                 end_date        = EXCLUDED.end_date,
-                 updated_at      = EXCLUDED.updated_at"#,
+                 name                    = EXCLUDED.name,
+                 description             = EXCLUDED.description,
+                 status                  = EXCLUDED.status,
+                 experiment_type         = EXCLUDED.experiment_type,
+                 sampling_method         = EXCLUDED.sampling_method,
+                 analysis_engine         = EXCLUDED.analysis_engine,
+                 sampling_seed           = EXCLUDED.sampling_seed,
+                 feature_flag_id         = EXCLUDED.feature_flag_id,
+                 feature_gate_id         = EXCLUDED.feature_gate_id,
+                 health_checks           = EXCLUDED.health_checks,
+                 hypothesis              = EXCLUDED.hypothesis,
+                 variants                = EXCLUDED.variants,
+                 user_groups             = EXCLUDED.user_groups,
+                 primary_metric          = EXCLUDED.primary_metric,
+                 start_date              = EXCLUDED.start_date,
+                 end_date                = EXCLUDED.end_date,
+                 requires_existing_users = EXCLUDED.requires_existing_users,
+                 updated_at              = EXCLUDED.updated_at"#,
         )
         .bind(experiment.id)
         .bind(experiment.account_id)
@@ -426,6 +430,7 @@ impl ExperimentService {
         .bind(&experiment.primary_metric)
         .bind(experiment.start_date)
         .bind(experiment.end_date)
+        .bind(experiment.requires_existing_users)
         .bind(experiment.created_at)
         .bind(experiment.updated_at)
         .execute(&self.pg)
@@ -618,6 +623,7 @@ pub struct ExperimentRow {
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
     pub jira_issue_key: Option<String>,
+    pub requires_existing_users: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -680,6 +686,7 @@ fn row_to_experiment(row: ExperimentRow) -> Result<Experiment> {
         start_date: row.start_date,
         end_date: row.end_date,
         jira_issue_key: row.jira_issue_key,
+        requires_existing_users: row.requires_existing_users,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

@@ -1,10 +1,13 @@
 import React from 'react';
-import type { UserGroup } from '../../types';
+import type { DataSourceConfig, DataSourceType, UserGroup } from '../../types';
+import { DataSourcePanel } from './DataSourcePanel';
 
 type GroupFormData = {
     name: string;
     description: string;
     assignment_rule: string;
+    data_source_type: DataSourceType;
+    data_source_config: DataSourceConfig;
 };
 
 type SelectedGroupPanelProps = {
@@ -18,6 +21,7 @@ type SelectedGroupPanelProps = {
     onEditRulePromptChange: (value: string) => void;
     onSave: () => void;
     onCancelEdit: () => void;
+    onSync: (groupId: string) => void;
     buildRuleFromText: (value: string) => string;
 };
 
@@ -32,6 +36,7 @@ export const SelectedGroupPanel: React.FC<SelectedGroupPanelProps> = ({
     onEditRulePromptChange,
     onSave,
     onCancelEdit,
+    onSync,
     buildRuleFromText,
 }) => {
     return (
@@ -42,6 +47,11 @@ export const SelectedGroupPanel: React.FC<SelectedGroupPanelProps> = ({
                     <button onClick={onToggleEdit} className="btn-secondary">
                         {isEditing ? 'Close' : 'Edit'}
                     </button>
+                    {selectedGroup.data_source_type !== 'none' && (
+                        <button onClick={() => onSync(selectedGroup.id)} className="btn-secondary">
+                            Sync
+                        </button>
+                    )}
                     <button onClick={onDelete} className="btn-danger">
                         Delete
                     </button>
@@ -127,6 +137,11 @@ export const SelectedGroupPanel: React.FC<SelectedGroupPanelProps> = ({
                             />
                         </div>
                     )}
+                    <DataSourcePanel
+                        dataSourceType={editForm.data_source_type}
+                        dataSourceConfig={editForm.data_source_config}
+                        onChange={(type, config) => onEditFormChange({ ...editForm, data_source_type: type, data_source_config: config })}
+                    />
                     <div className="flex gap-2">
                         <button onClick={onSave} className="btn-success">
                             Save Changes
@@ -156,6 +171,12 @@ export const SelectedGroupPanel: React.FC<SelectedGroupPanelProps> = ({
                             <p className="text-sm text-slate-400">Assignment Rule</p>
                             <p className="font-medium text-slate-100">{selectedGroup.assignment_rule}</p>
                         </div>
+                    </div>
+                    <div className="mt-3">
+                        <p className="text-sm text-slate-400">Data Source</p>
+                        <p className="font-medium text-slate-100 capitalize">
+                            {selectedGroup.data_source_type === 'none' ? 'None' : selectedGroup.data_source_type}
+                        </p>
                     </div>
                     <div className="mt-4">
                         <p className="mb-2 text-sm font-medium text-slate-400">

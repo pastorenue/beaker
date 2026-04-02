@@ -16,6 +16,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}", web::delete().to(delete_user_group))
             .route("/{id}/move", web::post().to(move_user_group))
             .route("/{id}/metrics", web::get().to(get_group_metrics))
+            .route("/{id}/sync", web::post().to(sync_user_group))
+            .route("/{id}/users", web::get().to(get_group_users))
             .route("/assign", web::post().to(assign_user)),
     );
 }
@@ -185,6 +187,44 @@ async fn assign_user(
     {
         Ok(assignment) => HttpResponse::Ok().json(assignment),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn sync_user_group(
+    service: web::Data<UserGroupService>,
+    id: web::Path<Uuid>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    match service
+        .sync_user_group(user.account_id, id.into_inner())
+        .await
+    {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+async fn get_group_users(
+    service: web::Data<UserGroupService>,
+    id: web::Path<Uuid>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    match service
+        .get_group_users(user.account_id, id.into_inner())
+        .await
+    {
+        Ok(user_ids) => HttpResponse::Ok().json(user_ids),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),
     }

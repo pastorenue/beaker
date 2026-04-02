@@ -23,6 +23,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                     <span>Sampling: {formData.sampling_method}</span>
                     <span>Engine: {formData.analysis_engine}</span>
                     <span>Primary Metric: {formData.primary_metric || '—'}</span>
+                    <span>Existing Users Only: {formData.requires_existing_users ? 'Yes' : 'No'}</span>
                 </div>
             </div>
             <div className="card bg-slate-950/60">
