@@ -107,6 +107,23 @@ services:
       - expothesis-network
     restart: unless-stopped
 
+  postgres-test:
+    container_name: expothesis-postgres-test
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpass
+      - POSTGRES_DB=testdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./scripts/test_postgres_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - expothesis-network
+    restart: unless-stopped
+
   litellm:
     container_name: litellm-proxy
     image: ghcr.io/berriai/litellm:main-latest
@@ -130,3 +147,4 @@ networks:
 volumes:
   clickhouse_data:
   postgres_data:
+  postgres_test_data:
