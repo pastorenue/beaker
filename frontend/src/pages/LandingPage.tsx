@@ -192,50 +192,51 @@ export function LandingPage() {
                 </div>
 
                 <div className="lp-hero-inner">
-                    <div className="lp-kicker-wrap">
-                        <span className="lp-kicker-dot" />
-                        <span className="lp-kicker">Experimentation control plane</span>
+                    <div className="lp-hero-left">
+                        <div className="lp-kicker-wrap">
+                            <span className="lp-kicker-dot" />
+                            <span className="lp-kicker">Experimentation control plane</span>
+                        </div>
+
+                        <h1 className="lp-hero-title">
+                            Ship faster.&nbsp;
+                            <span className="lp-hero-title-grad">Measure smarter.</span>
+                            <br />
+                            Learn continuously.
+                        </h1>
+
+                        <p className="lp-hero-sub">
+                            Expothesis is the unified platform for A/B testing, feature gates, simulation, and analytics.
+                            Stop stitching tools together—orchestrate the entire experiment lifecycle in one place.
+                        </p>
+
+                        <div className="lp-hero-actions">
+                            {loggedIn ? (
+                                <Link to="/home" className="lp-btn lp-btn-primary lp-btn-lg">
+                                    Open Dashboard →
+                                </Link>
+                            ) : (
+                                <Link to="/register" className="lp-btn lp-btn-primary lp-btn-lg">
+                                    Get started free →
+                                </Link>
+                            )}
+                            <a href="#platform" className="lp-btn lp-btn-ghost lp-btn-lg">
+                                Explore the platform
+                            </a>
+                        </div>
+
+                        <div className="lp-hero-stats">
+                            {STATS.map((s) => (
+                                <div key={s.label} className="lp-hero-stat">
+                                    <span className="lp-hero-stat-val">{s.value}</span>
+                                    <span className="lp-hero-stat-label">{s.label}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    <h1 className="lp-hero-title">
-                        Ship faster.&nbsp;
-                        <span className="lp-hero-title-grad">Measure smarter.</span>
-                        <br />
-                        Learn continuously.
-                    </h1>
-
-                    <p className="lp-hero-sub">
-                        Expothesis is the unified platform for A/B testing, feature gates, simulation, and analytics.
-                        Stop stitching tools together—orchestrate the entire experiment lifecycle in one place.
-                    </p>
-
-                    <div className="lp-hero-actions">
-                        {loggedIn ? (
-                            <Link to="/home" className="lp-btn lp-btn-primary lp-btn-lg">
-                                Open Dashboard →
-                            </Link>
-                        ) : (
-                            <Link to="/register" className="lp-btn lp-btn-primary lp-btn-lg">
-                                Get started free →
-                            </Link>
-                        )}
-                        <a href="#platform" className="lp-btn lp-btn-ghost lp-btn-lg">
-                            Explore the platform
-                        </a>
-                    </div>
-
-                    <div className="lp-hero-stats">
-                        {STATS.map((s) => (
-                            <div key={s.label} className="lp-hero-stat">
-                                <span className="lp-hero-stat-val">{s.value}</span>
-                                <span className="lp-hero-stat-label">{s.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Dashboard preview panel */}
-                <div className="lp-hero-panel" aria-hidden="true">
+                    {/* Dashboard preview panel */}
+                    <div className="lp-hero-panel" aria-hidden="true">
                     <div className="lp-panel-header">
                         <div className="lp-panel-dots">
                             <span /><span /><span />
@@ -292,6 +293,7 @@ export function LandingPage() {
                             <span className="lp-panel-chip lp-chip-safe">Within bounds</span>
                         </div>
                     </div>
+                </div>
                 </div>
             </section>
 
