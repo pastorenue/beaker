@@ -10,7 +10,8 @@ import { AnalyticsMonitoringDashboard } from './components/AnalyticsMonitoringDa
 import { HomeOverview } from './components/HomeOverview';
 import { AiAssistHub } from './components/AiAssistHub';
 import { TemplatesPlan } from './components/TemplatesPlan';
-import { LoginPage, RegisterPage } from './components/AuthPages';
+import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from './components/AuthPages';
+import { OAuthCallback } from './components/OAuthCallback';
 import { UserSettings } from './components/UserSettings';
 import { Account } from './types';
 import { AccountProvider, useAccount } from './contexts/AccountContext';
@@ -155,30 +156,6 @@ function Layout({ children }: { children: React.ReactNode }) {
         },
     ];
 
-    const pageTitle = location.pathname.startsWith('/experiment/')
-        ? 'Experiment Control'
-        : location.pathname.startsWith('/home')
-            ? 'Home'
-            : location.pathname.startsWith('/user-groups')
-                ? 'User Segments'
-                : location.pathname.startsWith('/simulation-studio')
-                    ? 'Simulation Studio'
-                    : location.pathname.startsWith('/feature-flags')
-                        ? 'Feature Flags'
-                        : location.pathname.startsWith('/sessions')
-                            ? 'Sessions'
-                            : location.pathname.startsWith('/templates')
-                                ? 'Templates/Plan'
-                                : location.pathname.startsWith('/insights')
-                                    ? 'Insights'
-                                    : location.pathname.startsWith('/settings')
-                                        ? 'User Settings'
-                                        : location.pathname.startsWith('/ai-assist')
-                                            ? 'AI Assist'
-                                            : location.pathname.startsWith('/dashboard')
-                                                ? 'Experiment Dashboard'
-                                                : 'Experiment Dashboard';
-
     React.useEffect(() => {
         const saved = window.localStorage.getItem('expothesis-theme');
         if (saved === 'light' || saved === 'dark') {
@@ -231,7 +208,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         }, logoutAfterMs);
     }, [clearIdleTimers, handleLogout, logoutAfterMs, warnAfterMs]);
 
-    const isPublicRoute = ['/', '/login', '/register'].includes(location.pathname);
+    const isPublicRoute = [
+        '/', '/login', '/register',
+        '/auth/callback', '/forgot-password', '/reset-password',
+    ].includes(location.pathname);
 
     React.useEffect(() => {
         if (!authToken || isPublicRoute) {
@@ -490,6 +470,9 @@ function App() {
                                 <Route path="/" element={<LandingPage />} />
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegisterPage />} />
+                                <Route path="/auth/callback" element={<OAuthCallback />} />
+                                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                                <Route path="/reset-password" element={<ResetPasswordPage />} />
                                 <Route path="/home" element={<HomeOverview />} />
                                 <Route path="/setup" element={<AccountSetupWizard />} />
                                 <Route path="/dashboard" element={<HomePage />} />

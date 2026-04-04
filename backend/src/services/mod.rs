@@ -1,4 +1,5 @@
 pub mod ai_service;
+pub mod oauth_service;
 pub mod analytics_service;
 pub mod auth_service;
 pub mod cuped_service;
@@ -15,6 +16,7 @@ pub mod tracking_service;
 pub mod user_group_service;
 
 pub use ai_service::AiService;
+pub use oauth_service::OAuthService;
 pub use analytics_service::AnalyticsService;
 pub use auth_service::AuthService;
 pub use cuped_service::CupedService;

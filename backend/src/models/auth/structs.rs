@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 pub struct AuthUser {
     pub id: Uuid,
     pub email: String,
-    pub password_hash: String,
+    pub password_hash: Option<String>,
     pub is_email_verified: bool,
     pub totp_enabled: bool,
     pub totp_secret: Option<String>,
