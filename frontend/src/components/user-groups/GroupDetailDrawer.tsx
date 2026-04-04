@@ -288,15 +288,15 @@ export const GroupDetailDrawer: React.FC<GroupDetailDrawerProps> = ({
         <>
             {/* Backdrop */}
             <div
-                className={`fixed inset-0 z-40 bg-slate-950/40 transition-opacity duration-300 ${
-                    isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+                className={`fixed inset-0 z-40 bg-slate-950/30 transition-opacity duration-300 ${
+                    isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 }`}
                 onClick={onClose}
             />
 
             {/* Slide-in panel */}
             <div
-                className={`fixed top-0 right-0 z-50 flex h-full w-[480px] flex-col bg-slate-900 border-l border-slate-700/60 shadow-2xl transition-transform duration-300 ${
+                className={`fixed top-0 right-0 z-50 h-full w-2/5 min-w-[360px] flex flex-col bg-slate-900 border-l border-slate-700/60 shadow-2xl transition-transform duration-300 ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >
@@ -535,6 +535,12 @@ export const GroupDetailDrawer: React.FC<GroupDetailDrawerProps> = ({
                                                             ? 'None'
                                                             : selectedGroup.data_source_type}
                                                     </p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-slate-400">ID</p>
+                                                    <span className="font-mono text-xs break-all text-slate-100">
+                                                        {selectedGroup.id}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>

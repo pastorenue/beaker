@@ -45,46 +45,45 @@ export const GroupGrid: React.FC<GroupGridProps> = ({ groups, selectedGroupId, o
     if (groups.length === 0) return null;
 
     return (
-        <div className="overflow-hidden rounded-xl border border-slate-800/70">
+        <div className="overflow-hidden rounded-xl border-slate-800/20">
             <table className="w-full text-sm">
                 <thead>
                     <tr className="border-b border-slate-800/70 bg-slate-900/60">
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400">
                             Name
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            Description
+                        <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400">
+                            ID
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="px-4 py-3 text-right text-xs font-semibold tracking-wider text-slate-400">
                             Users
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400">
                             Assignment
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400">
                             Data Source
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400">
                             Created
                         </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {groups.map((group, idx) => (
+                    {groups.map((group) => (
                         <tr
                             key={group.id}
-                            className={`cursor-pointer border-b border-slate-800/40 transition-colors hover:bg-slate-800/30 ${
-                                selectedGroupId === group.id
-                                    ? 'bg-slate-800/50'
-                                    : idx % 2 === 0
-                                    ? 'bg-slate-900/20'
-                                    : ''
+                            className={`cursor-pointer border-b border-slate-800/40 transition-colors hover:bg-sky-400/10 ${
+                                selectedGroupId === group.id ? 'bg-slate-800/50' : ''
                             }`}
                             onClick={() => onSelectGroup(group)}
                         >
                             <td className="px-4 py-3 font-medium text-slate-100">{group.name}</td>
-                            <td className="max-w-[200px] truncate px-4 py-3 text-slate-400">
-                                {group.description || '—'}
+                            <td
+                                className="px-4 py-3 font-mono text-xs text-slate-500"
+                                title={group.id}
+                            >
+                                {group.id.slice(0, 8) + '…'}
                             </td>
                             <td className="px-4 py-3 text-right font-mono text-slate-200">
                                 {group.size.toLocaleString()}

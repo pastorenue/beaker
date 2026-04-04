@@ -68,4 +68,4 @@ test-postgres-up:
 	docker compose --profile test up postgres-test -d
 
 seed-test-postgres:
-	python scripts/seed_test_postgres.py --count 1000
+	python3 scripts/seed_test_postgres.py --count 1000
