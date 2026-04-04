@@ -10,8 +10,30 @@ pub struct UserGroup {
     pub description: String,
     pub assignment_rule: String,
     pub size: usize,
+    pub data_source_type: String,
+    pub data_source_config: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LookerDataSourceConfig {
+    pub api_url: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub look_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsvDataSourceConfig {
+    pub user_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostgresDataSourceConfig {
+    pub is_internal: bool,
+    pub connection_string: Option<String>,
+    pub query: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

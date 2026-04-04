@@ -1,15 +1,31 @@
 
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserGroup } from '../types';
+import type { DataSourceConfig, DataSourceType, UserGroup } from '../types';
 import { userGroupApi } from '../services/api';
 import { CreateGroupForm } from './user-groups/CreateGroupForm';
 import { EmptyGroupState } from './user-groups/EmptyGroupState';
 import { GroupGrid } from './user-groups/GroupGrid';
-import { SelectedGroupPanel } from './user-groups/SelectedGroupPanel';
+import { GroupDetailDrawer } from './user-groups/GroupDetailDrawer';
 import { UserGroupHeader } from './user-groups/UserGroupHeader';
 import { LoadingSpinner } from './Common';
 import { useAccount } from '../contexts/AccountContext';
+
+type GroupFormData = {
+    name: string;
+    description: string;
+    assignment_rule: string;
+    data_source_type: DataSourceType;
+    data_source_config: DataSourceConfig;
+};
+
+const emptyFormData: GroupFormData = {
+    name: '',
+    description: '',
+    assignment_rule: 'random',
+    data_source_type: 'none' as DataSourceType,
+    data_source_config: {} as DataSourceConfig,
+};
 
 export const UserGroupManager: React.FC = () => {
     const { activeAccountId } = useAccount();
@@ -19,16 +35,8 @@ export const UserGroupManager: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [rulePrompt, setRulePrompt] = useState('');
     const [editRulePrompt, setEditRulePrompt] = useState('');
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        assignment_rule: 'random',
-    });
-    const [editForm, setEditForm] = useState({
-        name: '',
-        description: '',
-        assignment_rule: 'random',
-    });
+    const [formData, setFormData] = useState<GroupFormData>(emptyFormData);
+    const [editForm, setEditForm] = useState<GroupFormData>(emptyFormData);
 
     const { data: groups = [], isLoading } = useQuery({
         queryKey: ['userGroups', activeAccountId],
@@ -44,7 +52,29 @@ export const UserGroupManager: React.FC = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userGroups', activeAccountId] });
             setShowCreateForm(false);
-            setFormData({ name: '', description: '', assignment_rule: 'random' });
+            setFormData(emptyFormData);
+        },
+    });
+
+    const syncMutation = useMutation({
+        mutationFn: async (groupId: string) => {
+            const response = await userGroupApi.sync(groupId);
+            return response.data;
+        },
+        onSuccess: (syncResponse) => {
+            queryClient.setQueryData<UserGroup[]>(['userGroups', activeAccountId], (oldData) => {
+                const existing = Array.isArray(oldData) ? oldData : [];
+                return existing.map((item: UserGroup) =>
+                    item.id === syncResponse.group_id
+                        ? { ...item, size: syncResponse.synced_user_count }
+                        : item,
+                );
+            });
+            if (selectedGroup?.id === syncResponse.group_id) {
+                setSelectedGroup((prev) =>
+                    prev ? { ...prev, size: syncResponse.synced_user_count } : prev,
+                );
+            }
         },
     });
 
@@ -129,6 +159,8 @@ export const UserGroupManager: React.FC = () => {
                 name: editForm.name,
                 description: editForm.description,
                 assignment_rule: editForm.assignment_rule,
+                data_source_type: editForm.data_source_type,
+                data_source_config: editForm.data_source_config,
             },
         });
     };
@@ -144,6 +176,8 @@ export const UserGroupManager: React.FC = () => {
             name: selectedGroup.name,
             description: selectedGroup.description,
             assignment_rule: selectedGroup.assignment_rule,
+            data_source_type: selectedGroup.data_source_type ?? 'none',
+            data_source_config: selectedGroup.data_source_config ?? {},
         });
     }, [selectedGroup]);
 
@@ -173,21 +207,22 @@ export const UserGroupManager: React.FC = () => {
                 onSelectGroup={setSelectedGroup}
             />
 
-            {selectedGroup && (
-                <SelectedGroupPanel
-                    selectedGroup={selectedGroup}
-                    isEditing={isEditing}
-                    editForm={editForm}
-                    editRulePrompt={editRulePrompt}
-                    onToggleEdit={() => setIsEditing((prev) => !prev)}
-                    onDelete={() => handleDelete(selectedGroup.id)}
-                    onEditFormChange={setEditForm}
-                    onEditRulePromptChange={setEditRulePrompt}
-                    onSave={handleUpdate}
-                    onCancelEdit={() => setIsEditing(false)}
-                    buildRuleFromText={buildRuleFromText}
-                />
-            )}
+            <GroupDetailDrawer
+                selectedGroup={selectedGroup}
+                isOpen={!!selectedGroup}
+                onClose={() => { setSelectedGroup(null); setIsEditing(false); }}
+                isEditing={isEditing}
+                editForm={editForm}
+                editRulePrompt={editRulePrompt}
+                onToggleEdit={() => setIsEditing((prev) => !prev)}
+                onDelete={() => handleDelete(selectedGroup?.id ?? '')}
+                onEditFormChange={setEditForm}
+                onEditRulePromptChange={setEditRulePrompt}
+                onSave={handleUpdate}
+                onCancelEdit={() => setIsEditing(false)}
+                onSync={(groupId) => syncMutation.mutate(groupId)}
+                buildRuleFromText={buildRuleFromText}
+            />
 
             <EmptyGroupState hasGroups={groups.length > 0} showCreateForm={showCreateForm} />
         </div>

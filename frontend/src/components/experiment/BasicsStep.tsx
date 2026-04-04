@@ -252,6 +252,19 @@ export const BasicsStep: React.FC<BasicsStepProps> = ({
                     onChange={(e) => updateField('end_date', e.target.value || undefined)}
                 />
             </div>
+            <div className="flex items-center gap-3">
+                <input
+                    type="checkbox"
+                    id="requires_existing_users"
+                    checked={formData.requires_existing_users ?? false}
+                    onChange={(e) => updateField('requires_existing_users', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-500"
+                />
+                <label htmlFor="requires_existing_users" className="text-sm text-slate-300 cursor-pointer">
+                    Requires Existing Users{' '}
+                    <span className="text-slate-500">(metadata only — no hard enforcement)</span>
+                </label>
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label className="label">Experiment Type</label>

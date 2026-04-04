@@ -36,6 +36,33 @@ export enum MetricType {
     Count = 'count',
 }
 
+export type DataSourceType = 'none' | 'looker' | 'csv' | 'postgres_query';
+
+export interface LookerDataSourceConfig {
+    api_url: string;
+    client_id: string;
+    client_secret: string;
+    look_id: string;
+}
+
+export interface CsvDataSourceConfig {
+    user_ids: string[];
+}
+
+export interface PostgresDataSourceConfig {
+    is_internal: boolean;
+    connection_string?: string;
+    query: string;
+}
+
+export type DataSourceConfig = LookerDataSourceConfig | CsvDataSourceConfig | PostgresDataSourceConfig | Record<string, never>;
+
+export interface SyncGroupResponse {
+    group_id: string;
+    synced_user_count: number;
+    data_source_type: DataSourceType;
+}
+
 export interface Hypothesis {
     null_hypothesis: string;
     alternative_hypothesis: string;
@@ -79,6 +106,7 @@ export interface Experiment {
     start_date?: string;
     end_date?: string;
     jira_issue_key?: string;
+    requires_existing_users: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -89,6 +117,8 @@ export interface UserGroup {
     description: string;
     assignment_rule: string;
     size: number;
+    data_source_type: DataSourceType;
+    data_source_config: DataSourceConfig;
     created_at: string;
     updated_at: string;
 }
@@ -191,18 +221,23 @@ export interface CreateExperimentRequest {
     primary_metric: string;
     user_groups: string[];
     end_date?: string;
+    requires_existing_users?: boolean;
 }
 
 export interface CreateUserGroupRequest {
     name: string;
     description: string;
     assignment_rule: string;
+    data_source_type?: DataSourceType;
+    data_source_config?: DataSourceConfig;
 }
 
 export interface UpdateUserGroupRequest {
     name?: string;
     description?: string;
     assignment_rule?: string;
+    data_source_type?: DataSourceType;
+    data_source_config?: DataSourceConfig;
 }
 
 export interface AiChatMessage {

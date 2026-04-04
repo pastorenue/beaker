@@ -81,7 +81,7 @@ export const LoginPage: React.FC = () => {
 
             <div className="w-full max-w-[420px] space-y-8 relative z-10 pt-16">
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                    <h2 className="text-4xl font-medium text-slate-900">
                         {step === 'login' ? 'Sign in to Expothesis' : 'Verify your sign-in'}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
@@ -229,7 +229,7 @@ export const RegisterPage: React.FC = () => {
 
             <div className="w-full max-w-[420px] space-y-8 relative z-10 pt-16">
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                    <h2 className="text-4xl font-medium text-slate-900">
                         {inviteDetails ? 'Accept Invitation' : 'Create account'}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">

@@ -1,4 +1,4 @@
-.PHONY: up up-ai down build restart logs status test test-backend test-frontend lint lint-backend lint-frontend typecheck typecheck-backend typecheck-frontend psql chsql psql-shell chsql-shell
+.PHONY: up up-ai down build restart logs status test test-backend test-frontend lint lint-backend lint-frontend typecheck typecheck-backend typecheck-frontend psql chsql psql-shell chsql-shell test-postgres-up seed-test-postgres
 
 up:
 	docker-compose up -d --build
@@ -63,3 +63,9 @@ psql-shell:
 
 chsql-shell:
 	@docker-compose exec clickhouse clickhouse-client
+
+test-postgres-up:
+	docker compose --profile test up postgres-test -d
+
+seed-test-postgres:
+	python scripts/seed_test_postgres.py --count 1000

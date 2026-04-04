@@ -25,6 +25,7 @@ pub struct Experiment {
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
     pub jira_issue_key: Option<String>,
+    pub requires_existing_users: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

@@ -22,6 +22,7 @@ pub struct CreateExperimentRequest {
     pub primary_metric: String,
     pub user_groups: Vec<Uuid>,
     pub end_date: Option<DateTime<Utc>>,
+    pub requires_existing_users: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

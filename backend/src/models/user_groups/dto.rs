@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -6,6 +6,8 @@ pub struct CreateUserGroupRequest {
     pub name: String,
     pub description: String,
     pub assignment_rule: String,
+    pub data_source_type: Option<String>,
+    pub data_source_config: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -13,6 +15,15 @@ pub struct UpdateUserGroupRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub assignment_rule: Option<String>,
+    pub data_source_type: Option<String>,
+    pub data_source_config: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SyncGroupResponse {
+    pub group_id: Uuid,
+    pub synced_user_count: usize,
+    pub data_source_type: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -51,6 +51,7 @@ import type {
   StartSessionRequest,
   StartSessionResponse,
   SuggestMetricsRequest,
+  SyncGroupResponse,
   TotpSetupResponse,
   TrackEventRequest,
   TrackReplayRequest,
@@ -176,6 +177,11 @@ export const userGroupApi = {
   getMetrics: (id: string) => api.get(`/user-groups/${id}/metrics`),
 
   assign: (data: AssignUserRequest) => api.post("/user-groups/assign", data),
+
+  sync: (id: string) =>
+    api.post<SyncGroupResponse>(`/user-groups/${id}/sync`, {}),
+
+  users: (id: string) => api.get<string[]>(`/user-groups/${id}/users`),
 };
 
 // Feature Flags
