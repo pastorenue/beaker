@@ -403,9 +403,9 @@ function Layout({ children }: { children: React.ReactNode }) {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
                                 </svg>
                             </button>
-                            <div>
+                            {/* <div>
                                 <div className="topbar-title">{pageTitle}</div>
-                            </div>
+                            </div> */}
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="meta-chip">
@@ -506,7 +506,7 @@ function App() {
                                     element={
                                         <div className="space-y-6">
                                             <div>
-                                                <h1>Session Replay</h1>
+                                                <h2 className="text-3xl font-medium text-slate-900">Session Replay</h2>
                                                 <p className="mt-1 text-slate-400">
                                                     Review session replays, heatmaps, and live activity.
                                                 </p>

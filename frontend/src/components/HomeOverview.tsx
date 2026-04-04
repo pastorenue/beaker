@@ -145,8 +145,7 @@ export const HomeOverview: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div>
-                <p className="text-xs text-slate-400">Welcome back</p>
-                <h1 className="mt-2">Home</h1>
+                <h1 className="mt-2 text-3xl font-medium text-slate-900">Home</h1>
                 <p className="mt-1 text-slate-400">Weekly pulse of experiment velocity and feature gate activity.</p>
             </div>
 
