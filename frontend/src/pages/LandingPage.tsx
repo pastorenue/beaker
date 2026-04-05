@@ -447,7 +447,7 @@ export function LandingPage() {
 
             {/* ─── LOGO STRIP ───────────────────────────────── */}
             <section className="lp-logos">
-                <p className="lp-logos-label">Trusted by product and data teams at</p>
+                <h1 className="text-5xl font-semibold mb-4 text-slate-100">Trusted by product and data teams at</h1>
                 <div className="lp-logos-strip">
                     {LOGOS.map((name) => (
                         <div key={name} className="lp-logo-pill" aria-label={`${name}`}>
