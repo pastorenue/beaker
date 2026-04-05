@@ -183,7 +183,7 @@ export const userGroupApi = {
   sync: (id: string) =>
     api.post<SyncGroupResponse>(`/user-groups/${id}/sync`, {}),
 
-  users: (id: string) => api.get<string[]>(`/user-groups/${id}/users`),
+  users: (id: string) => api.get<{ headers: string[]; rows: string[][] }>(`/user-groups/${id}/users`),
 };
 
 // Feature Flags

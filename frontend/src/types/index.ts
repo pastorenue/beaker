@@ -46,7 +46,9 @@ export interface LookerDataSourceConfig {
 }
 
 export interface CsvDataSourceConfig {
-    user_ids: string[];
+    user_ids: string[];     // first-column values — kept for backend sync
+    headers: string[];      // all column names from the CSV
+    rows: string[][];       // all row data (each inner array = one row's column values)
 }
 
 export interface PostgresDataSourceConfig {
