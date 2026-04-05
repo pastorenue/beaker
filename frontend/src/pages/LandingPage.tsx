@@ -13,6 +13,35 @@ const NAV_LINKS = [
 
 const FEATURES = [
     {
+        illustration: (
+            <div className="lp-illus-sim">
+                <div className="lp-illus-sim-row">
+                    <span className="lp-illus-variant-label">Control</span>
+                    <div className="lp-illus-bar-track">
+                        <div className="lp-illus-bar-fill" style={{ width: '50%', background: '#4f46e5' }} />
+                    </div>
+                    <span className="lp-illus-pct">50%</span>
+                </div>
+                <div className="lp-illus-sim-row">
+                    <span className="lp-illus-variant-label">Variant A</span>
+                    <div className="lp-illus-bar-track">
+                        <div className="lp-illus-bar-fill" style={{ width: '30%', background: '#0284c7' }} />
+                    </div>
+                    <span className="lp-illus-pct">30%</span>
+                </div>
+                <div className="lp-illus-sim-row">
+                    <span className="lp-illus-variant-label">Variant B</span>
+                    <div className="lp-illus-bar-track">
+                        <div className="lp-illus-bar-fill" style={{ width: '20%', background: '#059669' }} />
+                    </div>
+                    <span className="lp-illus-pct">20%</span>
+                </div>
+                <div className="lp-illus-sim-footer">
+                    <span className="lp-panel-chip lp-chip-running">Simulating</span>
+                    <span className="lp-illus-sim-total">12 400 users</span>
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" />
@@ -23,6 +52,30 @@ const FEATURES = [
         tag: 'No-risk testing',
     },
     {
+        illustration: (
+            <div className="lp-illus-gates">
+                <div className="lp-illus-gate-row">
+                    <span className="lp-illus-gate-name">new_checkout_flow</span>
+                    <div className="lp-illus-toggle lp-illus-toggle--on">
+                        <div className="lp-illus-toggle-knob" />
+                    </div>
+                </div>
+                <div className="lp-illus-gate-row">
+                    <span className="lp-illus-gate-name">dark_mode_beta</span>
+                    <div className="lp-illus-toggle">
+                        <div className="lp-illus-toggle-knob" />
+                    </div>
+                </div>
+                <div className="lp-panel-metric-row" style={{ marginTop: '8px' }}>
+                    <span className="lp-panel-metric-name">Conversion lift</span>
+                    <span className="lp-panel-metric-val lp-val-pos">+8.4%</span>
+                </div>
+                <div className="lp-panel-metric-row">
+                    <span className="lp-panel-metric-name">p-value</span>
+                    <span className="lp-panel-metric-val">0.021</span>
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1" />
@@ -34,6 +87,34 @@ const FEATURES = [
         tag: 'Ship safely',
     },
     {
+        illustration: (
+            <div className="lp-illus-realtime">
+                <div className="lp-illus-realtime-header">
+                    <span className="lp-panel-badge lp-panel-badge--live">● Live</span>
+                    <span className="lp-illus-realtime-ts">Updated 2s ago</span>
+                </div>
+                <div className="lp-panel-chart" style={{ height: '56px', marginBottom: '6px' }}>
+                    <div className="lp-panel-chart-bar" style={{ height: '38%' }} />
+                    <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '60%' }} />
+                    <div className="lp-panel-chart-bar" style={{ height: '45%' }} />
+                    <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '78%' }} />
+                    <div className="lp-panel-chart-bar" style={{ height: '55%' }} />
+                    <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '90%' }} />
+                    <div className="lp-panel-chart-bar" style={{ height: '68%' }} />
+                    <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '95%' }} />
+                </div>
+                <div className="lp-illus-realtime-metrics">
+                    <div className="lp-illus-realtime-metric">
+                        <span className="lp-panel-label">Ingestion</span>
+                        <span className="lp-panel-metric-val lp-val-pos">4 820/s</span>
+                    </div>
+                    <div className="lp-illus-realtime-metric">
+                        <span className="lp-panel-label">P95 latency</span>
+                        <span className="lp-panel-metric-val">182ms</span>
+                    </div>
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -44,6 +125,30 @@ const FEATURES = [
         tag: 'Always-on analytics',
     },
     {
+        illustration: (
+            <div className="lp-illus-guardrails">
+                <div className="lp-illus-guard-row">
+                    <span className="lp-illus-guard-dot" style={{ background: '#059669' }} />
+                    <span className="lp-illus-guard-name">Latency P99</span>
+                    <span className="lp-panel-chip lp-chip-safe">Within bounds</span>
+                </div>
+                <div className="lp-illus-guard-row">
+                    <span className="lp-illus-guard-dot" style={{ background: '#059669' }} />
+                    <span className="lp-illus-guard-name">Error rate</span>
+                    <span className="lp-panel-chip lp-chip-safe">0.12%</span>
+                </div>
+                <div className="lp-illus-guard-row">
+                    <span className="lp-illus-guard-dot" style={{ background: '#f59e0b' }} />
+                    <span className="lp-illus-guard-name">Revenue / user</span>
+                    <span className="lp-illus-guard-warn">Drifting</span>
+                </div>
+                <div className="lp-illus-guard-row">
+                    <span className="lp-illus-guard-dot" style={{ background: '#ef4444' }} />
+                    <span className="lp-illus-guard-name">Cart abandonment</span>
+                    <span className="lp-illus-guard-alert">Alert</span>
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -54,6 +159,24 @@ const FEATURES = [
         tag: 'Built-in safety',
     },
     {
+        illustration: (
+            <div className="lp-illus-audience">
+                <div className="lp-illus-audience-pills">
+                    <span className="lp-panel-chip lp-chip-enabled">US · West</span>
+                    <span className="lp-panel-chip lp-chip-running">Mobile</span>
+                    <span className="lp-panel-chip lp-chip-safe">Premium</span>
+                    <span className="lp-panel-chip lp-chip-enabled">New user</span>
+                    <span className="lp-panel-chip lp-chip-running">iOS 17+</span>
+                </div>
+                <div className="lp-illus-audience-match">
+                    <span className="lp-illus-audience-count">38 240</span>
+                    <span className="lp-illus-audience-sub">users matched · 12.4% of total</span>
+                </div>
+                <div className="lp-illus-audience-bar">
+                    <div className="lp-illus-audience-bar-fill" />
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
@@ -65,6 +188,31 @@ const FEATURES = [
         tag: 'Precision targeting',
     },
     {
+        illustration: (
+            <div className="lp-illus-replay">
+                <div className="lp-illus-replay-browser">
+                    <div className="lp-illus-replay-bar">
+                        <div className="lp-panel-dots"><span /><span /><span /></div>
+                        <div className="lp-illus-replay-url">app.expothesis.io/checkout</div>
+                    </div>
+                    <div className="lp-illus-replay-screen">
+                        <div className="lp-illus-replay-cursor" />
+                        <div className="lp-illus-replay-click" />
+                    </div>
+                </div>
+                <div className="lp-illus-replay-timeline">
+                    <div className="lp-illus-replay-track">
+                        <div className="lp-illus-replay-head" />
+                        <div className="lp-illus-replay-events">
+                            <div className="lp-illus-replay-event" style={{ left: '12%' }} />
+                            <div className="lp-illus-replay-event lp-illus-replay-event--click" style={{ left: '38%' }} />
+                            <div className="lp-illus-replay-event" style={{ left: '61%' }} />
+                            <div className="lp-illus-replay-event lp-illus-replay-event--click" style={{ left: '82%' }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ),
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -320,9 +468,12 @@ export function LandingPage() {
                 <div className="lp-feature-grid">
                     {FEATURES.map((f) => (
                         <div key={f.title} className="lp-feature-card">
-                            <div className="lp-feature-icon">{f.icon}</div>
+                            <div className="lp-illus">{f.illustration}</div>
+                            <div className="lp-feature-heading">
+                                <div className="lp-feature-icon">{f.icon}</div>
+                                <h3 className="lp-feature-title">{f.title}</h3>
+                            </div>
                             <div className="lp-feature-tag">{f.tag}</div>
-                            <h3 className="lp-feature-title">{f.title}</h3>
                             <p className="lp-feature-body">{f.body}</p>
                             <span className="lp-feature-cta">Learn more →</span>
                         </div>
