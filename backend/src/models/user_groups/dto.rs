@@ -20,6 +20,12 @@ pub struct UpdateUserGroupRequest {
 }
 
 #[derive(Debug, Serialize)]
+pub struct GroupDataResponse {
+    pub headers: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SyncGroupResponse {
     pub group_id: Uuid,
     pub synced_user_count: usize,

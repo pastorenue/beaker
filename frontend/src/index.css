@@ -925,6 +925,12 @@
   align-items: center;
 }
 
+.lp-hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
 .lp-kicker-wrap {
   display: inline-flex;
   align-items: center;
@@ -1362,17 +1368,19 @@
   z-index: 1;
 }
 
+.lp-feature-heading {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
 .lp-feature-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
-  background: rgba(79, 70, 229, 0.08);
-  border: 1px solid rgba(79, 70, 229, 0.18);
-  display: flex;
   align-items: center;
   justify-content: center;
-  color: #4f46e5;
-  margin-bottom: 16px;
+  flex-shrink: 0;
+  display: flex;
 }
 
 .lp-feature-tag {
@@ -1386,9 +1394,10 @@
 
 .lp-feature-title {
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f1428;
-  margin-bottom: 10px;
+  margin-bottom: 0px;
+  letter-spacing: 0;
 
 }
 
@@ -1412,6 +1421,81 @@
 .lp-feature-card:hover .lp-feature-cta {
   gap: 8px;
 }
+
+/* ── FEATURE CARD ILLUSTRATIONS ──────────────── */
+
+.lp-illus {
+  width: 100%;
+  height: 130px;
+  background: #f4f5f8;
+  border: 1px solid var(--lp-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  padding: 14px 14px 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Card 1 — Simulation Studio */
+.lp-illus-sim { display: flex; flex-direction: column; gap: 7px; height: 100%; justify-content: center; }
+.lp-illus-sim-row { display: flex; align-items: center; gap: 8px; }
+.lp-illus-variant-label { font-size: 0.63rem; font-weight: 600; color: var(--lp-muted); width: 56px; flex-shrink: 0; }
+.lp-illus-bar-track { flex: 1; height: 7px; border-radius: 999px; background: rgba(15,20,40,0.08); overflow: hidden; }
+.lp-illus-bar-fill { height: 100%; border-radius: 999px; }
+.lp-illus-pct { font-size: 0.62rem; font-weight: 700; color: #0f1428; width: 26px; text-align: right; flex-shrink: 0; }
+.lp-illus-sim-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--lp-border); }
+.lp-illus-sim-total { font-size: 0.62rem; color: var(--lp-muted); }
+
+/* Card 2 — Feature Gates */
+.lp-illus-gates { display: flex; flex-direction: column; gap: 6px; height: 100%; justify-content: center; }
+.lp-illus-gate-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lp-illus-gate-name { font-size: 0.63rem; font-family: 'Fira Code', monospace; color: #0f1428; font-weight: 500; }
+.lp-illus-toggle { width: 28px; height: 15px; border-radius: 999px; background: rgba(15,20,40,0.12); padding: 2px; flex-shrink: 0; display: flex; align-items: center; }
+.lp-illus-toggle--on { background: #4f46e5; justify-content: flex-end; }
+.lp-illus-toggle-knob { width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+/* Card 3 — Realtime Insight */
+.lp-illus-realtime { display: flex; flex-direction: column; gap: 6px; height: 100%; justify-content: center; }
+.lp-illus-realtime-header { display: flex; align-items: center; justify-content: space-between; }
+.lp-illus-realtime-ts { font-size: 0.6rem; color: var(--lp-muted); }
+.lp-illus-realtime-metrics { display: flex; gap: 16px; }
+.lp-illus-realtime-metric { display: flex; flex-direction: column; gap: 1px; }
+
+/* Card 4 — Guardrails */
+.lp-illus-guardrails { display: flex; flex-direction: column; gap: 7px; height: 100%; justify-content: center; }
+.lp-illus-guard-row { display: flex; align-items: center; gap: 7px; }
+.lp-illus-guard-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.lp-illus-guard-name { font-size: 0.63rem; color: #0f1428; font-weight: 500; flex: 1; }
+.lp-illus-guard-warn { font-size: 0.62rem; font-weight: 600; color: #d97706; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); border-radius: 999px; padding: 2px 8px; }
+.lp-illus-guard-alert { font-size: 0.62rem; font-weight: 600; color: #dc2626; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.22); border-radius: 999px; padding: 2px 8px; }
+
+/* Card 5 — Audience Targeting */
+.lp-illus-audience { display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center; }
+.lp-illus-audience-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.lp-illus-audience-match { display: flex; flex-direction: column; gap: 1px; }
+.lp-illus-audience-count { font-size: 1rem; font-weight: 700; color: #0f1428; line-height: 1.2; }
+.lp-illus-audience-sub { font-size: 0.6rem; color: var(--lp-muted); }
+.lp-illus-audience-bar { height: 5px; border-radius: 999px; background: rgba(15,20,40,0.08); overflow: hidden; }
+.lp-illus-audience-bar-fill { width: 12.4%; height: 100%; border-radius: 999px; background: #4f46e5; }
+
+/* Card 6 — Session Replay */
+.lp-illus-replay { display: flex; flex-direction: column; gap: 6px; height: 100%; justify-content: center; }
+.lp-illus-replay-browser { flex: 1; border: 1px solid var(--lp-border); border-radius: 8px; background: #fff; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.lp-illus-replay-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: #f4f5f8; border-bottom: 1px solid var(--lp-border); }
+.lp-illus-replay-url { font-size: 0.58rem; color: var(--lp-muted); font-family: 'Fira Code', monospace; background: #fff; border: 1px solid var(--lp-border); border-radius: 4px; padding: 1px 6px; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lp-illus-replay-screen { flex: 1; position: relative; min-height: 28px; }
+.lp-illus-replay-cursor { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #4f46e5; opacity: 0.7; top: 40%; left: 55%; }
+.lp-illus-replay-click { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(79,70,229,0.5); top: calc(40% - 3px); left: calc(55% - 3px); animation: lpReplayPulse 1.8s ease-out infinite; }
+@keyframes lpReplayPulse { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
+.lp-illus-replay-timeline { position: relative; height: 14px; }
+.lp-illus-replay-track { height: 3px; border-radius: 999px; background: rgba(15,20,40,0.1); position: relative; top: 50%; transform: translateY(-50%); }
+.lp-illus-replay-head { position: absolute; left: 38%; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: #4f46e5; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(79,70,229,0.3); }
+.lp-illus-replay-events { position: absolute; inset: 0; top: -1px; }
+.lp-illus-replay-event { position: absolute; top: 0; width: 5px; height: 5px; border-radius: 50%; background: rgba(15,20,40,0.2); transform: translateX(-50%); }
+.lp-illus-replay-event--click { background: #0284c7; width: 6px; height: 6px; top: -0.5px; }
 
 /* ── STEPS ───────────────────────────────────── */
 .lp-steps-section {

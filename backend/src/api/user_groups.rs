@@ -220,10 +220,10 @@ async fn get_group_users(
         return HttpResponse::Unauthorized().finish();
     };
     match service
-        .get_group_users(user.account_id, id.into_inner())
+        .get_group_data(user.account_id, id.into_inner())
         .await
     {
-        Ok(user_ids) => HttpResponse::Ok().json(user_ids),
+        Ok(data) => HttpResponse::Ok().json(data),
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),

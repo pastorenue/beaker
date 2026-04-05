@@ -61,6 +61,8 @@ import type {
   UpsertSlackIntegrationRequest,
   UserGroup,
   VerifyOtpRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from "../types";
 
 const API_BASE = "http://localhost:8080/api";
@@ -181,7 +183,7 @@ export const userGroupApi = {
   sync: (id: string) =>
     api.post<SyncGroupResponse>(`/user-groups/${id}/sync`, {}),
 
-  users: (id: string) => api.get<string[]>(`/user-groups/${id}/users`),
+  users: (id: string) => api.get<{ headers: string[]; rows: string[][] }>(`/user-groups/${id}/users`),
 };
 
 // Feature Flags
@@ -337,6 +339,10 @@ export const authApi = {
     api.post("/auth/totp/verify", { user_id, code }),
   disableTotp: (user_id: string) => api.post("/auth/totp/disable", { user_id }),
   me: (user_id: string) => api.get<AuthUserProfile>(`/auth/me/${user_id}`),
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    api.post("/auth/forgot-password", data),
+  resetPassword: (data: ResetPasswordRequest) =>
+    api.post("/auth/reset-password", data),
 };
 
 // SDK Tokens

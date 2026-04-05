@@ -46,7 +46,9 @@ export interface LookerDataSourceConfig {
 }
 
 export interface CsvDataSourceConfig {
-    user_ids: string[];
+    user_ids: string[];     // first-column values — kept for backend sync
+    headers: string[];      // all column names from the CSV
+    rows: string[][];       // all row data (each inner array = one row's column values)
 }
 
 export interface PostgresDataSourceConfig {
@@ -278,12 +280,23 @@ export interface RegisterRequest {
 export interface LoginRequest {
     email: string;
     password: string;
+    remember_me?: boolean;
 }
 
 export interface VerifyOtpRequest {
     email: string;
     code: string;
     totp_code?: string;
+    remember_me?: boolean;
+}
+
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    token: string;
+    new_password: string;
 }
 
 export interface CreateInviteRequest {

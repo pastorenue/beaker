@@ -1,5 +1,6 @@
 pub mod accounts;
 pub mod ai;
+pub mod oauth;
 pub mod analytics;
 pub mod auth;
 pub mod events;
@@ -23,6 +24,7 @@ pub fn configure(cfg: &mut web::ServiceConfig, pool: PgPool, config: Config) {
     cfg.service(
         web::scope("/api")
             .wrap(AuthMiddleware::new(pool, config))
+            .configure(oauth::configure)
             .configure(auth::configure)
             .configure(experiments::configure)
             .configure(user_groups::configure)

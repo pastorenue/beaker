@@ -12,6 +12,7 @@ pub struct RegisterRequest {
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
+    pub remember_me: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -19,6 +20,18 @@ pub struct VerifyOtpRequest {
     pub email: String,
     pub code: String,
     pub totp_code: Option<String>,
+    pub remember_me: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ForgotPasswordRequest {
+    pub email: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub token: String,
+    pub new_password: String,
 }
 
 #[derive(Debug, Deserialize)]

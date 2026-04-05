@@ -28,7 +28,7 @@ export const DataSourcePanel: React.FC<DataSourcePanelProps> = ({
         const defaultConfigs: Record<DataSourceType, DataSourceConfig> = {
             none: {},
             looker: { api_url: '', client_id: '', client_secret: '', look_id: '' },
-            csv: { user_ids: [] },
+            csv: { user_ids: [], headers: [], rows: [] },
             postgres_query: { is_internal: true, connection_string: undefined, query: '' },
         };
         onChange(type, defaultConfigs[type]);
@@ -49,18 +49,26 @@ export const DataSourcePanel: React.FC<DataSourcePanelProps> = ({
         reader.onload = (event) => {
             const text = event.target?.result as string;
             const lines = text.split(/\r?\n/).filter(Boolean);
-            const userIds: string[] = [];
-            lines.forEach((line, index) => {
-                const firstCell = line.split(',')[0].trim().replace(/^"|"$/g, '');
-                if (index === 0) {
-                    // Skip header if first value looks non-numeric and non-UUID
-                    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                    const numericPattern = /^\d+$/;
-                    if (!uuidPattern.test(firstCell) && !numericPattern.test(firstCell)) return;
-                }
-                if (firstCell) userIds.push(firstCell);
-            });
-            onChange('csv', { user_ids: userIds });
+            if (lines.length === 0) return;
+
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const numericPattern = /^\d+$/;
+            const parseRow = (line: string) =>
+                line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, ''));
+
+            const firstRow = parseRow(lines[0]);
+            const hasHeader =
+                !uuidPattern.test(firstRow[0]) && !numericPattern.test(firstRow[0]);
+
+            const headers = hasHeader
+                ? firstRow
+                : firstRow.map((_, i) => (i === 0 ? 'user_id' : `col_${i + 1}`));
+            const dataLines = hasHeader ? lines.slice(1) : lines;
+
+            const rows = dataLines.map(parseRow);
+            const user_ids = rows.map((r) => r[0]).filter(Boolean);
+
+            onChange('csv', { user_ids, headers, rows });
         };
         reader.readAsText(file);
     };

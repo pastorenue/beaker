@@ -34,6 +34,11 @@ pub struct Config {
     pub ai_polling_interval_minutes: u64,
     pub ai_auto_stop_regressions: bool,
     pub ai_severe_regression_threshold: f64,
+    // Google OAuth
+    pub google_client_id: String,
+    pub google_client_secret: String,
+    pub google_redirect_uri: String,
+    pub frontend_base_url: String,
 }
 
 impl Config {
@@ -147,6 +152,12 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(-0.10),
+            google_client_id: std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
+            google_client_secret: std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
+            google_redirect_uri: std::env::var("GOOGLE_REDIRECT_URI")
+                .unwrap_or_else(|_| "http://localhost:8080/api/auth/oauth/google/callback".to_string()),
+            frontend_base_url: std::env::var("FRONTEND_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string()),
         }
     }
 }

@@ -27,6 +27,10 @@ pub struct LookerDataSourceConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CsvDataSourceConfig {
     pub user_ids: Vec<String>,
+    #[serde(default)]
+    pub headers: Vec<String>,
+    #[serde(default)]
+    pub rows: Vec<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

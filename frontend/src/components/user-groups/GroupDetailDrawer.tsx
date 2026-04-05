@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as duckdb from '@duckdb/duckdb-wasm';
-import type { DataSourceConfig, DataSourceType, UserGroup } from '../../types';
+import type { CsvDataSourceConfig, DataSourceConfig, DataSourceType, UserGroup } from '../../types';
 import { DataSourcePanel } from './DataSourcePanel';
 import { userGroupApi } from '../../services/api';
 
@@ -66,7 +66,7 @@ const DataExplorer: React.FC<{ group: UserGroup }> = ({ group }) => {
         return db;
     };
 
-    const loadIntoDb = async (userIds: string[]) => {
+    const loadIntoDb = async (data: { headers: string[]; rows: string[][] }) => {
         setStatus('loading');
         setErrorMsg(null);
         try {
@@ -74,17 +74,39 @@ const DataExplorer: React.FC<{ group: UserGroup }> = ({ group }) => {
             const conn = await db.connect();
             connRef.current = conn;
 
+            const numCols = data.headers.length;
+
+            // Identifier escaping: coerce to string, fallback empty name → col_N,
+            // then wrap in double-quotes with internal " doubled.
+            const quoteIdent = (h: unknown, i: number): string => {
+                const s = String(h ?? '').trim() || `col_${i + 1}`;
+                return `"${s.replace(/"/g, '""')}"`;
+            };
+
+            const colDefs = data.headers
+                .map((h, i) => `${quoteIdent(h, i)} VARCHAR`)
+                .join(', ');
+
             await conn.query('DROP TABLE IF EXISTS users');
-            await conn.query('CREATE TABLE users (user_id VARCHAR)');
+            await conn.query(`CREATE TABLE users (${colDefs})`);
 
             const batchSize = 1000;
-            for (let i = 0; i < userIds.length; i += batchSize) {
-                const batch = userIds.slice(i, i + batchSize);
-                const values = batch.map((id) => `('${id.replace(/'/g, "''")}')`).join(',');
+            for (let i = 0; i < data.rows.length; i += batchSize) {
+                const batch = data.rows.slice(i, i + batchSize);
+                const values = batch
+                    .map((row) => {
+                        // Normalize to exactly numCols cells; coerce each to string
+                        // then escape single-quotes with the standard SQL '' doubling.
+                        const cells = Array.from({ length: numCols }, (_, j) =>
+                            String(row[j] ?? ''),
+                        );
+                        return `(${cells.map((c) => `'${c.replace(/'/g, "''")}'`).join(', ')})`;
+                    })
+                    .join(',');
                 await conn.query(`INSERT INTO users VALUES ${values}`);
             }
 
-            setRecordCount(userIds.length);
+            setRecordCount(data.rows.length);
             setStatus('ready');
         } catch (err) {
             setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -95,8 +117,16 @@ const DataExplorer: React.FC<{ group: UserGroup }> = ({ group }) => {
     // Auto-load CSV on mount
     useEffect(() => {
         if (group.data_source_type === 'csv') {
-            const cfg = group.data_source_config as { user_ids?: string[] };
-            loadIntoDb(cfg.user_ids ?? []);
+            const cfg = group.data_source_config as CsvDataSourceConfig;
+            if (cfg.headers?.length && cfg.rows?.length) {
+                loadIntoDb({ headers: cfg.headers, rows: cfg.rows });
+            } else {
+                // backward-compat: legacy groups saved with only user_ids
+                loadIntoDb({
+                    headers: ['user_id'],
+                    rows: (cfg.user_ids ?? []).map((id) => [id]),
+                });
+            }
         }
         return () => {
             const cleanup = async () => {
@@ -502,47 +532,76 @@ export const GroupDetailDrawer: React.FC<GroupDetailDrawerProps> = ({
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
+                                            {/* Description */}
                                             <p className="text-sm text-slate-300">
                                                 {selectedGroup.description || (
                                                     <span className="italic text-slate-500">No description</span>
                                                 )}
                                             </p>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-xs text-slate-400">Total Users</p>
-                                                    <p className="text-2xl font-bold text-slate-100">
-                                                        {selectedGroup.size.toLocaleString()}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-400">Created</p>
-                                                    <p className="font-medium text-slate-100">
-                                                        {new Date(
-                                                            selectedGroup.created_at,
-                                                        ).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-400">Assignment Rule</p>
-                                                    <p className="font-medium text-slate-100">
-                                                        {selectedGroup.assignment_rule}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-400">Data Source</p>
-                                                    <p className="font-medium capitalize text-slate-100">
-                                                        {selectedGroup.data_source_type === 'none'
-                                                            ? 'None'
-                                                            : selectedGroup.data_source_type}
-                                                    </p>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <p className="text-xs text-slate-400">ID</p>
-                                                    <span className="font-mono text-xs break-all text-slate-100">
-                                                        {selectedGroup.id}
-                                                    </span>
-                                                </div>
+
+                                            {/* Total users stat */}
+                                            <div className="rounded-lg border border-slate-800/70 bg-slate-900/50 px-4 py-3">
+                                                <p className="text-xs text-slate-400">Total Users</p>
+                                                <p className="mt-0.5 text-2xl font-bold text-slate-100">
+                                                    {selectedGroup.size.toLocaleString()}
+                                                </p>
                                             </div>
+
+                                            {/* Metadata rows */}
+                                            <dl className="divide-y divide-slate-800/60">
+                                                {(
+                                                    [
+                                                        {
+                                                            label: 'Data Source',
+                                                            value: selectedGroup.data_source_type === 'none'
+                                                                ? 'None'
+                                                                : selectedGroup.data_source_type
+                                                                      .replace(/_/g, ' ')
+                                                                      .replace(/\b\w/g, (c) => c.toUpperCase()),
+                                                        },
+                                                        {
+                                                            label: 'Assignment',
+                                                            value: selectedGroup.assignment_rule.startsWith('{')
+                                                                ? 'Custom rule'
+                                                                : selectedGroup.assignment_rule.charAt(0).toUpperCase() +
+                                                                  selectedGroup.assignment_rule.slice(1),
+                                                        },
+                                                        {
+                                                            label: 'Created',
+                                                            value: new Date(selectedGroup.created_at).toLocaleDateString(
+                                                                undefined,
+                                                                { year: 'numeric', month: 'short', day: 'numeric' },
+                                                            ),
+                                                        },
+                                                        {
+                                                            label: 'Updated',
+                                                            value: new Date(selectedGroup.updated_at).toLocaleDateString(
+                                                                undefined,
+                                                                { year: 'numeric', month: 'short', day: 'numeric' },
+                                                            ),
+                                                        },
+                                                        {
+                                                            label: 'ID',
+                                                            value: selectedGroup.id,
+                                                            mono: true,
+                                                        },
+                                                    ] as { label: string; value: string; mono?: boolean }[]
+                                                ).map(({ label, value, mono }) => (
+                                                    <div
+                                                        key={label}
+                                                        className="flex items-start justify-between gap-4 py-2.5"
+                                                    >
+                                                        <dt className="shrink-0 text-xs text-slate-400">{label}</dt>
+                                                        <dd
+                                                            className={`text-right text-xs text-slate-200 ${
+                                                                mono ? 'break-all font-mono' : ''
+                                                            }`}
+                                                        >
+                                                            {value}
+                                                        </dd>
+                                                    </div>
+                                                ))}
+                                            </dl>
                                         </div>
                                     )}
                                 </>

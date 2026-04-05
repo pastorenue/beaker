@@ -310,38 +310,47 @@ impl UserGroupService {
         })
     }
 
-    pub async fn get_group_users(
+    pub async fn get_group_data(
         &self,
         account_id: Uuid,
         group_id: Uuid,
-    ) -> Result<Vec<String>> {
+    ) -> Result<GroupDataResponse> {
         let group = self.get_user_group(account_id, group_id).await?;
 
-        let user_ids = match group.data_source_type.as_str() {
+        match group.data_source_type.as_str() {
             "csv" => {
                 let config: CsvDataSourceConfig =
                     serde_json::from_value(group.data_source_config.clone())
                         .context("Invalid CSV data source config")?;
-                config.user_ids
+                if !config.headers.is_empty() {
+                    Ok(GroupDataResponse { headers: config.headers, rows: config.rows })
+                } else {
+                    Ok(GroupDataResponse {
+                        headers: vec!["user_id".to_string()],
+                        rows: config.user_ids.into_iter().map(|id| vec![id]).collect(),
+                    })
+                }
             }
             "looker" => {
                 let config: LookerDataSourceConfig =
                     serde_json::from_value(group.data_source_config.clone())
                         .context("Invalid Looker data source config")?;
-                self.sync_from_looker(&config).await?
+                let user_ids = self.sync_from_looker(&config).await?;
+                Ok(GroupDataResponse {
+                    headers: vec!["user_id".to_string()],
+                    rows: user_ids.into_iter().map(|id| vec![id]).collect(),
+                })
             }
             "postgres_query" => {
                 let config: PostgresDataSourceConfig =
                     serde_json::from_value(group.data_source_config.clone())
                         .context("Invalid PostgreSQL data source config")?;
-                self.sync_from_postgres(&config).await?
+                self.fetch_rows_from_postgres(&config).await
             }
             other => {
-                anyhow::bail!("Cannot retrieve users for data_source_type '{}'", other);
+                anyhow::bail!("Cannot retrieve data for data_source_type '{}'", other);
             }
-        };
-
-        Ok(user_ids)
+        }
     }
 
     pub async fn sync_user_group(
@@ -388,6 +397,68 @@ impl UserGroupService {
             synced_user_count: synced_count,
             data_source_type: group.data_source_type.clone(),
         })
+    }
+
+    async fn fetch_rows_from_postgres(&self, config: &PostgresDataSourceConfig) -> Result<GroupDataResponse> {
+        let query = config.query.trim().trim_end_matches(';');
+        if !query.to_uppercase().starts_with("SELECT") {
+            anyhow::bail!("PostgreSQL query must start with SELECT");
+        }
+
+        let wrapped = format!(
+            "SELECT row_to_json(_t)::text AS _row FROM ({}) AS _t LIMIT 100000",
+            query
+        );
+
+        let json_strs: Vec<String> = if config.is_internal {
+            sqlx::query_scalar::<_, String>(&wrapped)
+                .fetch_all(&self.pg)
+                .await
+                .context("Failed to execute internal PostgreSQL query")?
+        } else {
+            let conn_str = config
+                .connection_string
+                .as_deref()
+                .context("External PostgreSQL requires a connection_string")?;
+            let pool = sqlx::PgPool::connect(conn_str)
+                .await
+                .context("Failed to connect to external PostgreSQL")?;
+            let results = sqlx::query_scalar::<_, String>(&wrapped)
+                .fetch_all(&pool)
+                .await
+                .context("Failed to execute external PostgreSQL query")?;
+            pool.close().await;
+            results
+        };
+
+        if json_strs.is_empty() {
+            return Ok(GroupDataResponse { headers: vec![], rows: vec![] });
+        }
+
+        let first: serde_json::Map<String, serde_json::Value> =
+            serde_json::from_str(&json_strs[0]).context("Failed to parse row JSON")?;
+        let headers: Vec<String> = first.keys().cloned().collect();
+
+        let rows: Vec<Vec<String>> = json_strs
+            .iter()
+            .filter_map(|s| serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(s).ok())
+            .map(|obj| {
+                headers
+                    .iter()
+                    .map(|h| {
+                        obj.get(h)
+                            .map(|v| match v {
+                                serde_json::Value::Null => String::new(),
+                                serde_json::Value::String(s) => s.clone(),
+                                other => other.to_string(),
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Ok(GroupDataResponse { headers, rows })
     }
 
     async fn sync_from_looker(&self, config: &LookerDataSourceConfig) -> Result<Vec<String>> {

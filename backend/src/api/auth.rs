@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::models::{
-    DisableTotpRequest, EnableTotpRequest, LoginRequest, RegisterRequest, VerifyOtpRequest,
-    VerifyTotpRequest,
+    DisableTotpRequest, EnableTotpRequest, ForgotPasswordRequest, LoginRequest, RegisterRequest,
+    ResetPasswordRequest, VerifyOtpRequest, VerifyTotpRequest,
 };
 use crate::services::AuthService;
 
@@ -17,7 +17,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/totp/setup", web::post().to(setup_totp))
             .route("/totp/verify", web::post().to(verify_totp))
             .route("/totp/disable", web::post().to(disable_totp))
-            .route("/me/{id}", web::get().to(me)),
+            .route("/me/{id}", web::get().to(me))
+            .route("/forgot-password", web::post().to(forgot_password))
+            .route("/reset-password", web::post().to(reset_password)),
     );
 }
 
@@ -48,7 +50,8 @@ async fn login(
     payload: web::Json<LoginRequest>,
 ) -> impl Responder {
     let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
-    match service.login(&payload.email, &payload.password).await {
+    let remember_me = payload.remember_me.unwrap_or(false);
+    match service.login(&payload.email, &payload.password, remember_me).await {
         Ok(result) => HttpResponse::Ok().json(result),
         Err(err) => {
             HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
@@ -62,8 +65,14 @@ async fn verify_otp(
     payload: web::Json<VerifyOtpRequest>,
 ) -> impl Responder {
     let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
+    let remember_me = payload.remember_me.unwrap_or(false);
     match service
-        .verify_otp(&payload.email, &payload.code, payload.totp_code.as_deref())
+        .verify_otp(
+            &payload.email,
+            &payload.code,
+            payload.totp_code.as_deref(),
+            remember_me,
+        )
         .await
     {
         Ok(result) => HttpResponse::Ok().json(result),
@@ -123,6 +132,32 @@ async fn me(
     let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
     match service.me(id.into_inner()).await {
         Ok(user) => HttpResponse::Ok().json(user),
+        Err(err) => {
+            HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
+        }
+    }
+}
+
+async fn forgot_password(
+    pool: web::Data<sqlx::PgPool>,
+    config: web::Data<Config>,
+    body: web::Json<ForgotPasswordRequest>,
+) -> impl Responder {
+    let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
+    let _ = service.forgot_password(&body.email).await;
+    HttpResponse::Ok().json(serde_json::json!({
+        "message": "If that email exists, a reset link was sent."
+    }))
+}
+
+async fn reset_password(
+    pool: web::Data<sqlx::PgPool>,
+    config: web::Data<Config>,
+    body: web::Json<ResetPasswordRequest>,
+) -> impl Responder {
+    let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
+    match service.reset_password(&body.token, &body.new_password).await {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "message": "Password reset successfully." })),
         Err(err) => {
             HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
         }

@@ -84,7 +84,7 @@ impl AuthService {
 
         tx.commit().await?;
 
-        let token = self.issue_token(user_id).await?;
+        let token = self.issue_token(user_id, false).await?;
         Ok(AuthStatusResponse {
             requires_otp: false,
             totp_enabled: false,
@@ -120,9 +120,20 @@ impl AuthService {
         Ok(())
     }
 
-    pub async fn login(&self, email: &str, password: &str) -> Result<AuthStatusResponse> {
+    pub async fn login(
+        &self,
+        email: &str,
+        password: &str,
+        remember_me: bool,
+    ) -> Result<AuthStatusResponse> {
         let user = self.get_user_by_email(email).await?;
-        self.verify_password(password, &user.password_hash)?;
+
+        let hash = user.password_hash.as_deref().ok_or_else(|| {
+            anyhow::anyhow!(
+                "This account uses Google Sign-In. Please use 'Continue with Google'."
+            )
+        })?;
+        self.verify_password(password, hash)?;
 
         let dev_code = None;
         if user.totp_enabled {
@@ -135,7 +146,7 @@ impl AuthService {
             });
         }
 
-        let token = self.issue_token(user.id).await?;
+        let token = self.issue_token(user.id, remember_me).await?;
         Ok(AuthStatusResponse {
             requires_otp: false,
             totp_enabled: false,
@@ -150,15 +161,16 @@ impl AuthService {
         email: &str,
         _code: &str,
         totp_code: Option<&str>,
+        remember_me: bool,
     ) -> Result<AuthTokenResponse> {
         let user = self.get_user_by_email(email).await?;
         if user.totp_enabled {
             let totp = totp_code.ok_or_else(|| anyhow::anyhow!("Authenticator code required"))?;
             self.verify_totp_code(&user, totp)?;
-            return self.issue_token(user.id).await;
+            return self.issue_token(user.id, remember_me).await;
         }
 
-        self.issue_token(user.id).await
+        self.issue_token(user.id, remember_me).await
     }
 
     pub async fn enable_totp(&self, user_id: Uuid) -> Result<TotpSetupResponse> {
@@ -204,7 +216,105 @@ impl AuthService {
         self.get_user_by_id(user_id).await
     }
 
-    fn hash_password(&self, password: &str) -> Result<String> {
+    pub async fn forgot_password(&self, email: &str) -> Result<()> {
+        // Silently succeed if email not found (prevents user enumeration)
+        let user = match self.get_user_by_email(email).await {
+            Ok(u) => u,
+            Err(_) => return Ok(()),
+        };
+
+        let token = Uuid::new_v4().to_string();
+        let expires = Utc::now() + Duration::hours(1);
+        sqlx::query(
+            "INSERT INTO otp_codes (user_id, code, purpose, expires_at) VALUES ($1, $2, 'password_reset', $3)",
+        )
+        .bind(user.id)
+        .bind(&token)
+        .bind(expires)
+        .execute(&self.db)
+        .await
+        .context("Failed to store reset token")?;
+
+        let reset_url = format!(
+            "{}/reset-password?token={}",
+            self.config.frontend_base_url, token
+        );
+
+        if let Some(host) = self.config.smtp_host.clone() {
+            let from_addr = self
+                .config
+                .smtp_from
+                .clone()
+                .unwrap_or_else(|| "no-reply@expothesis.local".to_string());
+
+            let email_message = Message::builder()
+                .from(from_addr.parse::<Mailbox>().context("Invalid SMTP_FROM")?)
+                .to(email
+                    .parse::<Mailbox>()
+                    .context("Invalid recipient email")?)
+                .subject("Reset your Expothesis password")
+                .body(format!(
+                    "Click the link below to reset your password:\n\n{}\n\nThis link expires in 1 hour.",
+                    reset_url
+                ))?;
+
+            let mut mailer = AsyncSmtpTransport::<Tokio1Executor>::relay(&host)
+                .context("Failed to build SMTP transport")?;
+
+            if let (Some(user), Some(pass)) =
+                (self.config.smtp_user.clone(), self.config.smtp_pass.clone())
+            {
+                mailer = mailer.credentials(Credentials::new(user, pass));
+            }
+
+            if self.config.log_only_otp {
+                log::info!("LOG_ONLY_OTP enabled. Password reset link for {}: {}", email, reset_url);
+            } else {
+                match mailer.build().send(email_message).await {
+                    Ok(_) => log::info!("Sent password reset email to {} via SMTP {}", email, host),
+                    Err(err) => log::warn!("Failed to send password reset email: {}", err),
+                }
+            }
+        } else {
+            log::info!("SMTP not configured. Password reset link for {}: {}", email, reset_url);
+        }
+
+        Ok(())
+    }
+
+    pub async fn reset_password(&self, token: &str, new_password: &str) -> Result<()> {
+        let row = sqlx::query(
+            "SELECT id, user_id FROM otp_codes
+             WHERE code = $1 AND purpose = 'password_reset'
+               AND consumed_at IS NULL AND expires_at > NOW()",
+        )
+        .bind(token)
+        .fetch_optional(&self.db)
+        .await
+        .context("Failed to lookup reset token")?;
+
+        let row = row.ok_or_else(|| anyhow::anyhow!("Invalid or expired reset link"))?;
+        let otp_id: Uuid = row.get("id");
+        let user_id: Uuid = row.get("user_id");
+
+        let hashed = self.hash_password(new_password)?;
+        sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
+            .bind(&hashed)
+            .bind(user_id)
+            .execute(&self.db)
+            .await
+            .context("Failed to update password")?;
+
+        sqlx::query("UPDATE otp_codes SET consumed_at = NOW() WHERE id = $1")
+            .bind(otp_id)
+            .execute(&self.db)
+            .await
+            .context("Failed to consume reset token")?;
+
+        Ok(())
+    }
+
+    pub fn hash_password(&self, password: &str) -> Result<String> {
         let salt = SaltString::generate(&mut rand::thread_rng());
         let argon2 = Argon2::default();
         let hash = argon2
@@ -378,9 +488,14 @@ impl AuthService {
         }
     }
 
-    async fn issue_token(&self, user_id: Uuid) -> Result<AuthTokenResponse> {
+    async fn issue_token(&self, user_id: Uuid, remember_me: bool) -> Result<AuthTokenResponse> {
         let token_id = Uuid::new_v4();
-        let exp = Utc::now() + Duration::minutes(self.config.jwt_ttl_minutes);
+        let ttl = if remember_me {
+            30 * 24 * 60
+        } else {
+            self.config.jwt_ttl_minutes
+        };
+        let exp = Utc::now() + Duration::minutes(ttl);
         let claims = Claims {
             sub: user_id.to_string(),
             token_id: token_id.to_string(),
