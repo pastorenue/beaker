@@ -3,6 +3,8 @@ import React from 'react';
 type MetricsSummaryRow = {
     id: string;
     label: string;
+    groupName: string;
+    experimentName: string;
     baseline: { rate: number; assign: number; conv: number };
     variation: { rate: number; assign: number; conv: number };
     lift: number;
@@ -12,6 +14,7 @@ type MetricsSummaryRow = {
 
 type MetricsTableProps = {
     rows: MetricsSummaryRow[];
+    hasMultipleExperiments?: boolean;
 };
 
 const formatPct = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -52,7 +55,7 @@ const Violin: React.FC<{ id: string; percent: number }> = ({ id, percent }) => {
     );
 };
 
-export const MetricsTable: React.FC<MetricsTableProps> = ({ rows }) => {
+export const MetricsTable: React.FC<MetricsTableProps> = ({ rows, hasMultipleExperiments }) => {
     if (!rows.length) {
         return (
             <div className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-sm text-slate-400">
@@ -67,6 +70,8 @@ export const MetricsTable: React.FC<MetricsTableProps> = ({ rows }) => {
                 <thead className="bg-slate-900/60 text-xs text-slate-500">
                     <tr>
                         <th className="px-4 py-3 text-left">Metric</th>
+                        <th className="px-4 py-3 text-left">Group</th>
+                        {hasMultipleExperiments && <th className="px-4 py-3 text-left">Experiment</th>}
                         <th className="px-4 py-3 text-left">Baseline</th>
                         <th className="px-4 py-3 text-left">Variation</th>
                         <th className="px-4 py-3 text-left">Chance to Win</th>
@@ -81,6 +86,8 @@ export const MetricsTable: React.FC<MetricsTableProps> = ({ rows }) => {
                         return (
                             <tr key={row.id} className="border-t border-slate-800/70">
                                 <td className="px-4 py-3 font-semibold text-slate-100">{row.label}</td>
+                                <td className="px-4 py-3 text-slate-300">{row.groupName}</td>
+                                {hasMultipleExperiments && <td className="px-4 py-3 text-slate-400">{row.experimentName}</td>}
                                 <td className="px-4 py-3">
                                     <div className="text-slate-100">{formatRate(row.baseline.rate)}</div>
                                     <div className="text-xs text-slate-500">{formatCount(row.baseline.conv, row.baseline.assign)}</div>

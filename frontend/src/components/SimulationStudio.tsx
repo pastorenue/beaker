@@ -7,7 +7,7 @@ import { SimulationConfigPanel } from './simulation/SimulationConfigPanel';
 import { NodePalette } from './simulation/NodePalette';
 import { SimulationOutput } from './simulation/SimulationOutput';
 import { SimulationDetails } from './simulation/SimulationDetails';
-import type { FlowEdge, FlowNode } from './simulation/types';
+import type { ExperimentGroupPair, ExperimentGroupPairForOutput, FlowEdge, FlowNode } from './simulation/types';
 import { useAccount } from '../contexts/AccountContext';
 
 const nodeColorByKind: Record<FlowNode['kind'], { border: string; badge: string }> = {
@@ -25,6 +25,38 @@ const nodeBadgeClass = (kind: FlowNode['kind']) =>
 const NODE_WIDTH = 176;
 const NODE_HEIGHT = 72;
 const HANDLE_CENTER_OFFSET = 10;
+
+const SIMULATION_STORAGE_KEY = 'expothesis-simulation-studio';
+
+type SimulationPersistedState = {
+    nodes: FlowNode[];
+    edges: FlowEdge[];
+    simulationSeries: Array<{ time: string; ts: number; [key: string]: string | number }>;
+    zoom: number;
+    pan: { x: number; y: number };
+    rangeStart: string;
+    rangeEnd: string;
+    wasPaused: boolean;
+    eventCounter: Record<string, number>;
+    groupVariantCounter: Record<string, number>;
+    assignmentCounter: Record<string, number>;
+    conversionCounter: Record<string, number>;
+    groupRateRef: Record<string, number>;
+};
+
+// Parsed once per page load; cache avoids redundant JSON.parse calls across lazy initialisers.
+let _simulationPersistedCache: Partial<SimulationPersistedState> | undefined;
+const readPersistedSimulation = (): Partial<SimulationPersistedState> => {
+    if (_simulationPersistedCache === undefined) {
+        try {
+            const raw = window.localStorage.getItem(SIMULATION_STORAGE_KEY);
+            _simulationPersistedCache = raw ? (JSON.parse(raw) as Partial<SimulationPersistedState>) : {};
+        } catch {
+            _simulationPersistedCache = {};
+        }
+    }
+    return _simulationPersistedCache;
+};
 const normalCdf = (z: number) => {
     const t = 1 / (1 + 0.2316419 * Math.abs(z));
     const d = 0.3989423 * Math.exp(-0.5 * z * z);
@@ -57,11 +89,11 @@ export const SimulationStudio: React.FC = () => {
     });
 
     const [isSimulating, setIsSimulating] = React.useState(false);
-    const [isPaused, setIsPaused] = React.useState(false);
+    const [isPaused, setIsPaused] = React.useState(() => readPersistedSimulation().wasPaused ?? false);
     const simulationRef = React.useRef<number | null>(null);
     const [simulationSeries, setSimulationSeries] = React.useState<
-        { time: string; ts: number;[key: string]: string | number }[]
-    >([]);
+        { time: string; ts: number; [key: string]: string | number }[]
+    >(() => readPersistedSimulation().simulationSeries ?? []);
     const eventCounter = React.useRef<Record<string, number>>({});
     const variantCounter = React.useRef<Record<string, number>>({});
     const groupVariantCounter = React.useRef<Record<string, number>>({});
@@ -72,8 +104,11 @@ export const SimulationStudio: React.FC = () => {
     const groupIdsRef = React.useRef<string[]>([]);
     const metricIdsRef = React.useRef<string[]>([]);
     const simulationKeyRef = React.useRef<string | null>(null);
-    const [nodes, setNodes] = React.useState<FlowNode[]>([]);
-    const [edges, setEdges] = React.useState<FlowEdge[]>([]);
+    const exhaustedGroupsRef = React.useRef<Set<string>>(new Set());
+    const experimentGroupPairsRef = React.useRef<ExperimentGroupPair[]>([]);
+    const groupCapacityRef = React.useRef<Record<string, number>>({});
+    const [nodes, setNodes] = React.useState<FlowNode[]>(() => readPersistedSimulation().nodes ?? []);
+    const [edges, setEdges] = React.useState<FlowEdge[]>(() => readPersistedSimulation().edges ?? []);
     const [pendingFrom, setPendingFrom] = React.useState<string | null>(null);
     const [hoverTarget, setHoverTarget] = React.useState<string | null>(null);
     const pendingFromRef = React.useRef<string | null>(null);
@@ -85,12 +120,12 @@ export const SimulationStudio: React.FC = () => {
     const panningRef = React.useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
     const reconnectRef = React.useRef<FlowEdge | null>(null);
     const canvasRef = React.useRef<HTMLDivElement | null>(null);
-    const [zoom, setZoom] = React.useState(1);
-    const zoomRef = React.useRef(1);
-    const [pan, setPan] = React.useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = React.useState(() => readPersistedSimulation().zoom ?? 1);
+    const zoomRef = React.useRef(zoom);
+    const [pan, setPan] = React.useState(() => readPersistedSimulation().pan ?? { x: 0, y: 0 });
     const panRef = React.useRef(pan);
-    const [rangeStart, setRangeStart] = React.useState('');
-    const [rangeEnd, setRangeEnd] = React.useState('');
+    const [rangeStart, setRangeStart] = React.useState(() => readPersistedSimulation().rangeStart ?? '');
+    const [rangeEnd, setRangeEnd] = React.useState(() => readPersistedSimulation().rangeEnd ?? '');
     const [pickerOpen, setPickerOpen] = React.useState<'start' | 'end' | null>(null);
     const [pickerMonth, setPickerMonth] = React.useState(() => new Date());
     const [pickerPos, setPickerPos] = React.useState<{ top: number; left: number } | null>(null);
@@ -101,14 +136,14 @@ export const SimulationStudio: React.FC = () => {
     const startRef = React.useRef<HTMLButtonElement | null>(null);
     const endRef = React.useRef<HTMLButtonElement | null>(null);
 
-    const experimentNode = nodes.find((node) => node.kind === 'experiment' && node.data?.experimentId);
+    const experimentNodes = nodes.filter((node) => node.kind === 'experiment' && node.data?.experimentId);
     const metricNodes = nodes.filter((node) => node.kind === 'metric');
-    const groupNodes = nodes.filter((node) => node.kind === 'user-group' && node.data?.groupId);
     const hypothesisNodes = nodes.filter((node) => node.kind === 'hypothesis');
     const startNode = nodes.find((node) => node.kind === 'trigger-start');
     const runNode = nodes.find((node) => node.kind === 'trigger-run');
 
-    const selectedExperiment = experiments.find((exp) => exp.id === experimentNode?.data?.experimentId) || null;
+    // Keep selectedExperiment pointing at first experiment for backward-compat (analysis query, SimulationDetails)
+    const selectedExperiment = experiments.find((exp) => exp.id === experimentNodes[0]?.data?.experimentId) || null;
     const selectedGroupIds = nodes
         .filter((node) => node.kind === 'user-group' && node.data?.groupId)
         .map((node) => node.data!.groupId!) as string[];
@@ -129,6 +164,7 @@ export const SimulationStudio: React.FC = () => {
             const last = simulationSeries[simulationSeries.length - 1];
             return Object.entries(last).reduce((sum, [key, value]) => {
                 if (key === 'time' || key === 'ts') return sum;
+                if (key.endsWith('::assign') || key.endsWith('::conv')) return sum;
                 return typeof value === 'number' ? sum + value : sum;
             }, 0);
         }
@@ -255,6 +291,40 @@ export const SimulationStudio: React.FC = () => {
             }
         };
     }, []);
+
+    // Restore simulation counters from localStorage on mount (enables clean resume after refresh)
+    React.useEffect(() => {
+        const p = readPersistedSimulation();
+        if (p.eventCounter) eventCounter.current = p.eventCounter;
+        if (p.groupVariantCounter) groupVariantCounter.current = p.groupVariantCounter;
+        if (p.assignmentCounter) assignmentCounter.current = p.assignmentCounter;
+        if (p.conversionCounter) conversionCounter.current = p.conversionCounter;
+        if (p.groupRateRef) groupRateRef.current = p.groupRateRef;
+    }, []);
+
+    // Persist simulation state to localStorage whenever relevant state changes
+    React.useEffect(() => {
+        const toSave: SimulationPersistedState = {
+            nodes,
+            edges,
+            simulationSeries: simulationSeries.slice(-500), // cap to avoid quota issues
+            zoom,
+            pan,
+            rangeStart,
+            rangeEnd,
+            wasPaused: isSimulating || isPaused,
+            eventCounter: eventCounter.current,
+            groupVariantCounter: groupVariantCounter.current,
+            assignmentCounter: assignmentCounter.current,
+            conversionCounter: conversionCounter.current,
+            groupRateRef: groupRateRef.current,
+        };
+        try {
+            window.localStorage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(toSave));
+        } catch {
+            // localStorage quota exceeded — silently ignore
+        }
+    }, [nodes, edges, simulationSeries, zoom, pan, rangeStart, rangeEnd, isSimulating, isPaused]);
 
     React.useEffect(() => {
         pendingFromRef.current = pendingFrom;
@@ -630,99 +700,120 @@ export const SimulationStudio: React.FC = () => {
         setPendingFrom(null);
     };
 
-    const connectedGroupIds = edges
-        .filter((edge) => {
-            const from = getNodeById(edge.from);
-            const to = getNodeById(edge.to);
-            if (!from || !to || from.kind !== 'experiment' || to.kind !== 'user-group') return false;
-            if (experimentNode && from.id !== experimentNode.id) return false;
-            return true;
-        })
-        .map((edge) => getNodeById(edge.to)?.data?.groupId)
-        .filter(Boolean) as string[];
+    const experimentGroupPairs = React.useMemo((): ExperimentGroupPair[] => {
+        const pairs: ExperimentGroupPair[] = [];
+        for (const expNode of experimentNodes) {
+            const expId = expNode.data?.experimentId;
+            const experiment = experiments.find((e) => e.id === expId);
+            if (!expId || !experiment) continue;
+            const groupNodeIds = edges
+                .filter((e) => e.from === expNode.id)
+                .map((e) => getNodeById(e.to))
+                .filter((n) => n?.kind === 'user-group' && n.data?.groupId && reachableToRun.has(n.id) && reachableFromStart.has(n.id))
+                .map((n) => n!.id);
 
-    const connectedMetricIds = edges
-        .filter((edge) => {
-            const from = getNodeById(edge.from);
-            const to = getNodeById(edge.to);
-            return from?.kind === 'metric' && to?.kind === 'trigger-run';
-        })
-        .map((edge) => edge.from);
+            for (const groupNodeId of groupNodeIds) {
+                const groupNode = getNodeById(groupNodeId)!;
+                const groupId = groupNode.data!.groupId!;
+                const userGroup = userGroups.find((g) => g.id === groupId);
+                if (!userGroup) continue;
+                const metricNodeIds = edges
+                    .filter((e) => e.from === groupNodeId)
+                    .map((e) => getNodeById(e.to))
+                    .filter((n) => n?.kind === 'metric' && reachableToRun.has(n.id))
+                    .map((n) => n!.id)
+                    .filter((id, idx, arr) => arr.indexOf(id) === idx); // deduplicate
+                pairs.push({
+                    experimentNodeId: expNode.id,
+                    experimentId: expId,
+                    experiment,
+                    groupNodeId,
+                    groupId,
+                    groupName: userGroup.name,
+                    groupSize: userGroup.size ?? 0,
+                    metricNodeIds,
+                });
+            }
+        }
+        return pairs;
+    }, [experimentNodes, experiments, edges, userGroups, reachableToRun, reachableFromStart]);
+
+    const fullyConnectedGroupIds = experimentGroupPairs.map((p) => p.groupId);
+    const connectedMetricIds = [...new Set(experimentGroupPairs.flatMap((p) => p.metricNodeIds))];
+    const hasMultipleExperiments = experimentNodes.length > 1;
 
     React.useEffect(() => {
         metricIdsRef.current = connectedMetricIds;
     }, [connectedMetricIds]);
 
-    const connectedGroupNodeIds = groupNodes
-        .filter((node) => connectedGroupIds.includes(node.data!.groupId!))
-        .map((node) => node.id);
-    const fullyConnectedGroupIds = connectedGroupNodeIds
-        .filter((nodeId) => reachableToRun.has(nodeId))
-        .map((nodeId) => getNodeById(nodeId)?.data?.groupId)
-        .filter(Boolean) as string[];
     const connectedMetricIdsKey = React.useMemo(
         () => connectedMetricIds.join(','),
         [connectedMetricIds],
     );
-    const connectedGroups = userGroups.filter((group) => fullyConnectedGroupIds.includes(group.id));
 
-    const metricAssignKey = React.useCallback((metricId: string, variant: string) => `${metricId}::${variant}::assign`, []);
-    const metricConvKey = React.useCallback((metricId: string, variant: string) => `${metricId}::${variant}::conv`, []);
+    const metricAssignKey = React.useCallback(
+        (metricId: string, groupId: string, variant: string) =>
+            `${metricId}::${groupId}::${variant}::assign`, []);
+    const metricConvKey = React.useCallback(
+        (metricId: string, groupId: string, variant: string) =>
+            `${metricId}::${groupId}::${variant}::conv`, []);
 
     const metricsSummary = React.useMemo(() => {
-        if (!selectedExperiment) return [];
-        const variants = selectedExperiment.variants.map((variant) => variant.name);
-        if (variants.length < 2) return [];
-        const control = variants[0];
+        if (experimentGroupPairs.length === 0) return [];
         const latest = filteredSeries[filteredSeries.length - 1];
         if (!latest) return [];
+        const rows: Array<{
+            id: string; label: string; groupName: string; experimentName: string;
+            baseline: { rate: number; assign: number; conv: number };
+            variation: { rate: number; assign: number; conv: number };
+            lift: number; chanceToWin: number; pValue: number;
+        }> = [];
 
-        return metricNodes
-            .filter((node) => connectedMetricIds.includes(node.id))
-            .map((node) => {
-                const metricId = node.id;
-                const label = node.data?.metric || node.label;
-
+        for (const pair of experimentGroupPairs) {
+            const { groupId, groupName, experiment } = pair;
+            const variants = experiment.variants.map((v) => v.name);
+            if (variants.length < 2) continue;
+            const control = variants[0];
+            for (const metricId of pair.metricNodeIds) {
+                const metricNode = metricNodes.find((n) => n.id === metricId);
+                const label = metricNode?.data?.metric || metricNode?.label || metricId;
                 const getRateData = (variant: string) => {
-                    const assign = Number(latest[metricAssignKey(metricId, variant)] ?? 0);
-                    const conv = Number(latest[metricConvKey(metricId, variant)] ?? 0);
-                    const rate = assign > 0 ? conv / assign : 0;
-                    return { assign, conv, rate };
+                    const assign = Number(latest[metricAssignKey(metricId, groupId, variant)] ?? 0);
+                    const conv = Number(latest[metricConvKey(metricId, groupId, variant)] ?? 0);
+                    return { assign, conv, rate: assign > 0 ? conv / assign : 0 };
                 };
-
                 const base = getRateData(control);
                 const variation = getRateData(variants[1]);
                 const lift = base.rate > 0 ? (variation.rate - base.rate) / base.rate : 0;
-
                 const p = Math.max(1e-9, (base.conv + variation.conv) / Math.max(1, base.assign + variation.assign));
                 const se = Math.sqrt(p * (1 - p) * (1 / Math.max(1, base.assign) + 1 / Math.max(1, variation.assign)));
                 const z = se > 0 ? (variation.rate - base.rate) / se : 0;
-                const chance = normalCdf(z);
-                const pValue = 2 * (1 - normalCdf(Math.abs(z)));
-
-                return {
-                    id: metricId,
+                rows.push({
+                    id: `${metricId}::${groupId}`,
                     label,
-                    baseline: { rate: base.rate, assign: base.assign, conv: base.conv },
-                    variation: { rate: variation.rate, assign: variation.assign, conv: variation.conv },
+                    groupName,
+                    experimentName: experiment.name,
+                    baseline: base,
+                    variation,
                     lift,
-                    chanceToWin: chance,
-                    pValue,
-                };
-            });
-    }, [connectedMetricIds, filteredSeries, metricAssignKey, metricConvKey, metricNodes, selectedExperiment]);
+                    chanceToWin: normalCdf(z),
+                    pValue: 2 * (1 - normalCdf(Math.abs(z))),
+                });
+            }
+        }
+        return rows;
+    }, [experimentGroupPairs, filteredSeries, metricAssignKey, metricConvKey, metricNodes]);
 
     const startSatisfied = !startNode || hasOutgoing(startNode.id);
     const canAutoStart =
         selectedExperiment?.status === 'draft' || selectedExperiment?.status === 'paused';
-    const canSimulate =
-        !!selectedExperiment && (selectedExperiment.status === 'running' || canAutoStart);
     const startToRunConnected =
         !!startNode && runIds.length > 0 && runIds.some((runId) => hasPath(startNode.id, runId));
     const isFlowReady =
-        !!selectedExperiment &&
-        canSimulate &&
-        fullyConnectedGroupIds.length > 0 &&
+        experimentGroupPairs.length > 0 &&
+        experimentGroupPairs.every(
+            (p) => p.experiment.status === 'running' || p.experiment.status === 'draft' || p.experiment.status === 'paused'
+        ) &&
         connectedMetricIds.length > 0 &&
         !!runNode &&
         startSatisfied &&
@@ -730,19 +821,7 @@ export const SimulationStudio: React.FC = () => {
         startToRunConnected;
 
     const startSimulation = React.useCallback(async (reset = true) => {
-        if (!selectedExperiment || !isFlowReady) return;
-
-        if (selectedExperiment.status === 'stopped') {
-            showError(24, 24, 'Cannot start a stopped experiment. Duplicate or create a new one.');
-            return;
-        }
-
-        if (canAutoStart) {
-            await experimentApi.start(selectedExperiment.id);
-        }
-
-        const groupIds = groupIdsRef.current;
-        if (groupIds.length === 0) return;
+        if (!isFlowReady) return;
 
         if (simulationRef.current && reset) {
             window.clearInterval(simulationRef.current);
@@ -761,106 +840,107 @@ export const SimulationStudio: React.FC = () => {
             setIsSimulating(true);
             setIsPaused(false);
         }
-        currentExperimentIdRef.current = selectedExperiment.id;
-        const variants = selectedExperiment.variants.map((variant) => variant.name);
-        const metricName = selectedExperiment.primary_metric || 'conversion';
+
+        currentExperimentIdRef.current = experimentGroupPairs.map((p) => p.experimentId).sort().join(',');
+        for (const pair of experimentGroupPairs) {
+            groupCapacityRef.current[pair.groupId] = pair.groupSize;
+        }
+        exhaustedGroupsRef.current = new Set();
+        experimentGroupPairsRef.current = experimentGroupPairs;
+
+        if (canAutoStart) {
+            await Promise.all(
+                experimentGroupPairs
+                    .filter((p) => p.experiment.status === 'draft' || p.experiment.status === 'paused')
+                    .map((p) => experimentApi.start(p.experimentId))
+            );
+        }
+
+        const groupIds = groupIdsRef.current;
+        if (groupIds.length === 0) return;
 
         simulationRef.current = window.setInterval(() => {
             const run = async () => {
                 try {
                     const now = new Date();
                     const timeLabel = now.toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
-                    const metricIds = metricIdsRef.current;
-                    const activeGroupIds = groupIdsRef.current;
 
-                    for (const groupId of activeGroupIds) {
-                        if (!groupRateRef.current[groupId]) {
-                            groupRateRef.current[groupId] = 0.6 + Math.random() * 1.4;
-                        }
+                    const activePairs = experimentGroupPairsRef.current;
+                    for (const pair of activePairs) {
+                        const { groupId, experimentId, experiment, metricNodeIds } = pair;
+                        if (!groupRateRef.current[groupId]) groupRateRef.current[groupId] = 0.6 + Math.random() * 1.4;
+                        const capacity = groupCapacityRef.current[groupId] ?? 0;
+                        const processed = eventCounter.current[groupId] ?? 0;
+                        if (capacity > 0 && processed >= capacity) { exhaustedGroupsRef.current.add(groupId); continue; }
                         const rate = groupRateRef.current[groupId];
-                        const batchSize = Math.max(1, Math.round(rate * (0.7 + Math.random() * 0.8)));
-                        for (let i = 0; i < batchSize; i += 1) {
+                        const rawBatch = Math.max(1, Math.round(rate * (0.7 + Math.random() * 0.8)));
+                        const remaining = capacity > 0 ? capacity - processed : Infinity;
+                        const batchSize = remaining === Infinity ? rawBatch : Math.min(rawBatch, remaining);
+                        const variants = experiment.variants.map((v) => v.name);
+                        const metricName = experiment.primary_metric || 'conversion';
+                        for (let i = 0; i < batchSize; i++) {
                             const userId = `flow_user_${Math.floor(Math.random() * 999999)}`;
                             const variant = variants[Math.floor(Math.random() * variants.length)];
-                            try {
-                                await userGroupApi.assign({
-                                    user_id: userId,
-                                    experiment_id: selectedExperiment.id,
-                                    group_id: groupId,
-                                });
-                            } catch (error) {
-                                console.warn('Flow simulation assign failed', error);
-                            }
-
+                            try { await userGroupApi.assign({ user_id: userId, experiment_id: experimentId, group_id: groupId }); }
+                            catch (error) { console.warn('Flow simulation assign failed', error); }
                             eventCounter.current[groupId] = (eventCounter.current[groupId] || 0) + 1;
                             const gvKey = getGroupVariantKey(groupId, variant);
                             groupVariantCounter.current[gvKey] = (groupVariantCounter.current[gvKey] || 0) + 1;
-
                             const baselineRate = variant.toLowerCase().includes('control') ? 0.1 : 0.12;
                             const didConvert = Math.random() < baselineRate;
-
-                            const globalAssignKey = metricAssignKey('global', variant);
-                            assignmentCounter.current[globalAssignKey] =
-                                (assignmentCounter.current[globalAssignKey] || 0) + 1;
-                            if (didConvert) {
-                                const globalConvKey = metricConvKey('global', variant);
-                                conversionCounter.current[globalConvKey] =
-                                    (conversionCounter.current[globalConvKey] || 0) + 1;
-                            }
-
-                            metricIds.forEach((metricId: string) => {
-                                const assignKey = metricAssignKey(metricId, variant);
+                            metricNodeIds.forEach((metricId: string) => {
+                                const assignKey = metricAssignKey(metricId, groupId, variant);
                                 assignmentCounter.current[assignKey] = (assignmentCounter.current[assignKey] || 0) + 1;
-                                const metricRate = baselineRate * (1 + 0.1 * Math.random());
-                                if (Math.random() < metricRate) {
-                                    const convKey = metricConvKey(metricId, variant);
-                                    conversionCounter.current[convKey] =
-                                        (conversionCounter.current[convKey] || 0) + 1;
+                                if (Math.random() < baselineRate * (1 + 0.1 * Math.random())) {
+                                    const convKey = metricConvKey(metricId, groupId, variant);
+                                    conversionCounter.current[convKey] = (conversionCounter.current[convKey] || 0) + 1;
                                 }
                             });
-
                             if (didConvert) {
-                                try {
-                                    await eventApi.ingest({
-                                        experiment_id: selectedExperiment.id,
-                                        user_id: userId,
-                                        variant,
-                                        metric_name: metricName,
-                                        metric_value: 1.0,
-                                        attributes: undefined,
-                                    });
-                                } catch (error) {
-                                    console.warn('Flow simulation ingest failed', error);
-                                }
+                                try { await eventApi.ingest({ experiment_id: experimentId, user_id: userId, variant, metric_name: metricName, metric_value: 1.0, attributes: undefined }); }
+                                catch (error) { console.warn('Flow simulation ingest failed', error); }
                             }
                         }
                     }
 
+                    // Auto-stop when all capacity-bounded groups are exhausted
+                    const allDone = activePairs.length > 0 && activePairs.every((p) => {
+                        const cap = groupCapacityRef.current[p.groupId] ?? 0;
+                        return cap > 0 && (eventCounter.current[p.groupId] ?? 0) >= cap;
+                    });
+                    if (allDone) {
+                        window.clearInterval(simulationRef.current!);
+                        simulationRef.current = null;
+                        setIsSimulating(false);
+                        setIsPaused(false);
+                    }
+
                     setSimulationSeries((prev) => {
                         const last = prev[prev.length - 1] || {};
-                        const nextPoint: { time: string; ts: number;[key: string]: string | number } = {
+                        const nextPoint: { time: string; ts: number; [key: string]: string | number } = {
                             time: timeLabel,
                             ts: now.getTime(),
                         };
 
-                        for (const groupId of activeGroupIds) {
+                        for (const pair of activePairs) {
+                            const { groupId, experiment } = pair;
+                            const variants = experiment.variants.map((v) => v.name);
                             for (const variant of variants) {
                                 const key = getGroupVariantKey(groupId, variant);
                                 const lastValue = typeof last[key] === 'number' ? (last[key] as number) : 0;
                                 nextPoint[key] = groupVariantCounter.current[key] ?? lastValue;
                             }
-                        }
-
-                        metricIds.forEach((metricId: string) => {
-                            for (const variant of variants) {
-                                const assignKey = metricAssignKey(metricId, variant);
-                                const convKey = metricConvKey(metricId, variant);
-                                const lastAssign = typeof last[assignKey] === 'number' ? (last[assignKey] as number) : 0;
-                                const lastConv = typeof last[convKey] === 'number' ? (last[convKey] as number) : 0;
-                                nextPoint[assignKey] = assignmentCounter.current[assignKey] ?? lastAssign;
-                                nextPoint[convKey] = conversionCounter.current[convKey] ?? lastConv;
+                            for (const metricId of pair.metricNodeIds) {
+                                for (const variant of variants) {
+                                    const assignKey = metricAssignKey(metricId, groupId, variant);
+                                    const convKey = metricConvKey(metricId, groupId, variant);
+                                    const lastAssign = typeof last[assignKey] === 'number' ? (last[assignKey] as number) : 0;
+                                    const lastConv = typeof last[convKey] === 'number' ? (last[convKey] as number) : 0;
+                                    nextPoint[assignKey] = assignmentCounter.current[assignKey] ?? lastAssign;
+                                    nextPoint[convKey] = conversionCounter.current[convKey] ?? lastConv;
+                                }
                             }
-                        });
+                        }
 
                         return [...prev, nextPoint];
                     });
@@ -870,7 +950,7 @@ export const SimulationStudio: React.FC = () => {
             };
             void run();
         }, 800);
-    }, [canAutoStart, isFlowReady, selectedExperiment, showError]);
+    }, [canAutoStart, isFlowReady, experimentGroupPairs, showError]);
 
     const stopSimulation = () => {
         if (simulationRef.current) {
@@ -893,18 +973,20 @@ export const SimulationStudio: React.FC = () => {
 
     React.useEffect(() => {
         groupIdsRef.current = fullyConnectedGroupIds;
-        if (flowConnected && isFlowReady && selectedExperiment) {
+        experimentGroupPairsRef.current = experimentGroupPairs;
+        if (flowConnected && isFlowReady) {
             if (isPaused) return;
             if (!simulationRef.current) {
-                simulationKeyRef.current = selectedExperiment.id;
+                const newKey = experimentGroupPairs.map((p) => p.experimentId).sort().join(',');
+                simulationKeyRef.current = newKey;
                 void startSimulation(true);
                 return;
             }
-            if (currentExperimentIdRef.current && currentExperimentIdRef.current !== selectedExperiment.id) {
+            const newKey = experimentGroupPairs.map((p) => p.experimentId).sort().join(',');
+            if (currentExperimentIdRef.current && currentExperimentIdRef.current !== newKey) {
                 stopSimulation();
-                simulationKeyRef.current = selectedExperiment.id;
+                simulationKeyRef.current = newKey;
                 void startSimulation(true);
-                return;
             }
             return;
         }
@@ -917,32 +999,31 @@ export const SimulationStudio: React.FC = () => {
         isFlowReady,
         isPaused,
         isSimulating,
-        selectedExperiment,
-        fullyConnectedGroupIds,
+        experimentGroupPairs,
         connectedMetricIdsKey,
         startSimulation,
     ]);
 
     React.useEffect(() => {
-        if (!isSimulating || !selectedExperiment) return;
-        const variants = selectedExperiment.variants.map((variant) => variant.name);
+        if (!isSimulating) return;
         const last = simulationSeries[simulationSeries.length - 1] || {};
-        fullyConnectedGroupIds.forEach((groupId) => {
+        for (const pair of experimentGroupPairs) {
+            const { groupId, experiment } = pair;
             if (!groupRateRef.current[groupId]) {
                 groupRateRef.current[groupId] = 0.6 + Math.random() * 1.4;
             }
             if (!eventCounter.current[groupId]) {
                 eventCounter.current[groupId] = 0;
             }
-            variants.forEach((variant) => {
-                const key = getGroupVariantKey(groupId, variant);
+            experiment.variants.forEach((v) => {
+                const key = getGroupVariantKey(groupId, v.name);
                 if (groupVariantCounter.current[key] == null) {
                     groupVariantCounter.current[key] =
                         typeof last[key] === 'number' ? (last[key] as number) : 0;
                 }
             });
-        });
-    }, [isSimulating, selectedExperiment, fullyConnectedGroupIds, simulationSeries]);
+        }
+    }, [isSimulating, experimentGroupPairs, simulationSeries]);
 
     const autoLayout = () => {
         setNodes((prev) =>
@@ -1264,7 +1345,7 @@ export const SimulationStudio: React.FC = () => {
                                                                 onMouseDown={(event) => event.stopPropagation()}
                                                                 onClick={(event) => {
                                                                     event.stopPropagation();
-                                                                    if (!selectedExperiment || !isFlowReady) return;
+                                                                    if (!isFlowReady) return;
                                                                     if (isSimulating) {
                                                                         pauseSimulation();
                                                                     } else {
@@ -1353,8 +1434,15 @@ export const SimulationStudio: React.FC = () => {
                                     hours={hours}
                                     minutes={minutes}
                                     applyPickerValue={(value) => applyPickerValue(value)}
+                                    experimentGroupPairs={experimentGroupPairs.map((pair): ExperimentGroupPairForOutput => ({
+                                        experimentId: pair.experimentId,
+                                        experimentName: pair.experiment.name,
+                                        groupId: pair.groupId,
+                                        groupName: pair.groupName,
+                                        variants: pair.experiment.variants,
+                                    }))}
+                                    hasMultipleExperiments={hasMultipleExperiments}
                                     selectedExperiment={selectedExperiment}
-                                    connectedGroups={connectedGroups}
                                     metricsSummary={metricsSummary}
                                     isSimulating={isSimulating}
                                     isPaused={isPaused}
