@@ -109,7 +109,7 @@ impl CupedService {
     ) -> Result<Vec<CupedAdjustedResult>> {
         let config = self.get_config(experiment_id).await.map_err(|_| {
             anyhow!(
-                "CUPED is not configured for experiment {}. \
+                "CUPED is not configured for experiment {}. \n
                  POST to /api/experiments/{}/cuped/config first.",
                 experiment_id,
                 experiment_id

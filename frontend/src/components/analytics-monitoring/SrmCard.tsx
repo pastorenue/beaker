@@ -22,11 +22,14 @@ type SrmCardProps = {
 };
 
 export const SrmCard: React.FC<SrmCardProps> = ({ variants, summary, tooltipStyles }) => {
+    const isSrm = summary?.p_value !== undefined && summary.p_value < 0.05;
     return (
         <div className="card">
             <div className="flex items-center justify-between">
                 <h3>Sample Ratio Mismatch (SRM)</h3>
-                <span className="badge-danger">1 active alert</span>
+                <span className={isSrm ? 'badge-danger' : 'badge-success'}>
+                    {isSrm ? 'SRM detected' : 'No SRM'}
+                </span>
             </div>
             <div className="mt-4 h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -51,18 +54,18 @@ export const SrmCard: React.FC<SrmCardProps> = ({ variants, summary, tooltipStyl
                 </ResponsiveContainer>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="insights-tile rounded-lg border border-slate-800/70 bg-slate-950/40 px-3 py-2">
+                <div className="insights-tile rounded-lg bg-slate-950/40 px-3 py-2">
                     <p className="text-slate-400">p-value</p>
                     <p className="text-lg font-semibold text-rose-300">{summary?.p_value?.toFixed(3) ?? '—'}</p>
                 </div>
-                <div className="insights-tile rounded-lg border border-slate-800/70 bg-slate-950/40 px-3 py-2">
+                <div className="insights-tile rounded-lg bg-slate-950/40 px-3 py-2">
                     <p className="text-slate-400">Allocation drift</p>
                     <p className="text-lg font-semibold text-amber-200">
                         {summary ? `${summary.allocation_drift.toFixed(2)}%` : '—'}
                     </p>
                 </div>
             </div>
-            <div className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/40 p-3 text-sm text-slate-300">
+            <div className="mt-4 rounded-xl bg-slate-950/40 p-3 text-sm text-slate-300">
                 <span className="text-xs text-slate-400">AI Note</span>
                 <p className="mt-2">
                     {summary?.p_value !== undefined && summary.p_value < 0.05

@@ -14,14 +14,17 @@ import {
 type GuardrailHealthChartProps = {
     data: Array<{ day: string; latency: number; errorRate: number; crashRate: number }>;
     tooltipStyles: React.CSSProperties;
+    breaches: number;
 };
 
-export const GuardrailHealthChart: React.FC<GuardrailHealthChartProps> = ({ data, tooltipStyles }) => {
+export const GuardrailHealthChart: React.FC<GuardrailHealthChartProps> = ({ data, tooltipStyles, breaches }) => {
     return (
         <div className="card">
             <div className="flex items-center justify-between">
                 <h3>Guardrail Health</h3>
-                <span className="badge-warning">2 breaches</span>
+                <span className={breaches > 0 ? 'badge-warning' : 'badge-success'}>
+                    {breaches} {breaches === 1 ? 'breach' : 'breaches'}
+                </span>
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">

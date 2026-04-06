@@ -52,16 +52,11 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold leading-tight text-slate-50">{experiment.name}</h2>
-                        <StatusBadge status={experiment.status} />
+                        <h2 className="text-2xl font-semibold leading-tight text-slate-50">{experiment.name}</h2>
                         {experiment.feature_flag_id && (
                             <span className="badge-info">Feature Flag Linked</span>
                         )}
-                        <span className="badge-muted">Primary: {experiment.primary_metric}</span>
                     </div>
-                    {experiment.description && (
-                        <p className="text-sm text-slate-400 max-w-3xl">{experiment.description}</p>
-                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <ControlButtons
@@ -80,7 +75,7 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
 
             <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
                 <HypothesisCard experiment={experiment} />
-                <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-3">
+                <div className="rounded-xl bg-slate-950/40 p-3">
                     <div className="mb-2 flex items-center justify-between">
                         <p className="text-xs font-semibold text-slate-500">Traffic</p>
                         <span className="text-xs text-slate-400">{experiment.variants.length} variants</span>

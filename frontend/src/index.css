@@ -190,7 +190,7 @@
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full border border-slate-800/70 px-3 py-1 text-xs font-semibold capitalize;
+    @apply inline-flex items-center rounded-full border border-slate-800/70 px-2 py-0.5 text-xs font-semibold capitalize;
   }
 
   .badge-success {

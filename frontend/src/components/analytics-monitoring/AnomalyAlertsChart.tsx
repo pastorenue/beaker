@@ -16,11 +16,14 @@ type AnomalyAlertsChartProps = {
 };
 
 export const AnomalyAlertsChart: React.FC<AnomalyAlertsChartProps> = ({ data, tooltipStyles }) => {
+    const total = data.reduce((sum, d) => sum + d.critical + d.warning + d.info, 0);
     return (
         <div className="card">
             <div className="flex items-center justify-between">
                 <h3>Anomaly Alerts</h3>
-                <span className="badge-gray">Last 7 days</span>
+                <span className={total > 0 ? 'badge-warning' : 'badge-gray'}>
+                    {total} {total === 1 ? 'alert' : 'alerts'} · 7 days
+                </span>
             </div>
             <div className="mt-4 h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">

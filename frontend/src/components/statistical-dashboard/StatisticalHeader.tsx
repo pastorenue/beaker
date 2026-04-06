@@ -27,7 +27,7 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
     className,
 }) => {
     return (
-        <div className={`card ${className ?? ''}`}>
+        <div className={`border-t border-slate-800/50 pt-3 mt-1 ${className ?? ''}`}>
             <div className="flex items-center justify-between mb-2">
                 <h2 className="mb-0">{experiment.name}</h2>
                 {isPolling && (
@@ -90,7 +90,7 @@ export const StatisticalHeader: React.FC<StatisticalHeaderProps> = ({
             </div>
 
             {useCuped && cupedError && (
-                <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-200">
+                <div className="mt-3 rounded-lg border border-amber-500/20 bg-red-600/20 p-3 text-sm text-red-800">
                     ⚠️ CUPED Analysis Failed: {cupedError}. Showing standard results.
                 </div>
             )}

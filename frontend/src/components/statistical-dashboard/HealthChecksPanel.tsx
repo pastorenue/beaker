@@ -16,7 +16,7 @@ export const HealthChecksPanel: React.FC<HealthChecksPanelProps> = ({ checks, fo
                 {checks.map((check, idx) => (
                     <div
                         key={idx}
-                        className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/50 px-4 py-3"
+                        className="flex items-center justify-between rounded-xl bg-slate-950/50 px-4 py-3"
                     >
                         <div>
                             <p className="text-sm font-semibold text-slate-100">{check.metric_name}</p>

@@ -60,14 +60,14 @@ export function ExperimentRow({
               <span className="text-xs text-slate-400">
                 {startFormatted} → {endFormatted ?? "—"}
               </span>
-              <div className="mt-1 h-1 w-full rounded-full bg-slate-700">
+              <div className="mt-1 h-1.5 w-full rounded-full bg-slate-700">
                 {progress !== null ? (
                   <div
-                    className="h-1 rounded-full bg-gray-500"
-                    style={{ width: `${progress}%` }}
+                    className="h-1.5 rounded-full bg-cyan-500 transition-all"
+                    style={{ width: `${Math.max(progress, 2)}%` }}
                   />
                 ) : (
-                  <div className="h-1 w-full rounded-full bg-slate-600 opacity-40" />
+                  <div className="h-1.5 w-full rounded-full bg-slate-600 opacity-40" />
                 )}
               </div>
             </>

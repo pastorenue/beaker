@@ -32,11 +32,10 @@ struct DayMetricRow {
 }
 
 #[derive(clickhouse::Row, serde::Deserialize)]
-struct GuardrailRow {
+struct MetricDailyRow {
     day: u32,
-    latency: Option<f64>,
-    error_rate: Option<f64>,
-    crash_rate: Option<f64>,
+    metric_name: String,
+    value: f64,
 }
 
 #[derive(clickhouse::Row, serde::Deserialize)]
@@ -590,28 +589,50 @@ impl AnalyticsService {
         let start_ts = Utc
             .from_utc_datetime(&start.and_hms_opt(0, 0, 0).unwrap())
             .timestamp() as u32;
+
         let rows = self
             .db
             .client()
             .query(
                 "SELECT toUInt32(toStartOfDay(timestamp)) as day,
-                        avgIf(metric_value, metric_name = 'latency') as latency,
-                        avgIf(metric_value, metric_name = 'error_rate') as error_rate,
-                        avgIf(metric_value, metric_name = 'crash_rate') as crash_rate
+                        metric_name,
+                        avg(metric_value) as value
                  FROM metric_events
                  WHERE timestamp >= toDateTime(?)
-                 GROUP BY day
+                 GROUP BY day, metric_name
                  ORDER BY day",
             )
             .bind(start_ts)
-            .fetch_all::<GuardrailRow>()
+            .fetch_all::<MetricDailyRow>()
             .await
             .context("Failed to fetch guardrail health")?;
 
-        let mut map = std::collections::HashMap::new();
-        for row in rows {
-            map.insert(row.day, row);
+        // Bucket each metric into latency / error_rate / crash_rate by name pattern
+        let mut category_map: std::collections::HashMap<(u32, String), Vec<f64>> =
+            std::collections::HashMap::new();
+        for row in &rows {
+            let name = row.metric_name.to_lowercase();
+            let category = if name.contains("latency") || name.contains("timeout") || name.contains("response_time") {
+                "latency"
+            } else if name.contains("error") {
+                "error_rate"
+            } else if name.contains("crash") {
+                "crash_rate"
+            } else {
+                continue;
+            };
+            category_map
+                .entry((row.day, category.to_string()))
+                .or_default()
+                .push(row.value);
         }
+
+        let avg_for = |day_ts: u32, cat: &str| -> f64 {
+            category_map
+                .get(&(day_ts, cat.to_string()))
+                .map(|vals| vals.iter().sum::<f64>() / vals.len() as f64)
+                .unwrap_or(0.0)
+        };
 
         let mut points = Vec::new();
         for offset in 0..7 {
@@ -620,12 +641,11 @@ impl AnalyticsService {
                 .from_utc_datetime(&day.and_hms_opt(0, 0, 0).unwrap())
                 .timestamp() as u32;
             let label = day.format("%a").to_string();
-            let row = map.get(&ts);
             points.push(AnalyticsGuardrailPoint {
                 day: label,
-                latency: row.and_then(|r| r.latency).unwrap_or(0.0),
-                error_rate: row.and_then(|r| r.error_rate).unwrap_or(0.0),
-                crash_rate: row.and_then(|r| r.crash_rate).unwrap_or(0.0),
+                latency: avg_for(ts, "latency"),
+                error_rate: avg_for(ts, "error_rate"),
+                crash_rate: avg_for(ts, "crash_rate"),
             });
         }
 
@@ -868,6 +888,15 @@ impl AnalyticsService {
                 warning: row.map(|r| r.warning).unwrap_or(0),
                 info: row.map(|r| r.info).unwrap_or(0),
             });
+        }
+
+        // Merge active guardrail breaches into today's point so the chart
+        // reflects breaches even when no alerts have been manually ingested.
+        let (breaches, _) = self.evaluate_guardrails(now).await.unwrap_or((0, String::new()));
+        if breaches > 0 {
+            if let Some(today) = points.last_mut() {
+                today.critical = today.critical.saturating_add(breaches);
+            }
         }
 
         Ok(points)

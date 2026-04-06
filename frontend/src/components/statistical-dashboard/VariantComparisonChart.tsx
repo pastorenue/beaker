@@ -142,7 +142,7 @@ export const VariantComparisonChart: React.FC<VariantComparisonChartProps> = ({ 
                             const lift = row.effectSize * 100;
                             const positive = lift >= 0;
                             return (
-                                <tr key={row.name} className="border-t border-slate-800/70">
+                                <tr key={row.name}>
                                     <td className="px-3 py-3 font-semibold text-slate-100">{row.name}</td>
                                     <td className="px-3 py-3 text-slate-200">
                                         <div className="flex items-center gap-2">

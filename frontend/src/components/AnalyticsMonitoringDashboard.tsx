@@ -212,7 +212,7 @@ export const AnalyticsMonitoringDashboard: React.FC = () => {
             <div className="grid gap-6 lg:grid-cols-2">
                 <PrimaryMetricsChart data={data?.primary_metric_trend ?? []} tooltipStyles={tooltipStyles} />
 
-                <GuardrailHealthChart data={guardrailData} tooltipStyles={tooltipStyles} />
+                <GuardrailHealthChart data={guardrailData} tooltipStyles={tooltipStyles} breaches={data?.summary?.guardrail_breaches ?? 0} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

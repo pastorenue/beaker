@@ -47,7 +47,7 @@ export const MetricsInventoryTable: React.FC<MetricsInventoryTableProps> = ({
                             <span className="text-slate-300">{metric.category}</span>
                             <span className="text-slate-300">{formatSeconds(metric.freshness_seconds)}</span>
                             <span className="text-slate-300">{metric.owner}</span>
-                            <span className={statusBadge(metric.status)}>{metric.status}</span>
+                            <span className={`${statusBadge(metric.status)} w-fit`}>{metric.status}</span>
                         </div>
                     ))}
                 </div>
