@@ -1,10 +1,9 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { MetricsTable } from './MetricsTable';
+import type { ExperimentGroupPairForOutput } from './types';
 
-type Variant = { name: string };
-type Experiment = { id: string; status: string; variants: Variant[]; primary_metric?: string | null };
-type Group = { id: string; name: string };
+type Experiment = { id: string; status: string };
 
 type SimulationOutputProps = {
     simulationSeries: Array<{ time: string; ts: number; [key: string]: string | number }>;
@@ -29,10 +28,13 @@ type SimulationOutputProps = {
     minutes: number[];
     applyPickerValue: (value: Date) => void;
     selectedExperiment: Experiment | null;
-    connectedGroups: Group[];
+    experimentGroupPairs: ExperimentGroupPairForOutput[];
+    hasMultipleExperiments: boolean;
     metricsSummary: Array<{
         id: string;
         label: string;
+        groupName: string;
+        experimentName: string;
         baseline: { rate: number; assign: number; conv: number };
         variation: { rate: number; assign: number; conv: number };
         lift: number;
@@ -69,7 +71,8 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
     minutes,
     applyPickerValue,
     selectedExperiment,
-    connectedGroups,
+    experimentGroupPairs,
+    hasMultipleExperiments,
     metricsSummary,
     isSimulating,
     isPaused,
@@ -239,10 +242,10 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
             ) : (
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {connectedGroups.map((group) => (
-                            <div key={group.id} className="flow-surface rounded-xl border border-slate-800/70 bg-slate-950/70 p-3">
+                        {experimentGroupPairs.map((pair) => (
+                            <div key={`${pair.experimentId}-${pair.groupId}`} className="flow-surface rounded-xl border border-slate-800/70 bg-slate-950/70 p-3">
                                 <div className="mb-2 text-[0.65rem] font-semibold text-slate-400">
-                                    {group.name}
+                                    {hasMultipleExperiments ? `${pair.experimentName} / ${pair.groupName}` : pair.groupName}
                                 </div>
                                 <div className="h-40">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -259,18 +262,17 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                                                     fontSize: '11px',
                                                 }}
                                             />
-                                            {selectedExperiment?.variants?.map((variant, variantIdx) => (
+                                            {pair.variants.map((variant, variantIdx) => (
                                                 <Line
-                                                    key={`${group.id}-${variant.name}`}
+                                                    key={`${pair.groupId}-${variant.name}`}
                                                     type="monotone"
-                                                    dataKey={getGroupVariantKey(group.id, variant.name)}
+                                                    dataKey={getGroupVariantKey(pair.groupId, variant.name)}
                                                     stroke={variantIdx % 2 === 0 ? '#38bdf8' : '#34d399'}
                                                     strokeWidth={2}
                                                     name={variant.name}
                                                     dot={false}
                                                 />
-                                            )) ||
-                                                null}
+                                            ))}
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -280,7 +282,7 @@ export const SimulationOutput: React.FC<SimulationOutputProps> = ({
                     {isFlowReady && (isSimulating || isPaused) && metricsSummary.length > 0 && (
                         <div className="space-y-3">
                             <div className="text-[0.65rem] font-semibold text-slate-500">Metrics (live)</div>
-                            <MetricsTable rows={metricsSummary} />
+                            <MetricsTable rows={metricsSummary} hasMultipleExperiments={hasMultipleExperiments} />
                         </div>
                     )}
                 </div>
