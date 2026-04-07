@@ -26,7 +26,7 @@ const NODE_WIDTH = 176;
 const NODE_HEIGHT = 72;
 const HANDLE_CENTER_OFFSET = 10;
 
-const SIMULATION_STORAGE_KEY = 'expothesis-simulation-studio';
+const SIMULATION_STORAGE_KEY = 'beaker-simulation-studio';
 
 type SimulationPersistedState = {
     nodes: FlowNode[];

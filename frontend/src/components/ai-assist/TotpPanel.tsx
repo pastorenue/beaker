@@ -29,7 +29,7 @@ export const TotpPanel: React.FC<TotpPanelProps> = ({
                 <button
                     className="btn-secondary"
                     onClick={async () => {
-                        const userId = window.localStorage.getItem('expothesis-user-id');
+                        const userId = window.localStorage.getItem('beaker-user-id');
                         if (!userId) return;
                         const res = await authApi.setupTotp(userId);
                         onSecretChange(res.data.secret);
@@ -42,7 +42,7 @@ export const TotpPanel: React.FC<TotpPanelProps> = ({
                     <button
                         className="btn-primary"
                         onClick={async () => {
-                            const userId = window.localStorage.getItem('expothesis-user-id');
+                            const userId = window.localStorage.getItem('beaker-user-id');
                             if (!userId || !totpCode) return;
                             await authApi.verifyTotp(userId, totpCode);
                             onCodeChange('');

@@ -2,7 +2,7 @@ import { record } from 'rrweb';
 
 type EventPayload = Record<string, unknown>;
 
-export interface ExpothesisTrackerConfig {
+export interface BeakerTrackerConfig {
     endpoint?: string;
     userId?: string;
     sessionId?: string;
@@ -18,7 +18,7 @@ export interface ExpothesisTrackerConfig {
     replaySnapshotGraceMs?: number;
 }
 
-export class ExpothesisTracker {
+export class BeakerTracker {
     private endpoint: string;
     private userId?: string;
     private sessionId: string;
@@ -49,7 +49,7 @@ export class ExpothesisTracker {
     private replayFullSnapshotPromise?: Promise<void>;
     private replayFullSnapshotResolve?: () => void;
 
-    constructor(config: ExpothesisTrackerConfig = {}) {
+    constructor(config: BeakerTrackerConfig = {}) {
         this.endpoint = config.endpoint ?? '/api/track';
         this.userId = config.userId;
         this.sessionId = config.sessionId ?? crypto.randomUUID();
@@ -341,7 +341,7 @@ export class ExpothesisTracker {
     private async send(path: string, payload: EventPayload) {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (this.apiKey) {
-            headers['x-expothesis-key'] = this.apiKey;
+            headers['x-beaker-key'] = this.apiKey;
         }
         const isReplay = path === '/replay';
         const controller = isReplay ? new AbortController() : undefined;
@@ -360,16 +360,16 @@ export class ExpothesisTracker {
                 signal: controller?.signal,
             });
             if (!response.ok && path === '/replay') {
-                console.warn('Expothesis replay upload failed', response.status, response.statusText);
+                console.warn('Beaker replay upload failed', response.status, response.statusText);
             }
             return response.ok;
         } catch (error) {
             if (path === '/replay') {
                 const err = error as { name?: string };
                 if (err?.name === 'AbortError') {
-                    console.warn('Expothesis replay upload failed: timeout');
+                    console.warn('Beaker replay upload failed: timeout');
                 } else {
-                    console.warn('Expothesis replay upload failed: network error');
+                    console.warn('Beaker replay upload failed: network error');
                 }
             }
             return false;

@@ -76,7 +76,7 @@ async fn handle_mcp(
                     "tools": { "listChanged": false }
                 },
                 "serverInfo": {
-                    "name": "expothesis",
+                    "name": "beaker",
                     "version": "1.0.0"
                 }
             });

@@ -13,7 +13,7 @@ export function LandingHero() {
                     real-time analytics that feel like an operations command center.
                 </p>
                 <div className="landing-hero-actions">
-                    {window.localStorage.getItem('expothesis-token') ? (
+                    {window.localStorage.getItem('beaker-token') ? (
                         <Link to="/home" className="btn-primary">
                             Open Dashboard
                         </Link>

@@ -61,6 +61,10 @@
     @apply md:w-[96px] md:px-4;
   }
 
+  .sidebar-collapsed .sidebar-brand {
+    @apply justify-center;
+  }
+
   .sidebar-collapsed .sidebar-brand>div:last-child,
   .sidebar-collapsed .sidebar-pill,
   .sidebar-collapsed .panel,

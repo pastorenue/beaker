@@ -73,16 +73,16 @@ impl InviteService {
                 .config
                 .smtp_from
                 .clone()
-                .unwrap_or_else(|| "no-reply@expothesis.local".to_string());
+                .unwrap_or_else(|| "no-reply@beaker.local".to_string());
 
             let invite_link = format!("{}/register?invite={}", "http://localhost:3000", token);
 
             let email_message = Message::builder()
                 .from(from_addr.parse::<Mailbox>().context("Invalid SMTP_FROM")?)
                 .to(email.parse::<Mailbox>().context("Invalid recipient email")?)
-                .subject(format!("Invitation to join {} on Expothesis", org_name))
+                .subject(format!("Invitation to join {} on Beaker", org_name))
                 .body(format!(
-                    "You have been invited to join {} on Expothesis.\n\nClick the link below to accept the invitation and register:\n{}\n\nThis link expires in 7 days.",
+                    "You have been invited to join {} on Beaker.\n\nClick the link below to accept the invitation and register:\n{}\n\nThis link expires in 7 days.",
                     org_name, invite_link
                 ))?;
 

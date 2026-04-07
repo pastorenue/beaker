@@ -21,7 +21,7 @@ export interface FeatureFlagEvaluationResponse {
     flags: FeatureFlagEvaluation[];
 }
 
-export class ExpothesisFeatureFlags {
+export class BeakerFeatureFlags {
     private endpoint: string;
     private apiKey: string;
 
@@ -35,7 +35,7 @@ export class ExpothesisFeatureFlags {
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
-                'x-expothesis-key': this.apiKey,
+                'x-beaker-key': this.apiKey,
             },
             body: JSON.stringify({
                 user_id: request.userId,

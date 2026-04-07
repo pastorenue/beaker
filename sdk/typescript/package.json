@@ -1,7 +1,7 @@
 {
-    "name": "@expothesis/sdk",
+    "name": "@beaker/sdk",
     "version": "1.0.0",
-    "description": "Expothesis Typescript SDK",
+    "description": "Beaker Typescript SDK",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {

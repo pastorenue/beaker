@@ -18,7 +18,7 @@ export const UserSettings: React.FC = () => {
     const [activeSettingsTab, setActiveSettingsTab] = React.useState<'profile' | 'accounts' | 'security'>('profile');
     const [activeSdkTab, setActiveSdkTab] = React.useState<'tokens' | 'feature_flags' | 'integrations'>('tokens');
     const [activeLangTab, setActiveLangTab] = React.useState<'typescript' | 'python'>('typescript');
-    const userId = window.localStorage.getItem('expothesis-user-id') ?? '';
+    const userId = window.localStorage.getItem('beaker-user-id') ?? '';
     const { data, isLoading } = useQuery({
         queryKey: ['sdk-tokens', activeAccountId],
         queryFn: async () => {
@@ -158,7 +158,7 @@ export const UserSettings: React.FC = () => {
                             </div>
                             <div className="space-y-1">
                                 <label className="label">Email</label>
-                                <input className="input" defaultValue="admin@expothesis.local" />
+                                <input className="input" defaultValue="admin@beaker.local" />
                             </div>
                         </div>
                     )}
@@ -393,9 +393,9 @@ export const UserSettings: React.FC = () => {
                                 </button>
                             </div>
                             {activeLangTab === 'typescript' && (
-                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`import { ExpothesisFeatureFlags } from '@expothesis/sdk';
+                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`import { BeakerFeatureFlags } from '@beaker/sdk';
 
-const flags = new ExpothesisFeatureFlags({
+const flags = new BeakerFeatureFlags({
   endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
   apiKey: '${featureFlagsKey !== '—' ? featureFlagsKey : 'YOUR_FEATURE_FLAGS_KEY'}',
 });
@@ -411,7 +411,7 @@ const isNewNavEnabled = await flags.isEnabled('new-nav', {
 });`}</pre>
                             )}
                             {activeLangTab === 'python' && (
-                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`from expothesis import FeatureFlags
+                                <pre className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-4 text-xs text-slate-200 overflow-x-auto">{`from beaker import FeatureFlags
 
 flags = FeatureFlags(
     endpoint="http://localhost:8080/api/sdk/feature-flags/evaluate",

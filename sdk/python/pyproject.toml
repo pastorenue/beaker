@@ -3,11 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "expothesis-sdk"
+name = "beaker-sdk"
 version = "1.0.0"
-description = "Expothesis Python SDK for Tracking and Feature Flags"
+description = "Beaker Python SDK for Tracking and Feature Flags"
 authors = [
-    { name = "Expothesis", email = "hello@expothesis.com" }
+    { name = "Beaker", email = "hello@beaker.io" }
 ]
 requires-python = ">=3.8"
 dependencies = [
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://expothesis.com"
+Homepage = "https://beaker.io"
 
 [tool.hatch.build.targets.wheel]
-packages = ["expothesis"]
+packages = ["beaker"]

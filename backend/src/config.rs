@@ -54,7 +54,7 @@ impl Config {
             clickhouse_url: std::env::var("CLICKHOUSE_URL")
                 .unwrap_or_else(|_| "http://clickhouse:8123".to_string()),
             postgres_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                "postgres://expothesis:expothesis@postgres:5432/expothesis".to_string()
+                "postgres://beaker:beaker@postgres:5432/beaker".to_string()
             }),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
             tracking_api_key: std::env::var("TRACKING_API_KEY")

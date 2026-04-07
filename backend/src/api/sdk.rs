@@ -20,7 +20,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 
 async fn tokens(
     pool: web::Data<sqlx::PgPool>,
-    config: web::Data<Config>,
+    _config: web::Data<Config>,
     http: HttpRequest,
 ) -> impl Responder {
     let service = SdkTokenService::new(pool.get_ref().clone());
@@ -30,8 +30,8 @@ async fn tokens(
     match service
         .ensure_tokens(
             user.account_id,
-            config.tracking_api_key.clone(),
-            config.feature_flags_api_key.clone(),
+            None,
+            None,
         )
         .await
     {

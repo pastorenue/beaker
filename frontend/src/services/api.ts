@@ -75,8 +75,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem("expothesis-token");
-  const accountId = window.localStorage.getItem("expothesis-account-id");
+  const token = window.localStorage.getItem("beaker-token");
+  const accountId = window.localStorage.getItem("beaker-account-id");
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
@@ -93,11 +93,11 @@ api.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
     const requestUrl = error?.config?.url ?? "";
-    const token = window.localStorage.getItem("expothesis-token");
+    const token = window.localStorage.getItem("beaker-token");
     if (status === 401 && token) {
       if (!requestUrl.includes("/track/")) {
-        window.localStorage.removeItem("expothesis-token");
-        window.localStorage.removeItem("expothesis-user-id");
+        window.localStorage.removeItem("beaker-token");
+        window.localStorage.removeItem("beaker-user-id");
         if (window.location.pathname !== "/login") {
           window.location.assign("/login");
         }
@@ -110,10 +110,10 @@ api.interceptors.response.use(
 const getTrackingHeaders = () => {
   const envKey = import.meta.env.VITE_TRACKING_KEY as string | undefined;
   const storedKey =
-    window.localStorage.getItem("expothesis-tracking-key") ?? "";
-  const fallbackKey = "expothesis-demo-key";
-  const key = envKey || storedKey || fallbackKey;
-  return key ? { "x-expothesis-key": key } : undefined;
+    window.localStorage.getItem("beaker-tracking-key") ?? "";
+  const fallbackKey = "beaker-demo-key";
+  const key = storedKey || envKey || fallbackKey;
+  return key ? { "x-beaker-key": key } : undefined;
 };
 
 // Experiments

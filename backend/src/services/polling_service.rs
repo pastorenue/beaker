@@ -21,7 +21,7 @@ pub struct PollingService {
 
 impl PollingService {
     pub fn new(pg: PgPool, ch: ClickHouseClient, config: Config, notification_service: NotificationService) -> Self {
-        let db_with_auth = ch.with_database("expothesis");
+        let db_with_auth = ch.with_database("beaker");
         let experiment_service = ExperimentService::new(pg.clone(), db_with_auth);
         let ai_service = AiService::new(pg.clone(), config.clone());
         Self {

@@ -30,7 +30,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let config = Config::from_env();
-    info!("Starting Expothesis backend...");
+    info!("Starting Beaker backend...");
 
     // Connect to databases
     let pg_pool = connect_postgres(&config.postgres_url)
@@ -83,7 +83,7 @@ async fn main() -> std::io::Result<()> {
     }
 
     // Create services with database set
-    let db_with_auth = db_client.clone().with_database("expothesis");
+    let db_with_auth = db_client.clone().with_database("beaker");
     let experiment_service = web::Data::new(ExperimentService::new(
         pg_pool.clone(),
         db_with_auth.clone(),

@@ -142,7 +142,7 @@ There are endpoints excluded from auth middleware:
 
 - `/api/track/...` and `/api/sdk/feature-flags...`
 
-Those likely authenticate using header keys (`x-expothesis-key`).
+Those likely authenticate using header keys (`x-beaker-key`).
 
 Update those flows to additionally resolve an org:
 
@@ -169,7 +169,7 @@ If there’s no existing test harness, add minimal integration tests that spin u
 
 Add a small org state module:
 
-- Store `activeOrgId` in `localStorage` (e.g. `expothesis-org-id`).
+- Store `activeOrgId` in `localStorage` (e.g. `beaker-org-id`).
 - On login or initial load:
   - call `GET /api/organizations`
   - if no active org selected, choose the first org (or the one flagged `is_default` if you add it later)
@@ -178,7 +178,7 @@ Add a small org state module:
 
 In `frontend/src/services/api.ts` request interceptor:
 
-- Read `expothesis-org-id` from localStorage.
+- Read `beaker-org-id` from localStorage.
 - If present, set header `X-Org-Id`.
 
 This ensures **every** request is scoped.

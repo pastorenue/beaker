@@ -90,8 +90,7 @@ export const LoginPage: React.FC = () => {
             <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
                 <div className="lp-nav-inner justify-between">
                     <Link to="/" className="lp-logo">
-                        <span className="lp-logo-mark">Ex</span>
-                        <span className="lp-logo-text">Expothesis</span>
+                        <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '25px', width: 'auto' }} />
                     </Link>
                     <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>
@@ -100,7 +99,7 @@ export const LoginPage: React.FC = () => {
             <div className="w-full max-w-[420px] space-y-8 relative z-10 pt-16">
                 <div className="text-center">
                     <h2 className="text-4xl font-medium text-slate-900">
-                        {step === 'login' ? 'Sign in to Expothesis' : 'Verify your sign-in'}
+                        {step === 'login' ? 'Sign in to Beaker' : 'Verify your sign-in'}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
                         {step === 'login'
@@ -276,8 +275,7 @@ export const RegisterPage: React.FC = () => {
             <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
                 <div className="lp-nav-inner justify-between">
                     <Link to="/" className="lp-logo">
-                        <span className="lp-logo-mark">Ex</span>
-                        <span className="lp-logo-text">Expothesis</span>
+                        <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '20px', width: 'auto' }} />
                     </Link>
                     <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>
@@ -378,8 +376,7 @@ export const ForgotPasswordPage: React.FC = () => {
             <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
                 <div className="lp-nav-inner justify-between">
                     <Link to="/" className="lp-logo">
-                        <span className="lp-logo-mark">Ex</span>
-                        <span className="lp-logo-text">Expothesis</span>
+                        <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '20px', width: 'auto' }} />
                     </Link>
                     <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>
@@ -470,8 +467,7 @@ export const ResetPasswordPage: React.FC = () => {
             <header className="lp-nav lp-nav--scrolled absolute top-0 w-full" style={{ position: 'absolute' }}>
                 <div className="lp-nav-inner justify-between">
                     <Link to="/" className="lp-logo">
-                        <span className="lp-logo-mark">Ex</span>
-                        <span className="lp-logo-text">Expothesis</span>
+                        <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '20px', width: 'auto' }} />
                     </Link>
                     <Link to="/" className="text-sm font-medium text-slate-500 hover:text-slate-900">Back to home &rarr;</Link>
                 </div>

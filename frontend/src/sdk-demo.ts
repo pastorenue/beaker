@@ -1,5 +1,5 @@
 import './sdk-demo.css';
-import { ExpothesisTracker } from './sdk/expothesis';
+import { BeakerTracker } from './sdk/beaker';
 
 const endpointInput = document.querySelector<HTMLInputElement>('#endpoint');
 const apiKeyInput = document.querySelector<HTMLInputElement>('#apiKey');
@@ -13,7 +13,7 @@ const sessionIdEl = document.querySelector<HTMLDivElement>('#sessionId');
 const sessionStateEl = document.querySelector<HTMLDivElement>('#sessionState');
 const eventLogEl = document.querySelector<HTMLDivElement>('#eventLog');
 
-let tracker: ExpothesisTracker | null = null;
+let tracker: BeakerTracker | null = null;
 
 const logEvent = (message: string) => {
     if (!eventLogEl) return;
@@ -28,7 +28,7 @@ const updateStatus = (state: string, sessionId?: string) => {
 };
 
 const createTracker = () => {
-    tracker = new ExpothesisTracker({
+    tracker = new BeakerTracker({
         endpoint: endpointInput?.value || '/api/track',
         apiKey: apiKeyInput?.value || undefined,
         userId: userIdInput?.value || undefined,

@@ -11,13 +11,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [token, setToken] = useState<string | null>(window.localStorage.getItem('expothesis-token'));
-    const [userId, setUserId] = useState<string | null>(window.localStorage.getItem('expothesis-user-id'));
+    const [token, setToken] = useState<string | null>(window.localStorage.getItem('beaker-token'));
+    const [userId, setUserId] = useState<string | null>(window.localStorage.getItem('beaker-user-id'));
     const queryClient = useQueryClient();
 
     const login = (newToken: string, newUserId: string) => {
-        window.localStorage.setItem('expothesis-token', newToken);
-        window.localStorage.setItem('expothesis-user-id', newUserId);
+        window.localStorage.setItem('beaker-token', newToken);
+        window.localStorage.setItem('beaker-user-id', newUserId);
         setToken(newToken);
         setUserId(newUserId);
 
@@ -27,9 +27,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const logout = () => {
-        window.localStorage.removeItem('expothesis-token');
-        window.localStorage.removeItem('expothesis-user-id');
-        window.localStorage.removeItem('expothesis-account-id');
+        window.localStorage.removeItem('beaker-token');
+        window.localStorage.removeItem('beaker-user-id');
+        window.localStorage.removeItem('beaker-account-id');
         setToken(null);
         setUserId(null);
         queryClient.clear();

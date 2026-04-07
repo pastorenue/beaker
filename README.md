@@ -1,8 +1,8 @@
-# Expothesis - Real-time A/B Testing Platform
+# Beaker - Real-time A/B Testing Platform
 
-Expothesis is a high-performance, real-time experimentation platform designed for scale. Built with **Rust**, **React**, **ClickHouse** and **Postgresql**, it provides sub-second statistical analysis on millions of events.
+Beaker is a high-performance, real-time experimentation platform designed for scale. Built with **Rust**, **React**, **ClickHouse** and **Postgresql**, it provides sub-second statistical analysis on millions of events.
 
-![Expothesis Dashboard](https://via.placeholder.com/1000x500?text=Expothesis+Live+Analytics+Dashboard)
+![Beaker Dashboard](https://via.placeholder.com/1000x500?text=Beaker+Live+Analytics+Dashboard)
 
 ## 🚀 Key Features
 
@@ -30,8 +30,8 @@ Expothesis is a high-performance, real-time experimentation platform designed fo
 ### Running the Platform
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/expothesis.git
-    cd expothesis
+    git clone https://github.com/yourusername/beaker.git
+    cd beaker
     ```
 2.  **Start all services**:
     ```bash
@@ -97,7 +97,7 @@ We provide a specialized data generator to simulate real-world traffic and verif
 Auth is enabled by default with email + password. If a user enables TOTP, login becomes **Authenticator-only**.
 
 - Default admin user is created on first boot:
-  - Email: `admin@expothesis.local`
+  - Email: `admin@beaker.local`
   - Password: `admin`
 - Email OTP is disabled for login (no SMTP requirement for auth). TOTP is the only second factor.
 
@@ -114,9 +114,9 @@ ALLOW_DEV_OTP=1
 Used to send sessions, events, and replay data to `/api/track/*`.
 
 ```ts
-import { ExpothesisTracker } from '@/sdk/expothesis';
+import { BeakerTracker } from '@/sdk/beaker';
 
-const tracker = new ExpothesisTracker({
+const tracker = new BeakerTracker({
   endpoint: 'http://localhost:8080/api/track',
   apiKey: '<TRACKING_API_KEY>',
   userId: 'user_123',
@@ -132,9 +132,9 @@ await tracker.track('cta_click', { variant: 'A' }, 'click');
 Used to evaluate gates/flags via `/api/sdk/feature-flags/evaluate`.
 
 ```ts
-import { ExpothesisFeatureFlags } from '@/sdk/featureFlags';
+import { BeakerFeatureFlags } from '@/sdk/featureFlags';
 
-const flags = new ExpothesisFeatureFlags({
+const flags = new BeakerFeatureFlags({
   endpoint: 'http://localhost:8080/api/sdk/feature-flags/evaluate',
   apiKey: '<FEATURE_FLAGS_API_KEY>',
 });
@@ -178,17 +178,17 @@ curl http://localhost:8080/health
 # Login (step 1: email + password)
 curl -X POST http://localhost:8080/api/auth/login \\
   -H 'Content-Type: application/json' \\
-  -d '{"email":"admin@expothesis.local","password":"admin"}'
+  -d '{"email":"admin@beaker.local","password":"admin"}'
 
 # Verify (step 2)
 curl -X POST http://localhost:8080/api/auth/verify-otp \\
   -H 'Content-Type: application/json' \\
-  -d '{"email":"admin@expothesis.local","code":"","totp_code":"<TOTP_IF_ENABLED>"}'
+  -d '{"email":"admin@beaker.local","code":"","totp_code":"<TOTP_IF_ENABLED>"}'
 
 # Feature flags SDK evaluation
 curl -X POST http://localhost:8080/api/sdk/feature-flags/evaluate \\
   -H 'Content-Type: application/json' \\
-  -H 'x-expothesis-key: <FEATURE_FLAGS_API_KEY>' \\
+  -H 'x-beaker-key: <FEATURE_FLAGS_API_KEY>' \\
   -d '{"user_id":"user_123","attributes":{"plan":"pro"},"flags":["new-nav"]}'
 ```
 
@@ -201,7 +201,7 @@ Key variables used by the stack (see `docker-compose.yml`):
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 CLICKHOUSE_URL=http://clickhouse:8123
-DATABASE_URL=postgres://expothesis:expothesis@postgres:5432/expothesis
+DATABASE_URL=postgres://beaker:beaker@postgres:5432/beaker
 
 # Auth / sessions
 JWT_SECRET=change-me
@@ -210,14 +210,14 @@ SESSION_TTL_MINUTES=30
 ALLOW_DEV_OTP=1
 
 # SDK keys (seeded into Postgres on first boot)
-TRACKING_API_KEY=expothesis-demo-key
-FEATURE_FLAGS_API_KEY=expothesis-flags-key
+TRACKING_API_KEY=beaker-demo-key
+FEATURE_FLAGS_API_KEY=beaker-flags-key
 
 # Email (OTP)
 SMTP_HOST=mailpit
 SMTP_USER=
 SMTP_PASS=
-SMTP_FROM=no-reply@expothesis.local
+SMTP_FROM=no-reply@beaker.local
 LOG_ONLY_OTP=0
 
 # LiteLLM / AI

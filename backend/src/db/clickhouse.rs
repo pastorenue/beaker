@@ -25,7 +25,7 @@ impl ClickHouseClient {
 
         // Create database
         self.client
-            .query("CREATE DATABASE IF NOT EXISTS expothesis")
+            .query("CREATE DATABASE IF NOT EXISTS beaker")
             .execute()
             .await
             .context("Failed to create database")?;
@@ -33,7 +33,7 @@ impl ClickHouseClient {
         // User assignments table
         self.client
             .query(
-                "CREATE TABLE IF NOT EXISTS expothesis.user_assignments (
+                "CREATE TABLE IF NOT EXISTS beaker.user_assignments (
                     user_id String,
                     experiment_id String,
                     variant String,
@@ -49,7 +49,7 @@ impl ClickHouseClient {
 
         // Ensure account_id exists on user_assignments
         self.client
-            .query("ALTER TABLE expothesis.user_assignments ADD COLUMN IF NOT EXISTS account_id String DEFAULT 'default-org'")
+            .query("ALTER TABLE beaker.user_assignments ADD COLUMN IF NOT EXISTS account_id String DEFAULT 'default-org'")
             .execute()
             .await
             .context("Failed to alter user_assignments table (account_id)")?;
@@ -57,7 +57,7 @@ impl ClickHouseClient {
         // Metric events table
         self.client
             .query(
-                "CREATE TABLE IF NOT EXISTS expothesis.metric_events (
+                "CREATE TABLE IF NOT EXISTS beaker.metric_events (
                     account_id String DEFAULT 'default-org',
                     event_id String,
                     experiment_id String,
@@ -76,8 +76,8 @@ impl ClickHouseClient {
             .context("Failed to create metric_events table")?;
 
         let metric_event_alters = [
-            "ALTER TABLE expothesis.metric_events ADD COLUMN IF NOT EXISTS attributes Nullable(String)",
-            "ALTER TABLE expothesis.metric_events ADD COLUMN IF NOT EXISTS account_id String DEFAULT 'default-org'",
+            "ALTER TABLE beaker.metric_events ADD COLUMN IF NOT EXISTS attributes Nullable(String)",
+            "ALTER TABLE beaker.metric_events ADD COLUMN IF NOT EXISTS account_id String DEFAULT 'default-org'",
         ];
 
         for alter in metric_event_alters {
@@ -87,7 +87,7 @@ impl ClickHouseClient {
         // Sessions table
         self.client
             .query(
-                "CREATE TABLE IF NOT EXISTS expothesis.sessions (
+                "CREATE TABLE IF NOT EXISTS beaker.sessions (
                     session_id String,
                     user_id Nullable(String),
                     entry_url String,
@@ -106,7 +106,7 @@ impl ClickHouseClient {
             .context("Failed to create sessions table")?;
 
         let session_alters = [
-            "ALTER TABLE expothesis.sessions ADD COLUMN IF NOT EXISTS updated_at DateTime DEFAULT now()",
+            "ALTER TABLE beaker.sessions ADD COLUMN IF NOT EXISTS updated_at DateTime DEFAULT now()",
         ];
 
         for alter in session_alters {
@@ -116,7 +116,7 @@ impl ClickHouseClient {
         // Activity events table
         self.client
             .query(
-                "CREATE TABLE IF NOT EXISTS expothesis.activity_events (
+                "CREATE TABLE IF NOT EXISTS beaker.activity_events (
                     event_id String,
                     session_id String,
                     user_id Nullable(String),
@@ -139,7 +139,7 @@ impl ClickHouseClient {
         // Replay events table
         self.client
             .query(
-                "CREATE TABLE IF NOT EXISTS expothesis.replay_events (
+                "CREATE TABLE IF NOT EXISTS beaker.replay_events (
                     session_id String,
                     sequence UInt32,
                     event String,

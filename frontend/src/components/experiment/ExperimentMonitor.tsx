@@ -4,7 +4,6 @@ import { ExperimentStatus } from '../../types';
 import { ControlButtons } from './ControlButtons';
 import { HypothesisCard } from './HypothesisCard';
 import { MetaGrid } from './MetaGrid';
-import { StatusBadge } from '../Common';
 import { TrafficDistribution } from './TrafficDistribution';
 
 interface ExperimentMonitorProps {

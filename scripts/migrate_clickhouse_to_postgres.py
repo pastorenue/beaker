@@ -3,11 +3,11 @@
 Migrate config table data from ClickHouse to Postgres.
 
 Tables migrated:
-  - experiments        (ClickHouse expothesis.experiments → Postgres public.experiments)
-  - user_groups        (ClickHouse expothesis.user_groups  → Postgres public.user_groups)
-  - feature_flags      (ClickHouse expothesis.feature_flags → Postgres public.feature_flags)
-  - feature_gates      (ClickHouse expothesis.feature_gates → Postgres public.feature_gates)
-  - cuped_configs      (ClickHouse expothesis.cuped_configs → Postgres public.cuped_configs)
+  - experiments        (ClickHouse beaker.experiments → Postgres public.experiments)
+  - user_groups        (ClickHouse beaker.user_groups  → Postgres public.user_groups)
+  - feature_flags      (ClickHouse beaker.feature_flags → Postgres public.feature_flags)
+  - feature_gates      (ClickHouse beaker.feature_gates → Postgres public.feature_gates)
+  - cuped_configs      (ClickHouse beaker.cuped_configs → Postgres public.cuped_configs)
 
 Not migrated (stays in ClickHouse):
   - user_assignments (analytics write-path, high volume)
@@ -16,7 +16,7 @@ Not migrated (stays in ClickHouse):
 Usage:
   python3 migrate_clickhouse_to_postgres.py \\
       --clickhouse-url http://localhost:8123 \\
-      --postgres-dsn "postgres://expothesis:expothesis@localhost:5432/expothesis" \\
+      --postgres-dsn "postgres://beaker:beaker@localhost:5432/beaker" \\
       [--dry-run]
 
 Requires:
@@ -41,7 +41,7 @@ def ch_query(base_url: str, sql: str, fmt: str = "JSON") -> dict:
     """Run a ClickHouse HTTP query and return the parsed JSON response."""
     resp = requests.post(
         base_url,
-        params={"database": "expothesis", "default_format": fmt},
+        params={"database": "beaker", "default_format": fmt},
         data=sql,
         timeout=60,
     )
@@ -96,7 +96,7 @@ def resolve_org_id(pg_cur, org_id_str: str) -> str | None:
 
 def migrate_experiments(ch_url: str, pg_cur, dry_run: bool) -> int:
     print("  Fetching experiments from ClickHouse...")
-    data = ch_query(ch_url, "SELECT * FROM expothesis.experiments FINAL")
+    data = ch_query(ch_url, "SELECT * FROM beaker.experiments FINAL")
     rows = data.get("data", [])
     print(f"  Found {len(rows)} experiment(s)")
     if not rows or dry_run:
@@ -183,7 +183,7 @@ def migrate_experiments(ch_url: str, pg_cur, dry_run: bool) -> int:
 
 def migrate_user_groups(ch_url: str, pg_cur, dry_run: bool) -> int:
     print("  Fetching user_groups from ClickHouse...")
-    data = ch_query(ch_url, "SELECT * FROM expothesis.user_groups FINAL")
+    data = ch_query(ch_url, "SELECT * FROM beaker.user_groups FINAL")
     rows = data.get("data", [])
     print(f"  Found {len(rows)} user_group(s)")
     if not rows or dry_run:
@@ -228,7 +228,7 @@ def migrate_user_groups(ch_url: str, pg_cur, dry_run: bool) -> int:
 
 def migrate_feature_flags(ch_url: str, pg_cur, dry_run: bool) -> int:
     print("  Fetching feature_flags from ClickHouse...")
-    data = ch_query(ch_url, "SELECT * FROM expothesis.feature_flags FINAL")
+    data = ch_query(ch_url, "SELECT * FROM beaker.feature_flags FINAL")
     rows = data.get("data", [])
     print(f"  Found {len(rows)} feature_flag(s)")
     if not rows or dry_run:
@@ -293,7 +293,7 @@ def migrate_feature_flags(ch_url: str, pg_cur, dry_run: bool) -> int:
 
 def migrate_feature_gates(ch_url: str, pg_cur, dry_run: bool) -> int:
     print("  Fetching feature_gates from ClickHouse...")
-    data = ch_query(ch_url, "SELECT * FROM expothesis.feature_gates FINAL")
+    data = ch_query(ch_url, "SELECT * FROM beaker.feature_gates FINAL")
     rows = data.get("data", [])
     print(f"  Found {len(rows)} feature_gate(s)")
     if not rows or dry_run:
@@ -345,7 +345,7 @@ def migrate_feature_gates(ch_url: str, pg_cur, dry_run: bool) -> int:
 
 def migrate_cuped_configs(ch_url: str, pg_cur, dry_run: bool) -> int:
     print("  Fetching cuped_configs from ClickHouse...")
-    data = ch_query(ch_url, "SELECT * FROM expothesis.cuped_configs FINAL")
+    data = ch_query(ch_url, "SELECT * FROM beaker.cuped_configs FINAL")
     rows = data.get("data", [])
     print(f"  Found {len(rows)} cuped_config(s)")
     if not rows or dry_run:
@@ -406,7 +406,7 @@ def main():
     )
     parser.add_argument(
         "--postgres-dsn",
-        default="postgres://expothesis:expothesis@localhost:5432/expothesis",
+        default="postgres://beaker:beaker@localhost:5432/beaker",
         help="Postgres connection DSN",
     )
     parser.add_argument(

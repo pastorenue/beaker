@@ -157,7 +157,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     ];
 
     React.useEffect(() => {
-        const saved = window.localStorage.getItem('expothesis-theme');
+        const saved = window.localStorage.getItem('beaker-theme');
         if (saved === 'light' || saved === 'dark') {
             setTheme(saved);
         }
@@ -165,7 +165,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
     React.useEffect(() => {
         document.documentElement.classList.toggle('theme-light', theme === 'light');
-        window.localStorage.setItem('expothesis-theme', theme);
+        window.localStorage.setItem('beaker-theme', theme);
     }, [theme]);
 
     const warnAfterMs = 20 * 60 * 1000;
@@ -269,13 +269,14 @@ function Layout({ children }: { children: React.ReactNode }) {
                         </svg>
                     </button>
                     <Link to="/home" className="sidebar-brand">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold">
-                            Ex
-                        </div>
-                        <div>
-                            <div className="text-lg font-semibold">Expothesis</div>
-                            <div className="text-xs capitalize text-slate-500">Labs</div>
-                        </div>
+                        {isRailCollapsed ? (
+                            <img src="/beaker-icon.svg" alt="Beaker" style={{ height: '26px', width: 'auto' }} />
+                        ) : (
+                            <>
+                                <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '26px', width: 'auto' }} />
+                                <div className="pl-2 text-xs capitalize text-slate-500">Labs</div>
+                            </>
+                        )}
                     </Link>
 
                     <div className="px-3 pb-4">

@@ -15,7 +15,7 @@ class FeatureFlagClientConfig:
         self.api_key = api_key
         self.endpoint = endpoint or "/api/sdk/feature-flags/evaluate"
 
-class ExpothesisFeatureFlags:
+class BeakerFeatureFlags:
     def __init__(self, config: FeatureFlagClientConfig):
         self.config = config
         self.endpoint = config.endpoint
@@ -27,12 +27,12 @@ class ExpothesisFeatureFlags:
         flags: Optional[list[str]] = None,
         environment: Optional[str] = None
     ) -> Dict[str, Any]:
-        
+
         headers = {
             "Content-Type": "application/json",
-            "x-expothesis-key": self.config.api_key
+            "x-beaker-key": self.config.api_key
         }
-        
+
         payload = {
             "user_id": user_id,
             "attributes": attributes or {},

@@ -53,13 +53,13 @@ typecheck-frontend:
 	docker-compose run --rm frontend sh -c "npm install --no-package-lock && npm run typecheck"
 
 psql:
-	@docker-compose exec -T postgres psql -U expothesis -d expothesis -c "$(QUERY)"
+	@docker-compose exec -T postgres psql -U beaker -d beaker -c "$(QUERY)"
 
 chsql:
 	@docker-compose exec -T clickhouse clickhouse-client --query "$(QUERY)"
 
 psql-shell:
-	@docker-compose exec postgres psql -U expothesis -d expothesis
+	@docker-compose exec postgres psql -U beaker -d beaker
 
 chsql-shell:
 	@docker-compose exec clickhouse clickhouse-client

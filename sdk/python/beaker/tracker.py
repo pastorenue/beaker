@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class ExpothesisTrackerConfig:
+class BeakerTrackerConfig:
     def __init__(
         self,
         api_key: str,
@@ -19,8 +19,8 @@ class ExpothesisTrackerConfig:
         self.user_id = user_id
         self.session_id = session_id or str(uuid.uuid4())
 
-class ExpothesisTracker:
-    def __init__(self, config: ExpothesisTrackerConfig):
+class BeakerTracker:
+    def __init__(self, config: BeakerTrackerConfig):
         self.config = config
         self.session_id = config.session_id
         self.user_id = config.user_id
@@ -78,14 +78,14 @@ class ExpothesisTracker:
     def _send(self, path: str, payload: Dict[str, Any]) -> bool:
         headers = {
             "Content-Type": "application/json",
-            "x-expothesis-key": self.api_key
+            "x-beaker-key": self.api_key
         }
         url = f"{self.endpoint.rstrip('/')}{path}"
-        
+
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=5)
             response.raise_for_status()
             return True
         except Exception as e:
-            logger.warning(f"Failed to send Expothesis event to {path}: {e}")
+            logger.warning(f"Failed to send Beaker event to {path}: {e}")
             return False

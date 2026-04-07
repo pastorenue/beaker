@@ -4,17 +4,13 @@ export function LandingHeader() {
     return (
         <header className="landing-header">
             <div className="landing-brand">
-                <span className="landing-brand-mark">Ex</span>
-                <div>
-                    <div className="landing-brand-name">Expothesis</div>
-                    <div className="landing-brand-tag">Experiment Intelligence</div>
-                </div>
+                <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '20px', width: 'auto' }} />
             </div>
             <div className="landing-header-actions">
                 <a href="#platform" className="landing-link">
                     Platform
                 </a>
-                {window.localStorage.getItem('expothesis-token') ? (
+                {window.localStorage.getItem('beaker-token') ? (
                     <Link to="/home" className="btn-primary landing-cta">
                         Open Dashboard
                     </Link>

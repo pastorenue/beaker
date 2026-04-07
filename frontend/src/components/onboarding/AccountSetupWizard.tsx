@@ -20,7 +20,7 @@ export const AccountSetupWizard: React.FC = () => {
             const res = await accountApi.create(accountName);
             const accountId = res.data.id;
             setCreatedAccountId(accountId);
-            window.localStorage.setItem('expothesis-account-id', accountId);
+            window.localStorage.setItem('beaker-account-id', accountId);
             setStep('invite_members');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to create account');
@@ -118,7 +118,7 @@ export const AccountSetupWizard: React.FC = () => {
                     <>
                         <h2 className="mb-2">Invite your team</h2>
                         <p className="mb-6 text-sm text-slate-400">
-                            Expothesis is better with others. Invite your teammates to collaborate.
+                            Beaker is better with others. Invite your teammates to collaborate.
                         </p>
                         <div className="space-y-4">
                             <div className="flex gap-2">

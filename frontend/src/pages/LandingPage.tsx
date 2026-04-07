@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ExpothesisTracker } from '../sdk/expothesis';
+import { BeakerTracker } from '../sdk/beaker';
 
-const isLoggedIn = () => !!window.localStorage.getItem('expothesis-token');
+const isLoggedIn = () => !!window.localStorage.getItem('beaker-token');
 
 const NAV_LINKS = [
     { label: 'Platform', href: '#platform' },
@@ -193,7 +193,7 @@ const FEATURES = [
                 <div className="lp-illus-replay-browser">
                     <div className="lp-illus-replay-bar">
                         <div className="lp-panel-dots"><span /><span /><span /></div>
-                        <div className="lp-illus-replay-url">app.expothesis.io/checkout</div>
+                        <div className="lp-illus-replay-url">app.beaker.io/checkout</div>
                     </div>
                     <div className="lp-illus-replay-screen">
                         <div className="lp-illus-replay-cursor" />
@@ -255,14 +255,14 @@ const LOGOS = ['Acme Corp', 'Globex', 'Initech', 'Stark Industries', 'Umbrella',
 
 const TESTIMONIAL = {
     quote:
-        "Expothesis cut our time from hypothesis to statistically significant result by 60%. The integrated simulation and replay features are genuinely unlike anything else we've used.",
+        "Beaker cut our time from hypothesis to statistically significant result by 60%. The integrated simulation and replay features are genuinely unlike anything else we've used.",
     author: 'Head of Growth',
     company: 'Acme Corp',
     initials: 'AG',
 };
 
 export function LandingPage() {
-    const trackerRef = React.useRef<ExpothesisTracker | null>(null);
+    const trackerRef = React.useRef<BeakerTracker | null>(null);
     const trackerStarted = React.useRef(false);
     const [scrolled, setScrolled] = React.useState(false);
     const loggedIn = isLoggedIn();
@@ -270,7 +270,7 @@ export function LandingPage() {
     React.useEffect(() => {
         if (trackerStarted.current) return;
         trackerStarted.current = true;
-        const tracker = new ExpothesisTracker({
+        const tracker = new BeakerTracker({
             autoTrack: true,
             recordReplay: true,
             apiKey: import.meta.env.VITE_TRACKING_KEY,
@@ -299,8 +299,7 @@ export function LandingPage() {
             <header className={`lp-nav${scrolled ? ' lp-nav--scrolled' : ''}`}>
                 <div className="lp-nav-inner">
                     <a href="/" className="lp-logo">
-                        <span className="lp-logo-mark">Ex</span>
-                        <span className="lp-logo-text">Expothesis</span>
+                        <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '25px', width: 'auto' }} />
                     </a>
 
                     <nav className="lp-nav-links" aria-label="Main navigation">
@@ -354,7 +353,7 @@ export function LandingPage() {
                         </h1>
 
                         <p className="lp-hero-sub">
-                            Expothesis is the unified platform for A/B testing, feature gates, simulation, and analytics.
+                            Beaker is the unified platform for A/B testing, feature gates, simulation, and analytics.
                             Stop stitching tools together—orchestrate the entire experiment lifecycle in one place.
                         </p>
 
@@ -385,63 +384,63 @@ export function LandingPage() {
 
                     {/* Dashboard preview panel */}
                     <div className="lp-hero-panel" aria-hidden="true">
-                    <div className="lp-panel-header">
-                        <div className="lp-panel-dots">
-                            <span /><span /><span />
+                        <div className="lp-panel-header">
+                            <div className="lp-panel-dots">
+                                <span /><span /><span />
+                            </div>
+                            <span className="lp-panel-title">Experiment Monitor</span>
+                            <span className="lp-panel-badge lp-panel-badge--live">● Live</span>
                         </div>
-                        <span className="lp-panel-title">Experiment Monitor</span>
-                        <span className="lp-panel-badge lp-panel-badge--live">● Live</span>
-                    </div>
-                    <div className="lp-panel-body">
-                        <div className="lp-panel-row">
-                            <span className="lp-panel-label">Homepage CTA Test</span>
-                            <span className="lp-panel-chip lp-chip-running">Running</span>
+                        <div className="lp-panel-body">
+                            <div className="lp-panel-row">
+                                <span className="lp-panel-label">Homepage CTA Test</span>
+                                <span className="lp-panel-chip lp-chip-running">Running</span>
+                            </div>
+                            <div className="lp-panel-metric-row">
+                                <span className="lp-panel-metric-name">Conversion rate</span>
+                                <span className="lp-panel-metric-val lp-val-pos">+8.4%</span>
+                            </div>
+                            <div className="lp-panel-metric-row">
+                                <span className="lp-panel-metric-name">p-value</span>
+                                <span className="lp-panel-metric-val">0.021</span>
+                            </div>
+                            <div className="lp-panel-metric-row">
+                                <span className="lp-panel-metric-name">Power</span>
+                                <span className="lp-panel-metric-val">91%</span>
+                            </div>
+                            <div className="lp-panel-chart" role="img" aria-label="Experiment lift chart">
+                                <div className="lp-panel-chart-bar" style={{ height: '40%' }} />
+                                <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '72%' }} />
+                                <div className="lp-panel-chart-bar" style={{ height: '55%' }} />
+                                <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '84%' }} />
+                                <div className="lp-panel-chart-bar" style={{ height: '63%' }} />
+                                <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '91%' }} />
+                                <div className="lp-panel-chart-bar" style={{ height: '70%' }} />
+                            </div>
+                            <div className="lp-panel-footer">
+                                <span className="lp-panel-label">CUPED applied · Sequential testing · SRM check ✓</span>
+                            </div>
                         </div>
-                        <div className="lp-panel-metric-row">
-                            <span className="lp-panel-metric-name">Conversion rate</span>
-                            <span className="lp-panel-metric-val lp-val-pos">+8.4%</span>
-                        </div>
-                        <div className="lp-panel-metric-row">
-                            <span className="lp-panel-metric-name">p-value</span>
-                            <span className="lp-panel-metric-val">0.021</span>
-                        </div>
-                        <div className="lp-panel-metric-row">
-                            <span className="lp-panel-metric-name">Power</span>
-                            <span className="lp-panel-metric-val">91%</span>
-                        </div>
-                        <div className="lp-panel-chart" role="img" aria-label="Experiment lift chart">
-                            <div className="lp-panel-chart-bar" style={{ height: '40%' }} />
-                            <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '72%' }} />
-                            <div className="lp-panel-chart-bar" style={{ height: '55%' }} />
-                            <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '84%' }} />
-                            <div className="lp-panel-chart-bar" style={{ height: '63%' }} />
-                            <div className="lp-panel-chart-bar lp-panel-chart-bar--accent" style={{ height: '91%' }} />
-                            <div className="lp-panel-chart-bar" style={{ height: '70%' }} />
-                        </div>
-                        <div className="lp-panel-footer">
-                            <span className="lp-panel-label">CUPED applied · Sequential testing · SRM check ✓</span>
-                        </div>
-                    </div>
 
-                    {/* Floating gate card */}
-                    <div className="lp-float-card lp-float-card-a">
-                        <div className="lp-float-card-label">Feature gate</div>
-                        <div className="lp-float-card-title">new_checkout_flow</div>
-                        <div className="lp-float-card-row">
-                            <span className="lp-panel-chip lp-chip-enabled">Enabled</span>
-                            <span className="lp-float-card-sub">42% traffic</span>
+                        {/* Floating gate card */}
+                        <div className="lp-float-card lp-float-card-a">
+                            <div className="lp-float-card-label">Feature gate</div>
+                            <div className="lp-float-card-title">new_checkout_flow</div>
+                            <div className="lp-float-card-row">
+                                <span className="lp-panel-chip lp-chip-enabled">Enabled</span>
+                                <span className="lp-float-card-sub">42% traffic</span>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Floating guardrail card */}
-                    <div className="lp-float-card lp-float-card-b">
-                        <div className="lp-float-card-label">Guardrail</div>
-                        <div className="lp-float-card-title">Latency P99</div>
-                        <div className="lp-float-card-row">
-                            <span className="lp-panel-chip lp-chip-safe">Within bounds</span>
+                        {/* Floating guardrail card */}
+                        <div className="lp-float-card lp-float-card-b">
+                            <div className="lp-float-card-label">Guardrail</div>
+                            <div className="lp-float-card-title">Latency P99</div>
+                            <div className="lp-float-card-row">
+                                <span className="lp-panel-chip lp-chip-safe">Within bounds</span>
+                            </div>
                         </div>
                     </div>
-                </div>
                 </div>
             </section>
 
@@ -564,8 +563,7 @@ export function LandingPage() {
                 <div className="lp-footer-inner">
                     <div className="lp-footer-brand">
                         <a href="/" className="lp-logo lp-logo--footer">
-                            <span className="lp-logo-mark">Ex</span>
-                            <span className="lp-logo-text">Expothesis</span>
+                            <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '20px', width: 'auto' }} />
                         </a>
                         <p className="lp-footer-tagline">Experiment intelligence for modern product teams.</p>
                     </div>
@@ -603,7 +601,7 @@ export function LandingPage() {
                 </div>
 
                 <div className="lp-footer-bottom">
-                    <span>© {new Date().getFullYear()} Expothesis. All rights reserved.</span>
+                    <span>© {new Date().getFullYear()} Beaker. All rights reserved.</span>
                     <div className="lp-footer-legal">
                         <a href="#privacy">Privacy</a>
                         <a href="#terms">Terms</a>

@@ -183,7 +183,7 @@ impl AuthService {
             .context("Failed to store TOTP secret")?;
 
         let otpauth_url = format!(
-            "otpauth://totp/Expothesis:{}?secret={}&issuer=Expothesis",
+            "otpauth://totp/Beaker:{}?secret={}&issuer=Beaker",
             user_id, secret
         );
         Ok(TotpSetupResponse {
@@ -245,14 +245,14 @@ impl AuthService {
                 .config
                 .smtp_from
                 .clone()
-                .unwrap_or_else(|| "no-reply@expothesis.local".to_string());
+                .unwrap_or_else(|| "no-reply@beaker.local".to_string());
 
             let email_message = Message::builder()
                 .from(from_addr.parse::<Mailbox>().context("Invalid SMTP_FROM")?)
                 .to(email
                     .parse::<Mailbox>()
                     .context("Invalid recipient email")?)
-                .subject("Reset your Expothesis password")
+                .subject("Reset your Beaker password")
                 .body(format!(
                     "Click the link below to reset your password:\n\n{}\n\nThis link expires in 1 hour.",
                     reset_url
@@ -369,14 +369,14 @@ impl AuthService {
                 .config
                 .smtp_from
                 .clone()
-                .unwrap_or_else(|| "no-reply@expothesis.local".to_string());
+                .unwrap_or_else(|| "no-reply@beaker.local".to_string());
 
             let email_message = Message::builder()
                 .from(from_addr.parse::<Mailbox>().context("Invalid SMTP_FROM")?)
                 .to(email
                     .parse::<Mailbox>()
                     .context("Invalid recipient email")?)
-                .subject("Your Expothesis OTP Code")
+                .subject("Your Beaker OTP Code")
                 .body(format!(
                     "Your one-time code is: {}\n\nIt expires in 10 minutes.",
                     code

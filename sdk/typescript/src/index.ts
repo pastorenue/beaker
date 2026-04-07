@@ -1,2 +1,2 @@
-export * from './expothesis';
+export * from './beaker';
 export * from './featureFlags';

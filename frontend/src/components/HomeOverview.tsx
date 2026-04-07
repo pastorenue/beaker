@@ -161,7 +161,7 @@ export const HomeOverview: React.FC = () => {
                                         key={value}
                                         type="button"
                                         onClick={() => setTimeframe(value)}
-                                        className={`rounded-full px-2 py-1 transition ${timeframe === value ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`rounded-full px-2 py-1 transition ${timeframe === value ? 'bg-slate-400 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         {value.slice(0, 1).toUpperCase()}
                                     </button>
@@ -194,7 +194,7 @@ export const HomeOverview: React.FC = () => {
                                         key={value}
                                         type="button"
                                         onClick={() => setTimeframe(value)}
-                                        className={`rounded-full px-2 py-1 transition ${timeframe === value ? 'bg-slate-800 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
+                                        className={`rounded-full px-2 py-1 transition ${timeframe === value ? 'bg-slate-400 text-slate-100' : 'text-slate-400 hover:text-slate-200'}`}
                                     >
                                         {value.slice(0, 1).toUpperCase()}
                                     </button>

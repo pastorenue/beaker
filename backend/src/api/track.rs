@@ -218,7 +218,7 @@ async fn list_events(
 async fn verify_tracking_key(req: &HttpRequest, pool: &sqlx::PgPool) -> Result<Uuid, HttpResponse> {
     let header_key = req
         .headers()
-        .get("x-expothesis-key")
+        .get("x-beaker-key")
         .and_then(|value| value.to_str().ok());
 
     let bearer_key = req

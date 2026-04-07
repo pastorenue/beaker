@@ -12,7 +12,7 @@ services:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
       - CLICKHOUSE_URL=http://clickhouse:8123
-      - DATABASE_URL=postgres://expothesis:expothesis@postgres:5432/expothesis
+      - DATABASE_URL=postgres://beaker:beaker@postgres:5432/beaker
       - RUST_LOG=info
       - TRACKING_API_KEY=track_42c7ada0-a530-40cc-a896-1260b9dadf86
       - FEATURE_FLAGS_API_KEY=flags_2e2713d8-b755-40c9-9763-e45fbefe53ce
@@ -27,9 +27,9 @@ services:
       - SMTP_HOST=mailpit
       - SMTP_USER=
       - SMTP_PASS=
-      - SMTP_FROM=no-reply@expothesis.local
+      - SMTP_FROM=no-reply@beaker.local
       - LOG_ONLY_OTP=0
-      - DEFAULT_ADMIN_EMAIL=admin@expothesis.local
+      - DEFAULT_ADMIN_EMAIL=admin@beaker.local
       - DEFAULT_ADMIN_PASSWORD=admin
       - MCP_ENABLED=true
       - MCP_API_KEY=${MCP_API_KEY:-}
@@ -42,7 +42,7 @@ services:
       clickhouse:
         condition: service_healthy
     networks:
-      - expothesis-network
+      - beaker-network
     restart: always
 
   frontend:
@@ -57,7 +57,7 @@ services:
     environment:
       - VITE_TRACKING_KEY=track_42c7ada0-a530-40cc-a896-1260b9dadf86
     networks:
-      - expothesis-network
+      - beaker-network
     restart: always
 
   clickhouse:
@@ -75,7 +75,7 @@ services:
       - ./clickhouse/config.d:/etc/clickhouse-server/config.d
       - ./clickhouse/users.d:/etc/clickhouse-server/users.d
     networks:
-      - expothesis-network
+      - beaker-network
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping" ]
       interval: 5s
@@ -83,32 +83,32 @@ services:
       retries: 5
 
   postgres:
-    container_name: expothesis-postgres
+    container_name: beaker-postgres
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=expothesis
-      - POSTGRES_PASSWORD=expothesis
-      - POSTGRES_DB=expothesis
+      - POSTGRES_USER=beaker
+      - POSTGRES_PASSWORD=beaker
+      - POSTGRES_DB=beaker
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - expothesis-network
+      - beaker-network
     restart: unless-stopped
 
   mailpit:
-    container_name: expothesis-mailpit
+    container_name: beaker-mailpit
     image: axllent/mailpit:latest
     ports:
       - "1025:1025"
       - "8025:8025"
     networks:
-      - expothesis-network
+      - beaker-network
     restart: unless-stopped
 
   postgres-test:
-    container_name: expothesis-postgres-test
+    container_name: beaker-postgres-test
     image: postgres:16-alpine
     profiles: ["test"]
     environment:
@@ -121,7 +121,7 @@ services:
       - ./scripts/test_postgres_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - postgres_test_data:/var/lib/postgresql/data
     networks:
-      - expothesis-network
+      - beaker-network
     restart: unless-stopped
 
   litellm:
@@ -137,11 +137,11 @@ services:
       - ./litellm/config.yaml:/app/config.yaml
     command: ["--port", "4000", "--config", "/app/config.yaml"]
     networks:
-      - expothesis-network
+      - beaker-network
     restart: unless-stopped
 
 networks:
-  expothesis-network:
+  beaker-network:
     driver: bridge
 
 volumes:
