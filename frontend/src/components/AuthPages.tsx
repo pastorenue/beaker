@@ -129,6 +129,7 @@ export const LoginPage: React.FC = () => {
                                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
                                         placeholder="Email address"
                                     />
                                 </div>
@@ -138,6 +139,7 @@ export const LoginPage: React.FC = () => {
                                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
                                         placeholder="Password"
                                     />
                                 </div>
@@ -182,6 +184,7 @@ export const LoginPage: React.FC = () => {
                                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                         value={totp}
                                         onChange={(e) => setTotp(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleVerify(); }}
                                         placeholder="Authenticator code"
                                     />
                                 )}
@@ -301,6 +304,7 @@ export const RegisterPage: React.FC = () => {
                                 className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleRegister(); }}
                                 placeholder="Email address"
                             />
                         </div>
@@ -310,6 +314,7 @@ export const RegisterPage: React.FC = () => {
                                 className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleRegister(); }}
                                 placeholder="Password"
                             />
                         </div>
@@ -410,6 +415,7 @@ export const ForgotPasswordPage: React.FC = () => {
                                 className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                                 placeholder="Email address"
                             />
                             <button
@@ -489,6 +495,7 @@ export const ResetPasswordPage: React.FC = () => {
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                             placeholder="New password"
                         />
                         <input
@@ -496,6 +503,7 @@ export const ResetPasswordPage: React.FC = () => {
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                             placeholder="Confirm new password"
                         />
                         <button
