@@ -1,10 +1,25 @@
 import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { ActivityEvent, ReplayEvent, Session } from '../types';
 import { trackApi } from '../services/api';
-import { DebugReplayPanel } from './session-replay/DebugReplayPanel';
 import { ReplayPanel } from './session-replay/ReplayPanel';
 import { SessionListPanel } from './session-replay/SessionListPanel';
 import { useAccount } from '../contexts/AccountContext';
+
+const formatOffset = (ms: number): string => {
+    const totalSecs = Math.floor(ms / 1000);
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+const getPath = (url: string): string => {
+    try {
+        return new URL(url).pathname;
+    } catch {
+        return url;
+    }
+};
 
 export function SessionReplayPanel() {
     const { activeAccountId } = useAccount();
@@ -26,10 +41,9 @@ export function SessionReplayPanel() {
     const [isLoadingHeatmap, setIsLoadingHeatmap] = React.useState(false);
     const [hasMoreReplay, setHasMoreReplay] = React.useState(true);
     const [hasMoreSessions, setHasMoreSessions] = React.useState(true);
-    const [sessionsOffset, setSessionsOffset] = React.useState(0);
+    const sessionsOffsetRef = React.useRef(0);
+    const isLoadingSessionsRef = React.useRef(false);
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-    const [debugSessionId, setDebugSessionId] = React.useState('');
-    const [debugInfo, setDebugInfo] = React.useState<string>('');
     const [copiedSessionId, setCopiedSessionId] = React.useState<string | null>(null);
     const replayAbortRef = React.useRef<AbortController | null>(null);
     const replayOffsetRef = React.useRef(0);
@@ -41,6 +55,13 @@ export function SessionReplayPanel() {
     const [userIdFilter, setUserIdFilter] = React.useState('');
     const [featureGateFilter, setFeatureGateFilter] = React.useState('');
     const [activeFilters, setActiveFilters] = React.useState<Array<'userId' | 'featureGate' | 'status' | 'sessionId'>>([]);
+
+    // Events drawer state
+    const EVENTS_PAGE_SIZE = 20;
+    const [eventsDrawerOpen, setEventsDrawerOpen] = React.useState(false);
+    const [activityEvents, setActivityEvents] = React.useState<ActivityEvent[]>([]);
+    const [isLoadingEvents, setIsLoadingEvents] = React.useState(false);
+    const [eventsPage, setEventsPage] = React.useState(0);
 
     const handleMissingSnapshot = React.useCallback(() => {
         setErrorMessage('Replay missing full snapshot. Start a new session to capture a snapshot.');
@@ -74,24 +95,27 @@ export function SessionReplayPanel() {
     );
 
     const loadSessions = React.useCallback(async (reset = false) => {
-        if (isLoadingSessions) {
+        if (isLoadingSessionsRef.current) {
             return;
         }
+        isLoadingSessionsRef.current = true;
         setIsLoadingSessions(true);
         try {
-            const nextOffset = reset ? 0 : sessionsOffset;
+            const nextOffset = reset ? 0 : sessionsOffsetRef.current;
+            if (reset) sessionsOffsetRef.current = 0;
             const response = await trackApi.listSessions(20, nextOffset);
             const payload = response.data;
             setSessions((prev) => (reset ? payload.sessions : [...prev, ...payload.sessions]));
             const updatedOffset = nextOffset + payload.sessions.length;
-            setSessionsOffset(updatedOffset);
+            sessionsOffsetRef.current = updatedOffset;
             setHasMoreSessions(updatedOffset < payload.total);
         } catch (error) {
             setErrorMessage('Failed to load sessions.');
         } finally {
+            isLoadingSessionsRef.current = false;
             setIsLoadingSessions(false);
         }
-    }, [isLoadingSessions, sessionsOffset]);
+    }, []);
 
     React.useEffect(() => {
         loadSessions(true);
@@ -236,6 +260,7 @@ export function SessionReplayPanel() {
     const replayRenderKey = `${selectedSession ?? 'none'}`;
     const selected = sessions.find((session) => session.session_id === selectedSession);
     const getUrl = (url?: string) => (url && url.trim().length > 0 ? url : 'unknown');
+
     const handleCopySessionId = async (sessionId: string, event: React.MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         try {
@@ -248,6 +273,7 @@ export function SessionReplayPanel() {
             console.warn('Failed to copy session id', error);
         }
     };
+
     const handleRemoveFilter = (filter: 'userId' | 'featureGate' | 'status' | 'sessionId') => {
         setActiveFilters((prev) => prev.filter((item) => item !== filter));
         if (filter === 'status') {
@@ -264,26 +290,62 @@ export function SessionReplayPanel() {
         }
     };
 
-    const handleDebugReplay = async () => {
-        if (!debugSessionId.trim()) {
-            return;
-        }
-        setDebugInfo('Loading replay events...');
+    const handleCloseDrawer = () => {
+        setSelectedSession(null);
+        setReplayEvents([]);
+        replayOffsetRef.current = 0;
+        setEventsDrawerOpen(false);
+        setActivityEvents([]);
+    };
+
+    const handleOpenEventsDrawer = async () => {
+        if (!selectedSession) return;
+        setEventsPage(0);
+        setEventsDrawerOpen(true);
+        setIsLoadingEvents(true);
         try {
-            const response = await trackApi.getReplay(debugSessionId.trim(), 5000, 0);
-            const events = response.data as ReplayEvent[];
-            const hasFullSnapshot = events.some((event) => event?.type === 2);
-            const types = events.slice(0, 8).map((event) => event?.type).join(', ');
-            setDebugInfo(
-                `Session ${debugSessionId}: ${events.length} events. FullSnapshot: ${hasFullSnapshot}. First types: ${types || 'none'}.`,
-            );
-        } catch (error) {
-            setDebugInfo('Failed to load replay events for that session.');
+            const res = await trackApi.listEvents(selectedSession, undefined, 2000);
+            setActivityEvents(res.data);
+        } finally {
+            setIsLoadingEvents(false);
         }
     };
 
+    const sortedActivityEvents = React.useMemo(
+        () => [...activityEvents].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+        [activityEvents],
+    );
+
+    const totalEventPages = Math.ceil(sortedActivityEvents.length / EVENTS_PAGE_SIZE);
+    const paginatedEvents = sortedActivityEvents.slice(
+        eventsPage * EVENTS_PAGE_SIZE,
+        (eventsPage + 1) * EVENTS_PAGE_SIZE,
+    );
+
+    const sessionStartMs = selected ? new Date(selected.started_at).getTime() : 0;
+
+    const CHART_COLORS = ['#2dd4bf', '#60a5fa', '#f472b6', '#fb923c', '#a78bfa', '#34d399', '#fbbf24'];
+
+    const eventsOverTime = React.useMemo(() => {
+        const eventNames = Array.from(new Set(sortedActivityEvents.map((e) => e.event_name)));
+        const buckets = new Map<number, Record<string, number>>();
+        for (const event of sortedActivityEvents) {
+            const bucket = Math.floor(new Date(event.timestamp).getTime() / 10000) * 10000;
+            if (!buckets.has(bucket)) buckets.set(bucket, {});
+            const b = buckets.get(bucket)!;
+            b[event.event_name] = (b[event.event_name] ?? 0) + 1;
+        }
+        const data = Array.from(buckets.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([ts, counts]) => ({
+                time: new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                ...counts,
+            }));
+        return { data, eventNames };
+    }, [sortedActivityEvents]);
+
     return (
-        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+        <div>
             <SessionListPanel
                 filteredSessions={filteredSessions}
                 selectedSession={selectedSession}
@@ -315,31 +377,209 @@ export function SessionReplayPanel() {
                 onFeatureGateFilterChange={setFeatureGateFilter}
             />
 
-            <div className="session-replay-column">
-                <DebugReplayPanel
-                    debugSessionId={debugSessionId}
-                    onChangeSessionId={setDebugSessionId}
-                    onInspect={handleDebugReplay}
-                    debugInfo={debugInfo}
-                />
+            {/* Replay drawer */}
+            <div
+                className={`fixed top-0 right-0 z-50 h-full w-3/4 bg-slate-900 border-l border-slate-700/60 shadow-2xl flex flex-col transition-transform duration-300 ${
+                    selectedSession ? 'translate-x-0' : 'translate-x-full'
+                }`}
+            >
+                {/* Drawer header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/60 shrink-0">
+                    <div>
+                        <p className="text-sm font-semibold text-slate-100">Session Replay</p>
+                        {selected && (
+                            <p className="text-xs text-slate-400 mt-0.5 font-mono">{selected.session_id}</p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="btn-secondary text-xs px-3 h-8"
+                            onClick={handleOpenEventsDrawer}
+                        >
+                            View Events
+                        </button>
+                        <button
+                            className="btn-secondary h-8 w-8 p-0"
+                            onClick={handleCloseDrawer}
+                            aria-label="Close replay"
+                        >
+                            <svg viewBox="0 0 24 24" className="mx-auto h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
-                <ReplayPanel
-                    selectedSession={selected}
-                    selectedSessionId={selectedSession}
-                    replayEvents={replayEvents}
-                    viewMode={viewMode}
-                    onToggleViewMode={() => setViewMode(viewMode === 'replay' ? 'heatmap' : 'replay')}
-                    isLoading={isLoading}
-                    hasMoreReplay={hasMoreReplay}
-                    onLoadMoreReplay={() => loadReplay(selectedSession!, false)}
-                    replayRenderKey={replayRenderKey}
-                    onMissingSnapshot={handleMissingSnapshot}
-                    heatmapContainerRef={heatmapContainerRef}
-                    heatmapCanvasRef={heatmapCanvasRef}
-                    heatmapEvents={heatmapEvents}
-                    isLoadingHeatmap={isLoadingHeatmap}
-                    errorMessage={errorMessage}
-                />
+                {/* Drawer body */}
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden p-4">
+                    <ReplayPanel
+                        selectedSession={selected}
+                        selectedSessionId={selectedSession}
+                        replayEvents={replayEvents}
+                        viewMode={viewMode}
+                        onToggleViewMode={() => setViewMode(viewMode === 'replay' ? 'heatmap' : 'replay')}
+                        isLoading={isLoading}
+                        hasMoreReplay={hasMoreReplay}
+                        onLoadMoreReplay={() => loadReplay(selectedSession!, false)}
+                        replayRenderKey={replayRenderKey}
+                        onMissingSnapshot={handleMissingSnapshot}
+                        heatmapContainerRef={heatmapContainerRef}
+                        heatmapCanvasRef={heatmapCanvasRef}
+                        heatmapEvents={heatmapEvents}
+                        isLoadingHeatmap={isLoadingHeatmap}
+                        errorMessage={errorMessage}
+                    />
+                </div>
+            </div>
+
+            {/* Events drawer */}
+            <div
+                className={`fixed top-0 right-0 z-[60] h-full w-2/3 bg-slate-950 border-l border-slate-700/60 shadow-2xl flex flex-col transition-transform duration-300 ${
+                    eventsDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+                }`}
+            >
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/60 shrink-0">
+                    <p className="text-sm font-semibold text-slate-100">Activity Events</p>
+                    <button
+                        className="btn-secondary h-8 w-8 p-0"
+                        onClick={() => setEventsDrawerOpen(false)}
+                        aria-label="Close events"
+                    >
+                        <svg viewBox="0 0 24 24" className="mx-auto h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                    {/* Table section */}
+                    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                        <div className="flex-1 min-h-0 overflow-auto px-6 pt-6">
+                            {isLoadingEvents ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <svg className="animate-spin h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                </div>
+                            ) : sortedActivityEvents.length === 0 ? (
+                                <p className="text-sm text-slate-400 text-center py-12">No events recorded for this session.</p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-slate-950">
+                                            <tr className="text-left text-xs text-slate-400 border-b border-slate-700/60">
+                                                <th className="px-3 py-2 font-medium">Time</th>
+                                                <th className="px-3 py-2 font-medium">Event Name</th>
+                                                <th className="px-3 py-2 font-medium">Type</th>
+                                                <th className="px-3 py-2 font-medium">URL</th>
+                                                <th className="px-3 py-2 font-medium">Position</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedEvents.map((event) => {
+                                                const offsetMs = new Date(event.timestamp).getTime() - sessionStartMs;
+                                                const hasPosition = event.x != null && event.y != null;
+                                                return (
+                                                    <tr
+                                                        key={event.event_id}
+                                                        className="border-b border-slate-700/30 hover:bg-slate-900/50"
+                                                    >
+                                                        <td className="px-3 py-2 font-mono text-xs text-slate-400 whitespace-nowrap">
+                                                            {formatOffset(offsetMs)}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-slate-200">
+                                                            {event.event_name}
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-slate-800 text-slate-300 border border-slate-700/60">
+                                                                {event.event_type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <span className="max-w-[240px] truncate block text-slate-400 text-xs font-mono">
+                                                                {getPath(event.url)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-slate-400 text-xs">
+                                                            {hasPosition ? `${event.x}, ${event.y}` : '—'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Pagination bar */}
+                        {totalEventPages > 1 && (
+                            <div className="shrink-0 flex items-center justify-between px-6 py-3 border-t border-slate-700/60">
+                                <span className="text-xs text-slate-400">
+                                    Page {eventsPage + 1} of {totalEventPages} · {sortedActivityEvents.length} events
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        className="btn-secondary h-7 px-2 text-xs"
+                                        onClick={() => setEventsPage((p) => p - 1)}
+                                        disabled={eventsPage === 0}
+                                    >← Prev</button>
+                                    <button
+                                        className="btn-secondary h-7 px-2 text-xs"
+                                        onClick={() => setEventsPage((p) => p + 1)}
+                                        disabled={eventsPage === totalEventPages - 1}
+                                    >Next →</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Chart section */}
+                    {!isLoadingEvents && eventsOverTime.data.length > 0 && (
+                        <div className="shrink-0 h-72 border-t border-slate-700/60 px-4 pt-3 pb-6">
+                            <p className="text-xs text-slate-400 mb-2">Events over time</p>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={eventsOverTime.data} margin={{ top: 4, right: 8, bottom: 48, left: 0 }}>
+                                    <CartesianGrid vertical={false} stroke="#1e293b" />
+                                    <XAxis
+                                        dataKey="time"
+                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        interval="preserveStartEnd"
+                                        angle={-30}
+                                        textAnchor="end"
+                                    />
+                                    <YAxis
+                                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        allowDecimals={false}
+                                        width={28}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ background: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-tooltip-border)', borderRadius: 8, fontSize: 12, color: 'var(--chart-tooltip-text)' }}
+                                        labelStyle={{ color: 'var(--chart-tooltip-text)' }}
+                                        cursor={{ stroke: 'rgba(128,128,128,0.15)', strokeWidth: 1 }}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8', paddingTop: 4 }} />
+                                    {eventsOverTime.eventNames.map((name, i) => (
+                                        <Line
+                                            key={name}
+                                            type="monotone"
+                                            dataKey={name}
+                                            stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                                            strokeWidth={2}
+                                            dot={false}
+                                            activeDot={{ r: 4 }}
+                                        />
+                                    ))}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
