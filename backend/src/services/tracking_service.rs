@@ -19,7 +19,7 @@ impl TrackingService {
         Self { db, session_ttl_minutes }
     }
 
-    pub async fn start_session(&self, req: StartSessionRequest) -> Result<StartSessionResponse> {
+    pub async fn start_session(&self, account_id: Uuid, req: StartSessionRequest) -> Result<StartSessionResponse> {
         let session_id = req
             .session_id
             .unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -39,7 +39,7 @@ impl TrackingService {
             replay_events_count: None,
         };
 
-        self.write_session_row(&session, started_at).await?;
+        self.write_session_row(&account_id.to_string(), &session, started_at).await?;
 
         Ok(StartSessionResponse {
             session_id,
@@ -47,8 +47,9 @@ impl TrackingService {
         })
     }
 
-    pub async fn end_session(&self, req: EndSessionRequest) -> Result<Session> {
+    pub async fn end_session(&self, account_id: Uuid, req: EndSessionRequest) -> Result<Session> {
         let ended_at = req.ended_at.unwrap_or_else(Utc::now);
+        let account_id_str = account_id.to_string();
         let mut session = match self.get_session(&req.session_id).await {
             Ok(session) => session,
             Err(_) => {
@@ -65,7 +66,7 @@ impl TrackingService {
                     clicks_count: None,
                     replay_events_count: None,
                 };
-                self.write_session_row(&fallback, ended_at).await?;
+                self.write_session_row(&account_id_str, &fallback, ended_at).await?;
                 return Ok(fallback);
             }
         };
@@ -78,7 +79,7 @@ impl TrackingService {
         session.ended_at = Some(ended_at);
         session.duration_seconds = Some(duration_seconds);
 
-        self.write_session_row(&session, ended_at).await?;
+        self.write_session_row(&account_id_str, &session, ended_at).await?;
 
         Ok(session)
     }
@@ -162,11 +163,14 @@ impl TrackingService {
         Ok(start_sequence as usize)
     }
 
-    pub async fn list_sessions(&self, limit: usize, offset: usize) -> Result<(Vec<Session>, u64)> {
+    pub async fn list_sessions(&self, account_id: Uuid, limit: usize, offset: usize) -> Result<(Vec<Session>, u64)> {
+        let account_id_str = account_id.to_string();
+
         let total_row = self
             .db
             .client()
-            .query("SELECT count() as total FROM sessions FINAL")
+            .query("SELECT count() as total FROM sessions FINAL WHERE account_id = ?")
+            .bind(&account_id_str)
             .fetch_one::<CountRow>()
             .await
             .context("Failed to count sessions")?;
@@ -174,7 +178,8 @@ impl TrackingService {
         let rows = self
             .db
             .client()
-            .query("SELECT ?fields FROM sessions FINAL ORDER BY started_at DESC LIMIT ? OFFSET ?")
+            .query("SELECT ?fields FROM sessions FINAL WHERE account_id = ? ORDER BY started_at DESC LIMIT ? OFFSET ?")
+            .bind(&account_id_str)
             .bind(limit as u64)
             .bind(offset as u64)
             .fetch_all::<SessionRow>()
@@ -323,8 +328,9 @@ impl TrackingService {
         Self::row_to_session(row)
     }
 
-    async fn write_session_row(&self, session: &Session, updated_at: DateTime<Utc>) -> Result<()> {
+    async fn write_session_row(&self, account_id: &str, session: &Session, updated_at: DateTime<Utc>) -> Result<()> {
         let row = SessionRow {
+            account_id: account_id.to_string(),
             session_id: session.session_id.clone(),
             user_id: session.user_id.clone(),
             entry_url: session.entry_url.clone(),
@@ -338,7 +344,8 @@ impl TrackingService {
         };
 
         let insert = format!(
-            "INSERT INTO sessions (session_id, user_id, entry_url, referrer, user_agent, metadata, started_at, ended_at, duration_seconds, updated_at) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+            "INSERT INTO sessions (account_id, session_id, user_id, entry_url, referrer, user_agent, metadata, started_at, ended_at, duration_seconds, updated_at) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+            Self::sql_str(&row.account_id),
             Self::sql_str(&row.session_id),
             Self::sql_opt_str(&row.user_id),
             Self::sql_str(&row.entry_url),

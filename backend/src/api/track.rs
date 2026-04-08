@@ -31,10 +31,11 @@ async fn start_session(
     http_req: HttpRequest,
     payload: web::Json<StartSessionRequest>,
 ) -> impl Responder {
-    if let Err(response) = verify_tracking_key(&http_req, &pool).await {
-        return response;
-    }
-    match tracking_service.start_session(payload.into_inner()).await {
+    let account_id = match verify_tracking_key(&http_req, &pool).await {
+        Ok(id) => id,
+        Err(resp) => return resp,
+    };
+    match tracking_service.start_session(account_id, payload.into_inner()).await {
         Ok(session) => HttpResponse::Ok().json(session),
         Err(e) => {
             error!("Failed to start session: {}", e);
@@ -53,10 +54,11 @@ async fn end_session(
     http_req: HttpRequest,
     payload: web::Json<EndSessionRequest>,
 ) -> impl Responder {
-    if let Err(response) = verify_tracking_key(&http_req, &pool).await {
-        return response;
-    }
-    match tracking_service.end_session(payload.into_inner()).await {
+    let account_id = match verify_tracking_key(&http_req, &pool).await {
+        Ok(id) => id,
+        Err(resp) => return resp,
+    };
+    match tracking_service.end_session(account_id, payload.into_inner()).await {
         Ok(session) => HttpResponse::Ok().json(session),
         Err(e) => {
             error!("Failed to end session: {}", e);
@@ -159,7 +161,6 @@ struct ReplayQuery {
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_sessions(
     tracking_service: web::Data<TrackingService>,
-    pool: web::Data<sqlx::PgPool>,
     http_req: HttpRequest,
     query: web::Query<SessionQuery>,
 ) -> impl Responder {
@@ -167,16 +168,9 @@ async fn list_sessions(
         error!("Unable to authenticate!");
         return HttpResponse::Unauthorized().finish();
     };
-    match verify_tracking_key(&http_req, &pool).await {
-        Ok(id) if id == user.account_id => {}
-        _ => {
-            error!("Tracking key verification failed");
-            return HttpResponse::Unauthorized().finish();
-        }
-    }
     let limit = query.limit.unwrap_or(20);
     let offset = query.offset.unwrap_or(0);
-    match tracking_service.list_sessions(limit, offset).await {
+    match tracking_service.list_sessions(user.account_id, limit, offset).await {
         Ok((sessions, total)) => HttpResponse::Ok().json(ListSessionsResponse {
             sessions,
             total,
