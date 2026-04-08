@@ -1,4 +1,5 @@
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
 use crate::middleware::auth::AuthedUser;
@@ -20,6 +21,8 @@ fn authed(req: &HttpRequest) -> Option<AuthedUser> {
     req.extensions().get::<AuthedUser>().cloned()
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_flag(
     service: web::Data<FeatureFlagService>,
     req: web::Json<CreateFeatureFlagRequest>,
@@ -36,6 +39,8 @@ async fn create_flag(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_flags(service: web::Data<FeatureFlagService>, http: HttpRequest) -> impl Responder {
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
@@ -48,6 +53,8 @@ async fn list_flags(service: web::Data<FeatureFlagService>, http: HttpRequest) -
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_flag(
     service: web::Data<FeatureFlagService>,
     id: web::Path<Uuid>,
@@ -64,6 +71,8 @@ async fn get_flag(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn update_flag(
     service: web::Data<FeatureFlagService>,
     id: web::Path<Uuid>,
@@ -84,6 +93,8 @@ async fn update_flag(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn delete_flag(
     service: web::Data<FeatureFlagService>,
     id: web::Path<Uuid>,

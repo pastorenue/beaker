@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -58,6 +59,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn handle_mcp(
     mcp: web::Data<McpServer>,
     user: web::ReqData<AuthedUser>,
@@ -108,6 +111,8 @@ async fn handle_mcp(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn mcp_sse() -> impl Responder {
     // SSE endpoint for server-to-client notifications (currently a no-op ping stream)
     HttpResponse::Ok()

@@ -1,4 +1,5 @@
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use serde::Deserialize;
 
 use crate::middleware::auth::AuthedUser;
@@ -17,6 +18,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_invite_details(
     service: web::Data<InviteService>,
     token: web::Path<String>,
@@ -31,6 +34,8 @@ async fn get_invite_details(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn accept_invite(
     service: web::Data<InviteService>,
     payload: web::Json<AcceptInviteRequest>,

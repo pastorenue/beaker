@@ -1,4 +1,5 @@
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
 use crate::middleware::auth::AuthedUser;
@@ -24,6 +25,8 @@ fn authed(req: &HttpRequest) -> Option<AuthedUser> {
     req.extensions().get::<AuthedUser>().cloned()
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_gate(
     service: web::Data<FeatureGateService>,
     req: web::Json<CreateFeatureGateRequest>,
@@ -40,6 +43,8 @@ async fn create_gate(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_gates(
     service: web::Data<FeatureGateService>,
     query: web::Query<FeatureGateQuery>,
@@ -56,6 +61,8 @@ async fn list_gates(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_gate(
     service: web::Data<FeatureGateService>,
     id: web::Path<Uuid>,
@@ -72,6 +79,8 @@ async fn get_gate(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn evaluate_gate(
     service: web::Data<FeatureGateService>,
     id: web::Path<Uuid>,

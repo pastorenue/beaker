@@ -1,4 +1,5 @@
-use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
+use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::Row;
@@ -26,7 +27,17 @@ struct CreateInviteRequest {
     role: String,
 }
 
-#[get("")]
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/accounts")
+            .route("", web::get().to(list_accounts))
+            .route("", web::post().to(create_account))
+            .route("/{id}/invites", web::post().to(create_invite)),
+    );
+}
+
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_accounts(pool: web::Data<PgPool>, req: HttpRequest) -> HttpResponse {
     let authed = match req.extensions().get::<AuthedUser>().cloned() {
         Some(user) => user,
@@ -68,10 +79,11 @@ async fn list_accounts(pool: web::Data<PgPool>, req: HttpRequest) -> HttpRespons
     }
 }
 
-#[post("")]
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_account(
     pool: web::Data<PgPool>,
-    req: actix_web::HttpRequest,
+    req: HttpRequest,
     payload: web::Json<CreateAccountRequest>,
 ) -> HttpResponse {
     let authed = match req.extensions().get::<AuthedUser>().cloned() {
@@ -124,12 +136,13 @@ async fn create_account(
     HttpResponse::Created().json(serde_json::json!({ "id": account_id }))
 }
 
-#[post("/{id}/invites")]
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_invite(
     service: web::Data<InviteService>,
     id: web::Path<Uuid>,
     payload: web::Json<CreateInviteRequest>,
-    req: actix_web::HttpRequest,
+    req: HttpRequest,
 ) -> HttpResponse {
     let Some(user) = req.extensions().get::<AuthedUser>().cloned() else {
         return HttpResponse::Unauthorized().finish();
@@ -146,13 +159,4 @@ async fn create_invite(
             HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
         }
     }
-}
-
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/accounts")
-            .service(list_accounts)
-            .service(create_account)
-            .service(create_invite),
-    );
 }

@@ -1,4 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -16,6 +17,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_integrations(
     pool: web::Data<sqlx::PgPool>,
     http: HttpRequest,
@@ -59,6 +62,8 @@ async fn list_integrations(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn upsert_integration(
     pool: web::Data<sqlx::PgPool>,
     integration_type: web::Path<String>,
@@ -120,6 +125,8 @@ async fn upsert_integration(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn delete_integration(
     pool: web::Data<sqlx::PgPool>,
     integration_type: web::Path<String>,
@@ -146,6 +153,8 @@ async fn delete_integration(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn test_jira(
     notification_service: web::Data<NotificationService>,
     http: HttpRequest,

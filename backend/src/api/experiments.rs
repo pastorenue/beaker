@@ -1,4 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
 use crate::models::*;
@@ -24,6 +25,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_experiment(
     service: web::Data<ExperimentService>,
     req: web::Json<CreateExperimentRequest>,
@@ -43,6 +46,8 @@ async fn create_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_experiments(
     service: web::Data<ExperimentService>,
     http: HttpRequest,
@@ -58,6 +63,8 @@ async fn list_experiments(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_experiment(
     service: web::Data<ExperimentService>,
     id: web::Path<Uuid>,
@@ -77,6 +84,8 @@ async fn get_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn start_experiment(
     service: web::Data<ExperimentService>,
     notification_service: web::Data<NotificationService>,
@@ -105,6 +114,8 @@ async fn start_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn restart_experiment(
     service: web::Data<ExperimentService>,
     id: web::Path<Uuid>,
@@ -124,6 +135,8 @@ async fn restart_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn pause_experiment(
     service: web::Data<ExperimentService>,
     notification_service: web::Data<NotificationService>,
@@ -152,6 +165,8 @@ async fn pause_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn stop_experiment(
     service: web::Data<ExperimentService>,
     notification_service: web::Data<NotificationService>,
@@ -180,6 +195,8 @@ async fn stop_experiment(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_analysis(
     experiment_service: web::Data<ExperimentService>,
     cuped_service: web::Data<CupedService>,
@@ -227,6 +244,8 @@ async fn get_analysis(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_cuped_config(
     cuped_service: web::Data<CupedService>,
     id: web::Path<Uuid>,
@@ -239,6 +258,8 @@ async fn get_cuped_config(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn save_cuped_config(
     cuped_service: web::Data<CupedService>,
     id: web::Path<Uuid>,
@@ -259,6 +280,8 @@ async fn save_cuped_config(
 // Jira routes
 // ---------------------------------------------------------------------------
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn jira_create_issue(
     pool: web::Data<sqlx::PgPool>,
     notification_service: web::Data<NotificationService>,
@@ -306,6 +329,8 @@ async fn jira_create_issue(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn jira_link_issue(
     pool: web::Data<sqlx::PgPool>,
     id: web::Path<Uuid>,
@@ -333,6 +358,8 @@ async fn jira_link_issue(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn jira_unlink_issue(
     pool: web::Data<sqlx::PgPool>,
     id: web::Path<Uuid>,

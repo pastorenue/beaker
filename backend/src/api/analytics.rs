@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 
 use crate::models::AnalyticsAlertRequest;
 use crate::services::AnalyticsService;
@@ -11,6 +12,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_overview(service: web::Data<AnalyticsService>) -> impl Responder {
     match service.get_overview().await {
         Ok(overview) => HttpResponse::Ok().json(overview),
@@ -20,6 +23,8 @@ async fn get_overview(service: web::Data<AnalyticsService>) -> impl Responder {
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn ingest_alert(
     service: web::Data<AnalyticsService>,
     req: web::Json<AnalyticsAlertRequest>,

@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 
 use crate::config::Config;
 use crate::services::OAuthService;
@@ -22,6 +23,8 @@ struct GoogleCallbackQuery {
     state: String,
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn google_initiate(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -40,6 +43,8 @@ async fn google_initiate(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn google_callback(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,

@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
 use crate::config::Config;
@@ -23,6 +24,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "auth-strict")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn register(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -44,6 +47,8 @@ async fn register(
     }
 }
 
+#[rate_limit(group = "auth-strict")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn login(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -59,6 +64,8 @@ async fn login(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn verify_otp(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -82,6 +89,8 @@ async fn verify_otp(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn setup_totp(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -96,6 +105,8 @@ async fn setup_totp(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn verify_totp(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -110,6 +121,8 @@ async fn verify_totp(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn disable_totp(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -124,6 +137,8 @@ async fn disable_totp(
     }
 }
 
+#[rate_limit(group = "auth-loose")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn me(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -138,6 +153,8 @@ async fn me(
     }
 }
 
+#[rate_limit(group = "auth-strict")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn forgot_password(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,
@@ -150,6 +167,8 @@ async fn forgot_password(
     }))
 }
 
+#[rate_limit(group = "auth-strict")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn reset_password(
     pool: web::Data<sqlx::PgPool>,
     config: web::Data<Config>,

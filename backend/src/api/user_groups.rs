@@ -1,5 +1,6 @@
 use actix_web::HttpMessage;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
 use crate::middleware::auth::AuthedUser;
@@ -26,6 +27,8 @@ fn authed(req: &HttpRequest) -> Option<AuthedUser> {
     req.extensions().get::<AuthedUser>().cloned()
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn create_user_group(
     service: web::Data<UserGroupService>,
     req: web::Json<CreateUserGroupRequest>,
@@ -45,6 +48,8 @@ async fn create_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_user_groups(
     service: web::Data<UserGroupService>,
     http: HttpRequest,
@@ -60,6 +65,8 @@ async fn list_user_groups(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_user_group(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -79,6 +86,8 @@ async fn get_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn update_user_group(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -99,6 +108,8 @@ async fn update_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn delete_user_group(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -120,6 +131,8 @@ async fn delete_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn move_user_group(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -147,6 +160,8 @@ async fn move_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_group_metrics(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -166,6 +181,8 @@ async fn get_group_metrics(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn assign_user(
     service: web::Data<UserGroupService>,
     req: web::Json<AssignUserRequest>,
@@ -192,6 +209,8 @@ async fn assign_user(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn sync_user_group(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,
@@ -211,6 +230,8 @@ async fn sync_user_group(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_group_users(
     service: web::Data<UserGroupService>,
     id: web::Path<Uuid>,

@@ -30,6 +30,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let config = Config::from_env();
+    middleware::rate_limit::init_groups(&config);
     info!("Starting Beaker backend...");
 
     // Connect to databases

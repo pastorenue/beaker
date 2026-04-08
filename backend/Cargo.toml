@@ -1,3 +1,6 @@
+[workspace]
+members = ["beaker-macros"]
+
 [package]
 name = "beaker-backend"
 version = "0.1.0"
@@ -47,6 +50,12 @@ rand = "0.8"
 data-encoding = "2.6"
 totp-rs = "5"
 lettre = { version = "0.11", features = ["smtp-transport", "builder", "tokio1", "tokio1-native-tls"] }
+
+# Rate limiting & circuit breaker
+governor = "0.6"
+dashmap = "6"
+once_cell = "1"
+beaker-macros = { path = "beaker-macros" }
 
 [dev-dependencies]
 mockito = "1.2"

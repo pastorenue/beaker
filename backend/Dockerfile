@@ -6,18 +6,21 @@ WORKDIR /usr/src/app
 # Install build dependencies
 RUN apt-get update && apt-get install -y pkg-config libssl-dev g++ && rm -rf /var/lib/apt/lists/*
 
-# Create a dummy project to cache dependencies
-RUN mkdir src
+# Create placeholder workspace structure to cache dependencies
+RUN mkdir -p src beaker-macros/src
 RUN echo "fn main() {}" > src/main.rs
+RUN echo "" > beaker-macros/src/lib.rs
 COPY Cargo.toml Cargo.lock ./
-# cargo build to download and compile dependencies
+COPY beaker-macros/Cargo.toml ./beaker-macros/
+# Build to download and compile dependencies
 RUN cargo build --release
 
-# Copy the source code
+# Copy the actual source code
 COPY src ./src
+COPY beaker-macros/src ./beaker-macros/src
 COPY migrations ./migrations
 # Touch the main file to force rebuild
-RUN touch src/main.rs
+RUN touch src/main.rs beaker-macros/src/lib.rs
 RUN cargo build --release
 
 # Runtime stage

@@ -39,6 +39,15 @@ pub struct Config {
     pub google_client_secret: String,
     pub google_redirect_uri: String,
     pub frontend_base_url: String,
+    // Rate limiting (requests per minute per IP)
+    pub rate_limit_auth_strict: u32,
+    pub rate_limit_auth_loose: u32,
+    pub rate_limit_tracking: u32,
+    pub rate_limit_sdk: u32,
+    pub rate_limit_api_default: u32,
+    // Circuit breaker defaults
+    pub cb_failure_threshold: u32,
+    pub cb_recovery_timeout_secs: u64,
 }
 
 impl Config {
@@ -158,6 +167,34 @@ impl Config {
                 .unwrap_or_else(|_| "http://localhost:8080/api/auth/oauth/google/callback".to_string()),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:5173".to_string()),
+            rate_limit_auth_strict: std::env::var("RATE_LIMIT_AUTH_STRICT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10),
+            rate_limit_auth_loose: std::env::var("RATE_LIMIT_AUTH_LOOSE")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(30),
+            rate_limit_tracking: std::env::var("RATE_LIMIT_TRACKING")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(120),
+            rate_limit_sdk: std::env::var("RATE_LIMIT_SDK")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(300),
+            rate_limit_api_default: std::env::var("RATE_LIMIT_API_DEFAULT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(60),
+            cb_failure_threshold: std::env::var("CB_FAILURE_THRESHOLD")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10),
+            cb_recovery_timeout_secs: std::env::var("CB_RECOVERY_TIMEOUT_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(30),
         }
     }
 }

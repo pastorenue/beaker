@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use chrono::Utc;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -68,6 +69,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn models(config: web::Data<Config>) -> impl Responder {
     let Some(base_url) = config.litellm_base_url.clone() else {
         return HttpResponse::Ok().json(ModelListResponse {
@@ -105,6 +108,8 @@ async fn models(config: web::Data<Config>) -> impl Responder {
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
     let Some(base_url) = config.litellm_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
@@ -188,6 +193,8 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
     let Some(base_url) = config.litellm_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
@@ -254,6 +261,8 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
 
 // ── AI Strategist ──────────────────────────────────────────────────────────────
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn suggest_experiments(
     config: web::Data<Config>,
     pg: web::Data<PgPool>,
@@ -273,6 +282,8 @@ async fn suggest_experiments(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn draft_hypothesis(
     config: web::Data<Config>,
     pg: web::Data<PgPool>,
@@ -287,6 +298,8 @@ async fn draft_hypothesis(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn draft_one_pager(
     config: web::Data<Config>,
     pg: web::Data<PgPool>,
@@ -310,6 +323,8 @@ async fn draft_one_pager(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn suggest_metrics(
     config: web::Data<Config>,
     pg: web::Data<PgPool>,
@@ -324,6 +339,8 @@ async fn suggest_metrics(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn summarize_experiment(
     config: web::Data<Config>,
     pg: web::Data<PgPool>,
@@ -354,6 +371,8 @@ struct InsightsQuery {
     offset: Option<i64>,
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_insights(
     pg: web::Data<PgPool>,
     user: web::ReqData<AuthedUser>,
@@ -431,6 +450,8 @@ async fn list_insights(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn insights_summary(
     pg: web::Data<PgPool>,
     user: web::ReqData<AuthedUser>,
@@ -466,6 +487,8 @@ async fn insights_summary(
     }
 }
 
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn dismiss_insight(
     pg: web::Data<PgPool>,
     user: web::ReqData<AuthedUser>,

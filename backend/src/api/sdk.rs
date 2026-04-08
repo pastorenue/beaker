@@ -1,4 +1,5 @@
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -18,6 +19,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "sdk")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn tokens(
     pool: web::Data<sqlx::PgPool>,
     _config: web::Data<Config>,
@@ -45,6 +48,8 @@ async fn tokens(
     }
 }
 
+#[rate_limit(group = "sdk")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn rotate_tokens(
     pool: web::Data<sqlx::PgPool>,
     payload: web::Json<RotateTokensRequest>,
@@ -111,6 +116,8 @@ struct SdkErrorResponse {
     pub error: String,
 }
 
+#[rate_limit(group = "sdk")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 pub async fn evaluate_flags(
     _req: HttpRequest,
     _config: web::Data<Config>,
@@ -221,6 +228,8 @@ pub async fn evaluate_flags(
     HttpResponse::Ok().json(SdkFlagsResponse { flags: evaluations })
 }
 
+#[rate_limit(group = "sdk")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 pub async fn evaluate_gate(
     _req: HttpRequest,
     _config: web::Data<Config>,

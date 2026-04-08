@@ -5,6 +5,7 @@ use crate::models::{
 use crate::services::{SdkTokenService, TrackingService};
 use crate::utils::authed;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use beaker_macros::{circuit_breaker, rate_limit};
 use log::error;
 use uuid::Uuid;
 
@@ -22,6 +23,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn start_session(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -42,6 +45,8 @@ async fn start_session(
     }
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn end_session(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -62,6 +67,8 @@ async fn end_session(
     }
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn track_event(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -82,6 +89,8 @@ async fn track_event(
     }
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn track_replay(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -102,6 +111,8 @@ async fn track_replay(
     }
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn get_replay(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -144,6 +155,8 @@ struct ReplayQuery {
     offset: Option<usize>,
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_sessions(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
@@ -186,6 +199,8 @@ struct EventsQuery {
     limit: Option<usize>,
 }
 
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn list_events(
     tracking_service: web::Data<TrackingService>,
     pool: web::Data<sqlx::PgPool>,
