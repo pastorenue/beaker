@@ -51,21 +51,27 @@ function Layout({ children }: { children: React.ReactNode }) {
         enabled: !!userId && !!authToken,
     });
 
-    const { data: accounts = [] } = useQuery({
+    const { data: accounts = [], isSuccess: accountsLoaded, isRefetching: accountsRefetching } = useQuery({
         queryKey: ['accounts', userId],
         queryFn: async () => (await accountApi.list()).data,
         enabled: !!authToken,
     });
 
     React.useEffect(() => {
+        if (!authToken || !accountsLoaded || accountsRefetching) return;
+
         if (accounts.length === 0) {
+            if (location.pathname !== '/setup') {
+                navigate('/setup', { replace: true });
+            }
             return;
         }
+
         const currentExists = activeAccountId && accounts.some((o) => o.id === activeAccountId);
         if (!currentExists) {
             setActiveAccountId(accounts[0].id);
         }
-    }, [activeAccountId, accounts, setActiveAccountId]);
+    }, [activeAccountId, accounts, accountsLoaded, accountsRefetching, authToken, location.pathname, navigate, setActiveAccountId]);
 
     const navItems = [
         {

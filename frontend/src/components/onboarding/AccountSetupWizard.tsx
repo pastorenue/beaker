@@ -1,9 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { accountApi } from '../../services/api';
+import { useAccount } from '../../contexts/AccountContext';
 
 export const AccountSetupWizard: React.FC = () => {
     const navigate = useNavigate();
+    const { setActiveAccountId } = useAccount();
+    const queryClient = useQueryClient();
     const [step, setStep] = React.useState<'account_create' | 'invite_members' | 'success'>('account_create');
     const [accountName, setAccountName] = React.useState('');
     const [invites, setInvites] = React.useState<{ email: string; role: string }[]>([]);
@@ -20,7 +24,8 @@ export const AccountSetupWizard: React.FC = () => {
             const res = await accountApi.create(accountName);
             const accountId = res.data.id;
             setCreatedAccountId(accountId);
-            window.localStorage.setItem('beaker-account-id', accountId);
+            setActiveAccountId(accountId);
+            queryClient.invalidateQueries({ queryKey: ['accounts'] });
             setStep('invite_members');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to create account');
@@ -89,8 +94,8 @@ export const AccountSetupWizard: React.FC = () => {
 
                 {step === 'account_create' ? (
                     <>
-                        <h2 className="mb-2">Create your Account</h2>
-                        <p className="mb-6 text-sm text-slate-400">
+                        <h2 className="mb-2 text-2xl">Create your Account</h2>
+                        <p className="mb-6 text-md text-slate-400">
                             Give your team a name to get started. You can always change this later.
                         </p>
                         <div className="space-y-4">
@@ -116,7 +121,7 @@ export const AccountSetupWizard: React.FC = () => {
                     </>
                 ) : (
                     <>
-                        <h2 className="mb-2">Invite your team</h2>
+                        <h2 className="mb-2 text-3xl font-semibold">Invite your team</h2>
                         <p className="mb-6 text-sm text-slate-400">
                             Beaker is better with others. Invite your teammates to collaborate.
                         </p>
