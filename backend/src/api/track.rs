@@ -19,7 +19,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/replay", web::post().to(track_replay))
             .route("/replay/{session_id}", web::get().to(get_replay))
             .route("/sessions", web::get().to(list_sessions))
-            .route("/events", web::get().to(list_events)),
+            .route("/events", web::get().to(list_events))
+            .route("/events/all", web::get().to(list_account_events)),
     );
 }
 
@@ -219,6 +220,50 @@ async fn list_events(
             error!("Failed to list events: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Failed to list events: {}", e)
+            }))
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct AccountEventsQuery {
+    event_type: Option<String>,
+    event_name: Option<String>,
+    days_back: Option<u32>,
+    limit: Option<usize>,
+    offset: Option<usize>,
+}
+
+#[rate_limit(group = "tracking")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn list_account_events(
+    tracking_service: web::Data<TrackingService>,
+    http_req: HttpRequest,
+    query: web::Query<AccountEventsQuery>,
+) -> impl Responder {
+    let Some(user) = authed(&http_req) else {
+        error!("Unable to authenticate!");
+        return HttpResponse::Unauthorized().finish();
+    };
+    let days_back = query.days_back.unwrap_or(30);
+    let limit = query.limit.unwrap_or(100).min(1000);
+    let offset = query.offset.unwrap_or(0);
+    match tracking_service
+        .list_account_activity_events(
+            user.account_id,
+            query.event_type.as_deref(),
+            query.event_name.as_deref(),
+            days_back,
+            limit,
+            offset,
+        )
+        .await
+    {
+        Ok((events, total)) => HttpResponse::Ok().json(serde_json::json!({ "events": events, "total": total })),
+        Err(e) => {
+            error!("Failed to list account events: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("Failed to list account events: {}", e)
             }))
         }
     }

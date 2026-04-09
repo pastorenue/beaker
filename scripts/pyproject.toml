@@ -1,0 +1,23 @@
+[project]
+name = "beaker-scripts"
+version = "0.1.0"
+description = "CLI tools for the Beaker experiment platform"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "click>=8.1",
+    "psycopg2-binary>=2.9",
+]
+
+[project.scripts]
+generate-live-data             = "beaker_scripts.generate_live_data:cli"
+generate-cuped-data            = "beaker_scripts.generate_cuped_data:cli"
+generate-test-users-csv        = "beaker_scripts.generate_test_users_csv:cli"
+migrate-clickhouse-to-postgres = "beaker_scripts.migrate_clickhouse_to_postgres:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/beaker_scripts"]

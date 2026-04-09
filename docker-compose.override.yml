@@ -1,4 +1,9 @@
 services:
+  backend:
+    environment:
+      # Raise tracking limit for local simulation scripts (default: 120/min)
+      - RATE_LIMIT_TRACKING=6000
+
   frontend:
     build:
       context: .

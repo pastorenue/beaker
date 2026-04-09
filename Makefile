@@ -1,4 +1,4 @@
-.PHONY: up up-ai down build restart logs status test test-backend test-frontend lint lint-backend lint-frontend typecheck typecheck-backend typecheck-frontend psql chsql psql-shell chsql-shell test-postgres-up seed-test-postgres
+.PHONY: up up-ai down build restart logs status test test-backend test-frontend lint lint-backend lint-frontend typecheck typecheck-backend typecheck-frontend psql chsql psql-shell chsql-shell test-postgres-up seed-test-postgres scripts-build generate-live-data generate-cuped-data generate-test-users-csv migrate-clickhouse-to-postgres
 
 up:
 	docker-compose up -d --build
@@ -69,3 +69,31 @@ test-postgres-up:
 
 seed-test-postgres:
 	python3 scripts/seed_test_postgres.py --count 1000
+
+# ---------------------------------------------------------------------------
+# Scripts (beaker-scripts Docker service)
+# ---------------------------------------------------------------------------
+# Pass extra CLI flags via ARGS, e.g.:
+#   make generate-live-data ARGS="--interval 1.0 --min-events 80"
+#   make generate-live-data ARGS="02bf6c74-4220-45cb-92ad-3fb79275f683"
+#   make generate-cuped-data ARGS="--users 1000 --lift 0.10"
+#   make generate-test-users-csv ARGS="--count 500 --output /tmp/users.csv"
+#   make migrate-clickhouse-to-postgres ARGS="--dry-run"
+# ---------------------------------------------------------------------------
+
+SCRIPTS_RUN = docker-compose run --rm scripts
+
+scripts-build:
+	docker-compose build scripts
+
+generate-live-data:
+	$(SCRIPTS_RUN) generate-live-data $(ARGS)
+
+generate-cuped-data:
+	$(SCRIPTS_RUN) generate-cuped-data $(ARGS)
+
+generate-test-users-csv:
+	$(SCRIPTS_RUN) generate-test-users-csv $(ARGS)
+
+migrate-clickhouse-to-postgres:
+	$(SCRIPTS_RUN) migrate-clickhouse-to-postgres $(ARGS)

@@ -622,7 +622,7 @@ impl UserGroupService {
             experiment_type: String,
             sampling_method: String,
             analysis_engine: String,
-            sampling_seed: i32,
+            sampling_seed: i64,
             variants: Option<String>,
             user_groups: Option<String>,
             primary_metric: Option<String>,
