@@ -20,6 +20,7 @@ import { AccountSetupWizard } from './components/onboarding/AccountSetupWizard';
 import { HomePage } from './pages/HomePage';
 import { ExperimentDetailPage } from './pages/ExperimentDetailPage';
 import { LandingPage } from './pages/LandingPage';
+import { EventsPage } from './pages/EventsPage';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -73,92 +74,122 @@ function Layout({ children }: { children: React.ReactNode }) {
         }
     }, [activeAccountId, accounts, accountsLoaded, accountsRefetching, authToken, location.pathname, navigate, setActiveAccountId]);
 
-    const navItems = [
+    const navGroups = [
         {
-            to: '/home',
-            label: 'Home',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 10.5l8-6 8 6V20a1 1 0 0 1-1 1h-4.5a.5.5 0 0 1-.5-.5V15a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v5.5a.5.5 0 0 1-.5.5H5a1 1 0 0 1-1-1v-9.5Z" />
-                </svg>
-            ),
+            label: '',
+            items: [
+                {
+                    to: '/home',
+                    label: 'Home',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 10.5l8-6 8 6V20a1 1 0 0 1-1 1h-4.5a.5.5 0 0 1-.5-.5V15a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1v5.5a.5.5 0 0 1-.5.5H5a1 1 0 0 1-1-1v-9.5Z" />
+                        </svg>
+                    ),
+                },
+            ],
         },
         {
-            to: '/dashboard',
             label: 'Experiments',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h10M4 12h16M4 17h7" />
-                </svg>
-            ),
+            items: [
+                {
+                    to: '/dashboard',
+                    label: 'Experiments',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h10M4 12h16M4 17h7" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/feature-flags',
+                    label: 'Feature Flags',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18m0-15h9l-2 3 2 3H5" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/simulation-studio',
+                    label: 'Simulation Studio',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h6v6H6zM12 12h6v6h-6zM12 6h6v6h-6zM6 12h6v6H6z" />
+                        </svg>
+                    ),
+                },
+            ],
         },
         {
-            to: '/insights',
-            label: 'Insights',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m5 14V9m5 10V7m5 12V11" />
-                </svg>
-            ),
+            label: 'Observability',
+            items: [
+                {
+                    to: '/insights',
+                    label: 'Insights',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m5 14V9m5 10V7m5 12V11" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/events',
+                    label: 'Events',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/sessions',
+                    label: 'Sessions',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h7" />
+                        </svg>
+                    ),
+                },
+            ],
         },
         {
-            to: '/ai-assist',
-            label: 'AI Assist',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3m12.36 6.36-2.12-2.12M8.76 8.76 6.64 6.64m8.72 0-2.12 2.12M8.76 15.24 6.64 17.36" />
-                </svg>
-            ),
+            label: 'Audience',
+            items: [
+                {
+                    to: '/user-groups',
+                    label: 'User Groups',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm-8 4c-3 0-5 1.5-5 3v1h10v-1c0-1.5-2-3-5-3Zm8 0c-1 0-2 .2-3 .6a4.4 4.4 0 0 1 2 3.4v1h7v-1c0-1.5-2-3-6-3Z" />
+                        </svg>
+                    ),
+                },
+            ],
         },
         {
-            to: '/user-groups',
-            label: 'User Groups',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm-8 4c-3 0-5 1.5-5 3v1h10v-1c0-1.5-2-3-5-3Zm8 0c-1 0-2 .2-3 .6a4.4 4.4 0 0 1 2 3.4v1h7v-1c0-1.5-2-3-6-3Z" />
-                </svg>
-            ),
-        },
-        {
-            to: '/simulation-studio',
-            label: 'Simulation Studio',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h6v6H6zM12 12h6v6h-6zM12 6h6v6h-6zM6 12h6v6H6z" />
-                </svg>
-            ),
-        },
-        {
-            to: '/feature-flags',
-            label: 'Feature Flags',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18m0-15h9l-2 3 2 3H5" />
-                </svg>
-            ),
-        },
-        {
-            to: '/sessions',
-            label: 'Sessions',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h7" />
-                </svg>
-            ),
-        },
-        {
-            to: '/templates',
-            label: 'Templates/Plan',
-            icon: (
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"
-                    />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6M9 13h6M9 17h4" />
-                </svg>
-            ),
+            label: 'AI & Tools',
+            items: [
+                {
+                    to: '/ai-assist',
+                    label: 'AI Assist',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3m12.36 6.36-2.12-2.12M8.76 8.76 6.64 6.64m8.72 0-2.12 2.12M8.76 15.24 6.64 17.36" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/templates',
+                    label: 'Templates/Plan',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6M9 13h6M9 17h4" />
+                        </svg>
+                    ),
+                },
+            ],
         },
     ];
 
@@ -308,30 +339,43 @@ function Layout({ children }: { children: React.ReactNode }) {
 
                     <div className="mb-4 border-b border-slate-800/60 mx-3" />
 
-                    <nav className="space-y-2">
-                        {navItems.map((item) => {
-                            const isActive =
-                                item.to === '/dashboard' || item.to === '/home'
-                                    ? location.pathname === item.to
-                                    : location.pathname.startsWith(item.to);
-                            return (
-                                <Link
-                                    key={item.to}
-                                    to={item.to}
-                                    className={`sidebar-link group relative ${isActive ? 'sidebar-link-active' : ''}`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    aria-label={item.label}
-                                >
-                                    <span className="text-slate-200/80">{item.icon}</span>
-                                    <span className={isRailCollapsed ? 'md:sr-only' : ''}>
-                                        {item.label}
-                                    </span>
-                                    <span className="rail-tooltip" role="tooltip">
-                                        {item.label}
-                                    </span>
-                                </Link>
-                            );
-                        })}
+                    <nav className="space-y-4">
+                        {navGroups.map((group, gIdx) => (
+                            <div key={gIdx}>
+                                {group.label && (
+                                    isRailCollapsed
+                                        ? <div className="mx-1 mb-2 border-t border-slate-800/60" />
+                                        : <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                                            {group.label}
+                                          </p>
+                                )}
+                                <div className="space-y-0.5">
+                                    {group.items.map((item) => {
+                                        const isActive =
+                                            item.to === '/dashboard' || item.to === '/home'
+                                                ? location.pathname === item.to
+                                                : location.pathname.startsWith(item.to);
+                                        return (
+                                            <Link
+                                                key={item.to}
+                                                to={item.to}
+                                                className={`sidebar-link group relative ${isActive ? 'sidebar-link-active' : ''}`}
+                                                onClick={() => setIsSidebarOpen(false)}
+                                                aria-label={item.label}
+                                            >
+                                                <span className="text-slate-200/80">{item.icon}</span>
+                                                <span className={isRailCollapsed ? 'md:sr-only' : ''}>
+                                                    {item.label}
+                                                </span>
+                                                <span className="rail-tooltip" role="tooltip">
+                                                    {item.label}
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
                     </nav>
 
                     <div className="mt-auto space-y-4">
@@ -491,12 +535,13 @@ function App() {
                                 <Route path="/feature-flags" element={<FeatureFlagManager />} />
                                 <Route path="/templates" element={<TemplatesPlan />} />
                                 <Route path="/settings" element={<UserSettings />} />
+                                <Route path="/events" element={<EventsPage />} />
                                 <Route
                                     path="/sessions"
                                     element={
                                         <div className="space-y-6">
                                             <div>
-                                                <h2 className="text-3xl font-medium text-slate-900">Session Replay</h2>
+                                                <h2 className="text-3xl font-medium text-slate-100">Session Replay</h2>
                                                 <p className="mt-1 text-slate-400">
                                                     Review session replays, heatmaps, and live activity.
                                                 </p>

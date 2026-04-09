@@ -364,7 +364,7 @@ export const TemplatesPlan: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-medium text-slate-900">Templates / Plan</h2>
+                    <h2 className="text-3xl font-medium text-slate-100">Templates / Plan</h2>
                     <p className="mt-1 text-slate-400">
                         Generate a formal experimentation plan and report template for growth teams.
                     </p>

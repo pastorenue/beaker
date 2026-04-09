@@ -21,6 +21,8 @@
     --chart-tooltip-border: rgba(148, 163, 184, 0.2);
     --chart-tooltip-text: #e2e8f0;
     --chart-legend-text: #e2e8f0;
+    --chart-axis: #94a3b8;
+    --chart-grid: rgba(148, 163, 184, 0.15);
   }
 
   h1 {
@@ -33,6 +35,18 @@
 
   h3 {
     @apply text-lg font-semibold text-slate-100 font-display;
+  }
+
+  /* Logo is dark by default — invert to white in dark mode */
+  img[src*="beaker-logo"],
+  img[src*="beaker-icon"] {
+    filter: brightness(0) invert(1);
+  }
+
+  /* Restore original colours in light mode */
+  .theme-light img[src*="beaker-logo"],
+  .theme-light img[src*="beaker-icon"] {
+    filter: none;
   }
 }
 
@@ -299,7 +313,7 @@
 }
 
 .theme-light body {
-  @apply text-slate-900;
+  color: #0f172a;
   background: #ffffff;
 }
 
@@ -308,6 +322,8 @@
   --chart-tooltip-border: rgba(148, 163, 184, 0.45);
   --chart-tooltip-text: #0f172a;
   --chart-legend-text: #0f172a;
+  --chart-axis: #475569;
+  --chart-grid: rgba(71, 85, 105, 0.2);
 }
 
 .theme-light h1,
