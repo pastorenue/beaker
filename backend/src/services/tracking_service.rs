@@ -288,6 +288,62 @@ impl TrackingService {
         Ok(events.into_iter().skip(start_index).collect())
     }
 
+    pub async fn list_account_activity_events(
+        &self,
+        account_id: Uuid,
+        event_type: Option<&str>,
+        event_name: Option<&str>,
+        days_back: u32,
+        limit: usize,
+        offset: usize,
+    ) -> Result<(Vec<ActivityEvent>, u64)> {
+        let account_id_str = account_id.to_string();
+
+        let mut count_query = format!(
+            "SELECT count() as total FROM activity_events ae INNER JOIN (SELECT session_id FROM sessions FINAL WHERE account_id = {}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
+            Self::sql_str(&account_id_str),
+            days_back,
+        );
+        if let Some(et) = event_type {
+            count_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
+        }
+        if let Some(en) = event_name {
+            count_query.push_str(&format!(" AND ae.event_name LIKE {}", Self::sql_str(&format!("%{}%", en))));
+        }
+
+        let total_row = self
+            .db
+            .client()
+            .query(&count_query)
+            .fetch_one::<CountRow>()
+            .await
+            .context("Failed to count account activity events")?;
+
+        let mut data_query = format!(
+            "SELECT ae.event_id, ae.session_id, ae.user_id, ae.event_name, ae.event_type, ae.url, ae.selector, ae.x, ae.y, ae.metadata, ae.timestamp FROM activity_events ae INNER JOIN (SELECT session_id FROM sessions FINAL WHERE account_id = {}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
+            Self::sql_str(&account_id_str),
+            days_back,
+        );
+        if let Some(et) = event_type {
+            data_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
+        }
+        if let Some(en) = event_name {
+            data_query.push_str(&format!(" AND ae.event_name LIKE {}", Self::sql_str(&format!("%{}%", en))));
+        }
+        data_query.push_str(&format!(" ORDER BY ae.timestamp DESC LIMIT {} OFFSET {}", limit, offset));
+
+        let rows = self
+            .db
+            .client()
+            .query(&data_query)
+            .fetch_all::<ActivityEventRow>()
+            .await
+            .context("Failed to fetch account activity events")?;
+
+        let events = rows.into_iter().map(Self::row_to_activity_event).collect::<Result<_>>()?;
+        Ok((events, total_row.total))
+    }
+
     pub async fn list_activity_events(
         &self,
         session_id: &str,

@@ -285,6 +285,15 @@ export const trackApi = {
       headers: getTrackingHeaders(),
       signal,
     }),
+
+  listAllEvents: (params?: {
+    event_type?: string;
+    event_name?: string;
+    days_back?: number;
+    limit?: number;
+    offset?: number;
+  }) =>
+    api.get<{ events: ActivityEvent[]; total: number }>("/track/events/all", { params }),
 };
 
 // Analytics

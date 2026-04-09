@@ -140,6 +140,22 @@ services:
       - beaker-network
     restart: unless-stopped
 
+  scripts:
+    container_name: beaker-scripts
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile
+    environment:
+      - BEAKER_BASE_URL=http://backend:8080
+      - BEAKER_EMAIL=${BEAKER_EMAIL:-admin@beaker.local}
+      - BEAKER_PASSWORD=${BEAKER_PASSWORD:-admin}
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - DATABASE_URL=postgres://beaker:beaker@postgres:5432/beaker
+    networks:
+      - beaker-network
+    depends_on:
+      - backend
+
 networks:
   beaker-network:
     driver: bridge
