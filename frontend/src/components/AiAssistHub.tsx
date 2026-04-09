@@ -9,7 +9,7 @@ export const AiAssistHub: React.FC = () => {
     return (
         <div className="space-y-0 animate-fade-in">
             <div>
-                <h1 className="text-3xl font-medium text-slate-900">AI Assist</h1>
+                <h1 className="text-3xl font-medium text-slate-100">AI Assist</h1>
                 <p className="mt-1 text-slate-400">
                     Centralized access to AI copilots across experimentation, targeting, and rollout workflows.
                 </p>
