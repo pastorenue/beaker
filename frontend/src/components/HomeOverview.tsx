@@ -6,6 +6,7 @@ import { LoadingSpinner } from './Common';
 import { ExperimentStatus } from '../types';
 import type { Experiment, FeatureGate } from '../types';
 import { useAccount } from '../contexts/AccountContext';
+import { PlatformSummaryCard } from './PlatformSummaryCard';
 
 const tooltipStyles = {
     backgroundColor: 'var(--chart-tooltip-bg)',
@@ -291,6 +292,8 @@ export const HomeOverview: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <PlatformSummaryCard />
         </div>
     );
 };
