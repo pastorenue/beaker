@@ -7,7 +7,7 @@ export const AiAssistHub: React.FC = () => {
     const [isAiDrawerOpen, setIsAiDrawerOpen] = React.useState(false);
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-0 animate-fade-in">
             <div>
                 <h1 className="text-3xl font-medium text-slate-900">AI Assist</h1>
                 <p className="mt-1 text-slate-400">

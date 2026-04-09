@@ -301,7 +301,7 @@ export const FeatureFlagManager: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-0">
             <FeatureFlagHeader onCreate={() => setShowFlagForm((prev) => !prev)} />
 
             {showFlagForm && (

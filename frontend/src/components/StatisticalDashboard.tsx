@@ -4,7 +4,6 @@ import { CupedImpactAnalysis } from './statistical-dashboard/CupedImpactAnalysis
 import { EffectSizeChart } from './statistical-dashboard/EffectSizeChart';
 import { EventIngestionCard } from './statistical-dashboard/EventIngestionCard';
 import { HealthChecksPanel } from './statistical-dashboard/HealthChecksPanel';
-import { InsightsCard } from './statistical-dashboard/InsightsCard';
 import { KeyMetricsGrid } from './statistical-dashboard/KeyMetricsGrid';
 import { SampleSizeProgressCard } from './statistical-dashboard/SampleSizeProgressCard';
 import { StatisticalResultsCard } from './statistical-dashboard/StatisticalResultsCard';
@@ -95,45 +94,6 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
         return `${(value * 100).toFixed(decimals)}%`;
     };
 
-    const insights = React.useMemo(() => {
-        if (!displayResults.length) return null;
-
-        const withSignificance = displayResults.map((result) => {
-            const significant = result.bayes_probability !== undefined
-                ? result.bayes_probability >= 0.95
-                : result.p_value < 0.05;
-            return { ...result, significant };
-        });
-
-        const best = [...withSignificance].sort((a, b) => b.effect_size - a.effect_size)[0];
-        const sampleProgress = sample_sizes.length
-            ? sample_sizes.reduce((sum, size) => sum + Math.min(1, size.current_size / size.required_size), 0) /
-              sample_sizes.length
-            : 0;
-
-        const lift = best ? formatPercent(best.effect_size) : '—';
-        const headline = best?.significant
-            ? `${best.variant_b} is leading with ${lift} lift`
-            : `No statistically significant winner yet`;
-
-        const bullets: string[] = [];
-        if (best) {
-            bullets.push(
-                best.significant
-                    ? `Signal is significant (${best.bayes_probability !== undefined ? `posterior ${formatNumber(best.bayes_probability, 3)}` : `p=${formatNumber(best.p_value, 4)}`}).`
-                    : `Signal is trending (${best.bayes_probability !== undefined ? `posterior ${formatNumber(best.bayes_probability, 3)}` : `p=${formatNumber(best.p_value, 4)}`}).`,
-            );
-        }
-        if (sampleProgress < 0.5) {
-            bullets.push(`Sample progress is ${(sampleProgress * 100).toFixed(0)}% — keep running to increase power.`);
-        } else if (sampleProgress < 1) {
-            bullets.push(`Sample progress is ${(sampleProgress * 100).toFixed(0)}% — nearing target sample size.`);
-        } else {
-            bullets.push(`Sample target reached — safe to make a decision if guardrails are stable.`);
-        }
-
-        return { headline, bullets };
-    }, [displayResults, sample_sizes]);
 
     // Prepare data for charts
     const variantComparison = displayResults.map((result) => ({
@@ -155,8 +115,6 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
     return (
         <div className="space-y-6 animate-fade-in">
 
-            {insights && <InsightsCard headline={insights.headline} bullets={insights.bullets} />}
-
             {/* Key Metrics Grid */}
             <KeyMetricsGrid results={displayResults} formatNumber={formatNumber} />
 
@@ -165,9 +123,10 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
                 <VarianceReductionGrid results={displayResults} formatPercent={formatPercent} />
             )}
 
-            {/* Statistical Results */}
+            {/* Statistical Results + AI Insights (inside same card) */}
             <StatisticalResultsCard
                 results={displayResults}
+                analysis={analysis}
                 formatNumber={formatNumber}
                 formatPercent={formatPercent}
             />

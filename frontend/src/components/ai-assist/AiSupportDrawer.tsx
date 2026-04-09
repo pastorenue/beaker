@@ -38,7 +38,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
         }
     }, [modelList, selectedModel]);
 
-    const systemPrompt = `You are an AI support assistant for an A/B testing platform. Current experiment context: ${experimentContext ?? 'No experiment selected'}. Help the user interpret results, identify issues, and suggest next steps.`;
+    const systemPrompt = `You are an AI support assistant for an A/B testing platform. Format your responses clearly: use paragraphs with blank lines between them, bullet points for lists, and code blocks for any code or configuration. Keep responses concise but well-structured. Current experiment context: ${experimentContext ?? 'No experiment selected'}.`;
 
     const chatMutation = useMutation({
         mutationFn: async (payload: { prompt: string }) => {
@@ -50,7 +50,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
                     { role: 'user', content: payload.prompt },
                 ],
                 temperature: 0.4,
-                max_tokens: 512,
+                max_tokens: 2048,
             });
             return response.data;
         },
@@ -61,7 +61,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
         onError: () => {
             setMessages((prev) => [
                 ...prev,
-                { role: 'assistant', text: 'Unable to reach AI service. Check LiteLLM configuration.' },
+                { role: 'assistant', text: 'Unable to reach AI service. Check AI_BASE_URL and AI_API_KEY configuration.' },
             ]);
         },
     });
@@ -69,9 +69,15 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
     const streamChat = async (prompt: string) => {
         setIsStreaming(true);
 
+        const token = window.localStorage.getItem('beaker-token');
+        const accountId = window.localStorage.getItem('beaker-account-id');
+        const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+        if (accountId) authHeaders['X-Account-Id'] = accountId;
+
         const response = await fetch('/api/ai/chat/stream', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders,
             body: JSON.stringify({
                 model: selectedModel || undefined,
                 messages: [
@@ -80,9 +86,14 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
                     { role: 'user', content: prompt },
                 ],
                 temperature: 0.4,
-                max_tokens: 512,
+                max_tokens: 2048,
             }),
         });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: response.statusText }));
+            throw new Error(err?.error ?? 'AI service error');
+        }
 
         if (!response.body) {
             throw new Error('Stream not available');
@@ -148,8 +159,18 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
         setLastUsage(null);
         try {
             await streamChat(trimmed);
-        } catch {
-            chatMutation.mutate({ prompt: trimmed });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Failed to reach AI service';
+            setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === 'assistant' && last.text === '') {
+                    next[next.length - 1] = { role: 'assistant', text: `Error: ${msg}` };
+                } else {
+                    next.push({ role: 'assistant', text: `Error: ${msg}` });
+                }
+                return next;
+            });
             setIsStreaming(false);
         }
     };
@@ -166,7 +187,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
 
             {/* Slide-in panel */}
             <div
-                className={`fixed top-0 right-0 z-50 h-full w-1/3 min-w-[320px] flex flex-col bg-slate-900 border-l border-slate-700/60 shadow-2xl transition-transform duration-300 ${
+                className={`fixed top-0 right-0 z-50 h-full w-1/3 min-w-[620px] flex flex-col bg-slate-900 border-l border-slate-700/60 shadow-2xl transition-transform duration-300 ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >
@@ -181,7 +202,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
                         >
                             <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.633l2.051-.683a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684Z" />
                         </svg>
-                        <h3 className="text-sm font-semibold text-slate-100">AI Support</h3>
+                        <h3 className="text-xl font-semibold text-slate-100">AI Support</h3>
                     </div>
                     <button
                         onClick={onClose}
@@ -200,7 +221,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
                         messages={messages}
                         lastUsage={lastUsage}
                         selectedModel={selectedModel}
-                        modelOptions={modelList?.models ?? ['gpt-4o-mini']}
+                        modelOptions={modelList?.models ?? ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen-qwq-32b']}
                         input={input}
                         isBusy={isStreaming || chatMutation.isPending}
                         onModelChange={setSelectedModel}

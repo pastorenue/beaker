@@ -24,20 +24,20 @@ impl AiService {
     async fn call_llm_json(&self, system_prompt: &str, user_prompt: &str) -> Result<Value> {
         let base_url = self
             .config
-            .litellm_base_url
+            .ai_base_url
             .as_deref()
-            .ok_or_else(|| anyhow!("LITELLM_BASE_URL not configured"))?;
+            .ok_or_else(|| anyhow!("AI_BASE_URL not configured"))?;
 
         let model = self
             .config
-            .litellm_default_model
+            .ai_default_model
             .clone()
-            .unwrap_or_else(|| "gpt-4o-mini".to_string());
+            .unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
 
         let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
         let client = reqwest::Client::new();
         let mut request = client.post(&url);
-        if let Some(api_key) = self.config.litellm_api_key.as_ref() {
+        if let Some(api_key) = self.config.ai_api_key.as_ref() {
             request = request.bearer_auth(api_key);
         }
 
@@ -56,12 +56,12 @@ impl AiService {
             .json(&body)
             .send()
             .await
-            .map_err(|e| anyhow!("Failed to reach LiteLLM: {}", e))?;
+            .map_err(|e| anyhow!("Failed to reach AI service: {}", e))?;
 
         let raw: Value = resp
             .json()
             .await
-            .map_err(|e| anyhow!("Failed to parse LiteLLM response: {}", e))?;
+            .map_err(|e| anyhow!("Failed to parse AI service response: {}", e))?;
 
         let content = raw
             .get("choices")
@@ -70,7 +70,7 @@ impl AiService {
             .and_then(|c| c.get("message"))
             .and_then(|m| m.get("content"))
             .and_then(|c| c.as_str())
-            .ok_or_else(|| anyhow!("No content in LiteLLM response"))?;
+            .ok_or_else(|| anyhow!("No content in AI service response"))?;
 
         serde_json::from_str(content).map_err(|e| anyhow!("Failed to parse JSON from LLM: {}", e))
     }
