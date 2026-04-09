@@ -10,10 +10,10 @@ pub struct Config {
     pub tracking_api_key: Option<String>,
     pub feature_flags_api_key: Option<String>,
     pub session_ttl_minutes: Option<i64>,
-    pub litellm_base_url: Option<String>,
-    pub litellm_api_key: Option<String>,
-    pub litellm_default_model: Option<String>,
-    pub litellm_models: Vec<String>,
+    pub ai_base_url: Option<String>,
+    pub ai_api_key: Option<String>,
+    pub ai_default_model: Option<String>,
+    pub ai_models: Vec<String>,
     pub smtp_host: Option<String>,
     pub smtp_user: Option<String>,
     pub smtp_pass: Option<String>,
@@ -76,16 +76,16 @@ impl Config {
                 .ok()
                 .and_then(|value| value.parse::<i64>().ok())
                 .filter(|value| *value > 0),
-            litellm_base_url: std::env::var("LITELLM_BASE_URL")
+            ai_base_url: std::env::var("AI_BASE_URL")
                 .ok()
                 .filter(|value| !value.is_empty()),
-            litellm_api_key: std::env::var("LITELLM_API_KEY")
+            ai_api_key: std::env::var("AI_API_KEY")
                 .ok()
                 .filter(|value| !value.is_empty()),
-            litellm_default_model: std::env::var("LITELLM_DEFAULT_MODEL")
+            ai_default_model: std::env::var("AI_DEFAULT_MODEL")
                 .ok()
                 .filter(|value| !value.is_empty()),
-            litellm_models: std::env::var("LITELLM_MODELS")
+            ai_models: std::env::var("AI_MODELS")
                 .unwrap_or_default()
                 .split(',')
                 .map(|value| value.trim().to_string())

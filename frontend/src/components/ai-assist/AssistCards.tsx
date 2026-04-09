@@ -81,7 +81,7 @@ export const AssistCards: React.FC<AssistCardsProps> = ({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-0">
             {activeCards.map((card) => (
                 <div key={card.title} className="card">
                     <div className="flex items-center justify-between">

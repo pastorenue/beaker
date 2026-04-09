@@ -98,7 +98,7 @@ export function ExperimentDetailPage() {
             : undefined;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-0">
             <Link to="/dashboard" className="inline-flex items-center text-slate-300 hover:text-slate-200">
                 ← Back to Experiments
             </Link>

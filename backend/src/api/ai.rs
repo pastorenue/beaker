@@ -72,17 +72,24 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn models(config: web::Data<Config>) -> impl Responder {
-    let Some(base_url) = config.litellm_base_url.clone() else {
+    let Some(base_url) = config.ai_base_url.clone() else {
         return HttpResponse::Ok().json(ModelListResponse {
-            models: config.litellm_models.clone(),
+            models: config.ai_models.clone(),
         });
     };
 
     let url = format!("{}/models", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let mut request = client.get(&url);
-    if let Some(api_key) = config.litellm_api_key.as_ref() {
+    if let Some(api_key) = config.ai_api_key.as_ref() {
         request = request.bearer_auth(api_key);
+    }
+
+    // If AI_MODELS is configured, use it as the authoritative allowlist — no provider call needed.
+    if !config.ai_models.is_empty() {
+        return HttpResponse::Ok().json(ModelListResponse {
+            models: config.ai_models.clone(),
+        });
     }
 
     let response = request.send().await;
@@ -98,37 +105,33 @@ async fn models(config: web::Data<Config>) -> impl Responder {
                     return HttpResponse::Ok().json(ModelListResponse { models });
                 }
             }
-            HttpResponse::Ok().json(ModelListResponse {
-                models: config.litellm_models.clone(),
-            })
+            HttpResponse::Ok().json(ModelListResponse { models: vec![] })
         }
-        Err(_) => HttpResponse::Ok().json(ModelListResponse {
-            models: config.litellm_models.clone(),
-        }),
+        Err(_) => HttpResponse::Ok().json(ModelListResponse { models: vec![] }),
     }
 }
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
-    let Some(base_url) = config.litellm_base_url.clone() else {
+    let Some(base_url) = config.ai_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "LITELLM_BASE_URL is not configured"
+            "error": "AI_BASE_URL is not configured"
         }));
     };
 
     let default_model = config
-        .litellm_default_model
+        .ai_default_model
         .clone()
-        .unwrap_or_else(|| "gpt-4o-mini".to_string());
+        .unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
 
     let requested_model = payload
         .model
         .clone()
         .unwrap_or_else(|| default_model.clone());
-    let model = if config.litellm_models.is_empty() {
+    let model = if config.ai_models.is_empty() {
         requested_model
-    } else if config.litellm_models.contains(&requested_model) {
+    } else if config.ai_models.contains(&requested_model) {
         requested_model
     } else {
         default_model.clone()
@@ -137,7 +140,7 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let mut request = client.post(&url);
-    if let Some(api_key) = config.litellm_api_key.as_ref() {
+    if let Some(api_key) = config.ai_api_key.as_ref() {
         request = request.bearer_auth(api_key);
     }
 
@@ -188,7 +191,7 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
             })),
         },
         Err(err) => HttpResponse::BadGateway().json(serde_json::json!({
-            "error": format!("Failed to reach LiteLLM: {}", err)
+            "error": format!("Failed to reach AI service: {}", err)
         })),
     }
 }
@@ -196,24 +199,24 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
 async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
-    let Some(base_url) = config.litellm_base_url.clone() else {
+    let Some(base_url) = config.ai_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "LITELLM_BASE_URL is not configured"
+            "error": "AI_BASE_URL is not configured"
         }));
     };
 
     let default_model = config
-        .litellm_default_model
+        .ai_default_model
         .clone()
-        .unwrap_or_else(|| "gpt-4o-mini".to_string());
+        .unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
 
     let requested_model = payload
         .model
         .clone()
         .unwrap_or_else(|| default_model.clone());
-    let model = if config.litellm_models.is_empty() {
+    let model = if config.ai_models.is_empty() {
         requested_model
-    } else if config.litellm_models.contains(&requested_model) {
+    } else if config.ai_models.contains(&requested_model) {
         requested_model
     } else {
         default_model.clone()
@@ -222,7 +225,7 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let mut request = client.post(&url);
-    if let Some(api_key) = config.litellm_api_key.as_ref() {
+    if let Some(api_key) = config.ai_api_key.as_ref() {
         request = request.bearer_auth(api_key);
     }
 
@@ -241,10 +244,18 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
         Ok(resp) => resp,
         Err(err) => {
             return HttpResponse::BadGateway().json(serde_json::json!({
-                "error": format!("Failed to reach LiteLLM: {}", err)
+                "error": format!("Failed to reach AI service: {}", err)
             }))
         }
     };
+
+    if !response.status().is_success() {
+        let status = response.status().as_u16();
+        let text = response.text().await.unwrap_or_default();
+        return HttpResponse::BadGateway().json(serde_json::json!({
+            "error": format!("AI service error {}: {}", status, text)
+        }));
+    }
 
     let stream = response.bytes_stream().map(|chunk| match chunk {
         Ok(bytes) => Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(bytes)),

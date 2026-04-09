@@ -186,7 +186,7 @@ export const UserGroupManager: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-0">
             <UserGroupHeader onToggleCreate={() => setShowCreateForm(!showCreateForm)} />
 
             {showCreateForm && (
