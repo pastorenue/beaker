@@ -11,6 +11,7 @@ pub fn scope() -> actix_web::Scope {
     web::scope("/telemetry")
         .route("", web::get().to(list_events))
         .route("", web::post().to(create_event))
+        .route("/bulk", web::post().to(bulk_create_events))
         .route("/{event_id}", web::put().to(update_event))
         .route("/{event_id}", web::delete().to(delete_event))
 }
@@ -104,6 +105,28 @@ async fn update_event(
         .await
     {
         Ok(event) => HttpResponse::Ok().json(event),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn bulk_create_events(
+    service: web::Data<TelemetryService>,
+    experiment_id: web::Path<Uuid>,
+    req: web::Json<BulkCreateTelemetryEventRequest>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    match service
+        .bulk_create_events(req.into_inner(), user.account_id, experiment_id.into_inner())
+        .await
+    {
+        Ok(events) => HttpResponse::Created().json(events),
         Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),

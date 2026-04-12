@@ -1,7 +1,8 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { ActivityEvent, ReplayEvent, Session } from '../types';
-import { trackApi } from '../services/api';
+import { experimentApi, trackApi } from '../services/api';
 import { ReplayPanel } from './session-replay/ReplayPanel';
 import { SessionListPanel } from './session-replay/SessionListPanel';
 import type { SessionActiveFilter, SessionFilterKey } from './session-replay/SessionFilters';
@@ -52,6 +53,11 @@ export function SessionReplayPanel() {
     const heatmapCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
     const heatmapContainerRef = React.useRef<HTMLDivElement | null>(null);
     const [activeFilters, setActiveFilters] = React.useState<SessionActiveFilter[]>([]);
+
+    const { data: experiments = [] } = useQuery({
+        queryKey: ['experiments'],
+        queryFn: () => experimentApi.list().then(r => r.data),
+    });
 
     // Events drawer state
     const EVENTS_PAGE_SIZE = 20;
@@ -214,11 +220,12 @@ export function SessionReplayPanel() {
     const clearAllFilters = React.useCallback(() => setActiveFilters([]), []);
 
     const filterSuggestions: Record<SessionFilterKey, string[]> = React.useMemo(() => ({
-        status: ['live', 'completed'],
-        session: [],
-        user: Array.from(new Set(sessions.map(s => s.user_id).filter((v): v is string => !!v))).slice(0, 20),
-        gate: Array.from(new Set(sessions.map(s => getFeatureGate(s)).filter((v): v is string => !!v))).slice(0, 20),
-    }), [sessions]);
+        status:     ['live', 'completed'],
+        session:    [],
+        user:       Array.from(new Set(sessions.map(s => s.user_id).filter((v): v is string => !!v))).slice(0, 20),
+        gate:       Array.from(new Set(sessions.map(s => getFeatureGate(s)).filter((v): v is string => !!v))).slice(0, 20),
+        experiment: experiments.map(e => e.name),
+    }), [sessions, experiments]);
 
     const filteredSessions = sessions.filter((session) => {
         for (const f of activeFilters) {
@@ -232,6 +239,10 @@ export function SessionReplayPanel() {
             if (f.facet === 'gate') {
                 const gate = getFeatureGate(session) || '';
                 if (!gate.toLowerCase().includes(f.value.toLowerCase())) return false;
+            }
+            if (f.facet === 'experiment') {
+                const expId = experiments.find(e => e.name === f.value)?.id;
+                if (expId && session.experiment_id !== expId) return false;
             }
         }
         return true;

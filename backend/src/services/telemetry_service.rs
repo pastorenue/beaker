@@ -185,6 +185,81 @@ impl TelemetryService {
         })
     }
 
+    pub async fn bulk_create_events(
+        &self,
+        req: BulkCreateTelemetryEventRequest,
+        account_id: Uuid,
+        experiment_id: Uuid,
+    ) -> Result<Vec<TelemetryEventFlat>> {
+        info!(
+            "Bulk-creating {} telemetry events for experiment {}",
+            req.events.len(),
+            experiment_id
+        );
+
+        let now = Utc::now();
+        let mut tx = self.pg.begin().await.context("Failed to begin transaction")?;
+        let mut results: Vec<TelemetryEventFlat> = Vec::with_capacity(req.events.len());
+
+        for event_req in req.events {
+            let def_id = Uuid::new_v4();
+            let event_id = Uuid::new_v4();
+            let is_active = event_req.is_active.unwrap_or(true);
+            let event_type = event_req.event_type.unwrap_or_else(|| "custom".to_string());
+            let description = event_req.description.unwrap_or_default();
+
+            sqlx::query(
+                r#"INSERT INTO telemetry_definitions
+                       (id, account_id, experiment_id, is_active, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6)"#,
+            )
+            .bind(def_id)
+            .bind(account_id)
+            .bind(experiment_id)
+            .bind(is_active)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .context("Failed to insert telemetry definition")?;
+
+            sqlx::query(
+                r#"INSERT INTO telemetry_events
+                       (id, definition_id, name, description, event_type, selector, url_pattern, visual_guide)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+            )
+            .bind(event_id)
+            .bind(def_id)
+            .bind(&event_req.name)
+            .bind(&description)
+            .bind(&event_type)
+            .bind(&event_req.selector)
+            .bind(&event_req.url_pattern)
+            .bind(&event_req.visual_guide)
+            .execute(&mut *tx)
+            .await
+            .context("Failed to insert telemetry event")?;
+
+            results.push(TelemetryEventFlat {
+                id: event_id,
+                definition_id: def_id,
+                experiment_id,
+                is_active,
+                name: event_req.name,
+                description,
+                event_type,
+                selector: event_req.selector,
+                url_pattern: event_req.url_pattern,
+                visual_guide: event_req.visual_guide,
+                created_at: now,
+            });
+        }
+
+        tx.commit().await.context("Failed to commit transaction")?;
+
+        Ok(results)
+    }
+
     pub async fn update_event(
         &self,
         event_id: Uuid,

@@ -369,6 +369,7 @@ export interface Session {
     duration_seconds?: number;
     clicks_count?: number;
     replay_events_count?: number;
+    experiment_id?: string;
 }
 
 export interface ActivityEvent {

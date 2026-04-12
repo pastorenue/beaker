@@ -4,13 +4,13 @@ import { experimentApi, telemetryApi, trackApi } from '../../services/api';
 import { LoadingSpinner } from '../../components/Common';
 import type {
     TelemetryEvent,
-    CreateTelemetryEventRequest,
     UpdateTelemetryEventRequest,
+    BulkCreateTelemetryEventRequest,
 } from '../../types';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type FilterKey = 'status' | 'event_type' | 'name';
+type FilterKey = 'status' | 'event_type' | 'name' | 'experiment';
 type ActiveFilter = { facet: FilterKey; value: string };
 type FacetDef = { key: FilterKey; label: string; placeholder: string };
 type DropdownItem =
@@ -39,7 +39,10 @@ const FACETS: FacetDef[] = [
     { key: 'status',     label: 'Status',     placeholder: 'active, inactive' },
     { key: 'event_type', label: 'Event type', placeholder: 'click, pageview, custom' },
     { key: 'name',       label: 'Event name', placeholder: 'e.g. cta_click' },
+    { key: 'experiment', label: 'Experiment', placeholder: 'e.g. My Experiment' },
 ];
+
+const PAGE_SIZE = 20;
 
 const BLANK_ROW: EventRow = {
     name: '', description: '', event_type: 'custom',
@@ -218,7 +221,7 @@ function FacetSearchBar({
                         >
                             {item.kind === 'facet' ? (
                                 <>
-                                    <span className="w-16 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
+                                    <span className="shrink-0 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
                                     <span className="text-slate-600">·</span>
                                     <span className="text-slate-300">{item.facet.label}</span>
                                     <span className="ml-auto text-[10px] text-slate-600">{item.facet.placeholder}</span>
@@ -310,7 +313,9 @@ function DefinitionModal({
     onClose: () => void;
 }) {
     const queryClient = useQueryClient();
-    const [selectedExpId, setSelectedExpId] = React.useState(experimentId);
+    const [selectedExpId, setSelectedExpId] = React.useState(
+        experimentId || experiments[0]?.id || ''
+    );
     const [isActive, setIsActive] = React.useState(true);
     const [rows, setRows] = React.useState<EventRow[]>([{ ...BLANK_ROW }]);
     const [submitting, setSubmitting] = React.useState(false);
@@ -328,21 +333,23 @@ function DefinitionModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        if (!selectedExpId) {
+            setError('Please select an experiment.');
+            return;
+        }
         setSubmitting(true);
         try {
-            await Promise.all(
-                rows.map(row =>
-                    telemetryApi.create(selectedExpId, {
-                        name: row.name,
-                        description: row.description || undefined,
-                        event_type: row.event_type || undefined,
-                        selector: row.selector || undefined,
-                        url_pattern: row.url_pattern || undefined,
-                        visual_guide: row.visual_guide || undefined,
-                        is_active: isActive,
-                    } as CreateTelemetryEventRequest)
-                )
-            );
+            await telemetryApi.createBulk(selectedExpId, {
+                events: rows.map(row => ({
+                    name: row.name,
+                    description: row.description || undefined,
+                    event_type: row.event_type || undefined,
+                    selector: row.selector || undefined,
+                    url_pattern: row.url_pattern || undefined,
+                    visual_guide: row.visual_guide || undefined,
+                    is_active: isActive,
+                })),
+            } as BulkCreateTelemetryEventRequest);
             queryClient.invalidateQueries({ queryKey: ['telemetry', selectedExpId] });
             onClose();
         } catch (err: unknown) {
@@ -643,8 +650,8 @@ function EventModal({
 
 export const TelemetryPage: React.FC = () => {
     const queryClient = useQueryClient();
-    const [experimentId, setExperimentId] = React.useState('');
     const [activeFilters, setActiveFilters] = React.useState<ActiveFilter[]>([]);
+    const [page, setPage] = React.useState(0);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [editingEvent, setEditingEvent] = React.useState<TelemetryEvent | null>(null);
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
@@ -653,6 +660,9 @@ export const TelemetryPage: React.FC = () => {
         queryKey: ['experiments'],
         queryFn: () => experimentApi.list().then(r => r.data),
     });
+
+    const experimentNameFilter = activeFilters.find(f => f.facet === 'experiment')?.value;
+    const experimentId = experiments.find(e => e.name === experimentNameFilter)?.id;
 
     const { data: events = [], isLoading } = useQuery({
         queryKey: ['telemetry', experimentId],
@@ -689,10 +699,11 @@ export const TelemetryPage: React.FC = () => {
     });
 
     const valueSuggestions: Record<FilterKey, string[]> = React.useMemo(() => ({
-        status: ['active', 'inactive'],
+        status:     ['active', 'inactive'],
         event_type: [...new Set(events.map(e => e.event_type))],
-        name: [...new Set(events.map(e => e.name))].slice(0, 20),
-    }), [events]);
+        name:       [...new Set(events.map(e => e.name))].slice(0, 20),
+        experiment: experiments.map(e => e.name),
+    }), [events, experiments]);
 
     const filteredEvents = React.useMemo(() => {
         let result = events;
@@ -707,6 +718,11 @@ export const TelemetryPage: React.FC = () => {
         }
         return result;
     }, [events, activeFilters]);
+
+    React.useEffect(() => { setPage(0); }, [activeFilters, experimentId]);
+
+    const pageCount  = Math.ceil(filteredEvents.length / PAGE_SIZE);
+    const pageEvents = filteredEvents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const addFilter = React.useCallback((facet: FilterKey, value: string) => {
         setActiveFilters(prev => [...prev.filter(f => f.facet !== facet), { facet, value }]);
@@ -740,24 +756,6 @@ export const TelemetryPage: React.FC = () => {
             {/* Filter toolbar */}
             <div className="space-y-6">
                 <div className="flex gap-2">
-                    <div className="relative">
-                        <select
-                            value={experimentId}
-                            onChange={e => setExperimentId(e.target.value)}
-                            className="input appearance-none !pr-12 !h-[42px]"
-                        >
-                            <option value="">Select experiment…</option>
-                            {experiments.map(exp => (
-                                <option key={exp.id} value={exp.id} className="bg-slate-900">{exp.name}</option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                            </svg>
-                        </div>
-                    </div>
-
                     <FacetSearchBar
                         activeFilters={activeFilters}
                         onAdd={addFilter}
@@ -797,14 +795,14 @@ export const TelemetryPage: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/40">
-                                {filteredEvents.length === 0 ? (
+                                {pageEvents.length === 0 ? (
                                     <tr>
                                         <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                                             No events found
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredEvents.map(ev => {
+                                    pageEvents.map(ev => {
                                         const typeClass = EVENT_TYPE_COLORS[ev.event_type] ?? 'bg-slate-500/20 text-slate-300 border-slate-500/30';
                                         return (
                                             <tr key={ev.id} className="transition-colors hover:bg-slate-800/30">
@@ -899,13 +897,37 @@ export const TelemetryPage: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+
+                    {pageCount > 1 && (
+                        <div className="flex items-center justify-between border-t border-slate-800/60 px-4 py-3">
+                            <span className="text-xs text-slate-500">
+                                Page {page + 1} of {pageCount} ({filteredEvents.length.toLocaleString()} events)
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    disabled={page === 0}
+                                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                                    className="btn-secondary text-xs disabled:opacity-40"
+                                >
+                                    Prev
+                                </button>
+                                <button
+                                    disabled={page >= pageCount - 1}
+                                    onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+                                    className="btn-secondary text-xs disabled:opacity-40"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Create modal (multi-event) */}
             {showCreateModal && (
                 <DefinitionModal
-                    experimentId={experimentId}
+                    experimentId={experimentId ?? ''}
                     experiments={experiments}
                     eventNameSuggestions={eventNameSuggestions}
                     onClose={() => setShowCreateModal(false)}
@@ -915,7 +937,7 @@ export const TelemetryPage: React.FC = () => {
             {/* Edit modal (single event) */}
             {editingEvent && (
                 <EventModal
-                    experimentId={experimentId}
+                    experimentId={experimentId ?? ''}
                     existing={editingEvent}
                     eventNameSuggestions={eventNameSuggestions}
                     onClose={() => setEditingEvent(null)}

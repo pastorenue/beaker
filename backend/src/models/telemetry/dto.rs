@@ -12,6 +12,12 @@ pub struct CreateTelemetryEventRequest {
     pub is_active: Option<bool>,
 }
 
+/// Bulk creation of multiple events via the REST API.
+#[derive(Debug, Deserialize)]
+pub struct BulkCreateTelemetryEventRequest {
+    pub events: Vec<CreateTelemetryEventRequest>,
+}
+
 /// Partial update for a single event via the REST API.
 #[derive(Debug, Deserialize)]
 pub struct UpdateTelemetryEventRequest {

@@ -2,7 +2,7 @@ import React from 'react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-export type SessionFilterKey = 'status' | 'session' | 'user' | 'gate';
+export type SessionFilterKey = 'status' | 'session' | 'user' | 'gate' | 'experiment';
 export type SessionActiveFilter = { facet: SessionFilterKey; value: string };
 
 type FacetDef = { key: SessionFilterKey; label: string; placeholder: string };
@@ -14,10 +14,11 @@ type DropdownItem =
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const SESSION_FACETS: FacetDef[] = [
-    { key: 'status',  label: 'Status',       placeholder: 'live, completed'  },
-    { key: 'session', label: 'Session ID',   placeholder: 'e.g. abc123'      },
-    { key: 'user',    label: 'User ID',      placeholder: 'e.g. usr_abc123'  },
-    { key: 'gate',    label: 'Feature Gate', placeholder: 'e.g. my_flag'     },
+    { key: 'status',     label: 'Status',       placeholder: 'live, completed'   },
+    { key: 'session',    label: 'Session ID',   placeholder: 'e.g. abc123'       },
+    { key: 'user',       label: 'User ID',      placeholder: 'e.g. usr_abc123'   },
+    { key: 'gate',       label: 'Feature Gate', placeholder: 'e.g. my_flag'      },
+    { key: 'experiment', label: 'Experiment',   placeholder: 'e.g. My Experiment' },
 ];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ export const SessionFilters: React.FC<SessionFiltersProps> = ({
                         >
                             {item.kind === 'facet' ? (
                                 <>
-                                    <span className="w-10 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
+                                    <span className="shrink-0 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
                                     <span className="text-slate-600">·</span>
                                     <span className="text-slate-300">{item.facet.label}</span>
                                     <span className="ml-auto text-[10px] text-slate-600">{item.facet.placeholder}</span>

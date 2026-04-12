@@ -19,7 +19,7 @@ import type { ActivityEvent } from '../../types';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type FilterKey = 'type' | 'name' | 'user' | 'url';
+type FilterKey = 'type' | 'name' | 'user' | 'url' | 'experiment';
 type ActiveFilter = { facet: FilterKey; value: string };
 type FacetDef = { key: FilterKey; label: string; placeholder: string };
 type DropdownItem =
@@ -36,7 +36,7 @@ const tooltipStyles = {
     color: 'var(--chart-tooltip-text)',
 };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
     click: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -64,10 +64,11 @@ const TIME_RANGES = [
 ];
 
 const FACETS: FacetDef[] = [
-    { key: 'type', label: 'Event type', placeholder: 'click, pageview, custom' },
-    { key: 'name', label: 'Event name', placeholder: 'e.g. button_click'       },
-    { key: 'user', label: 'User ID',    placeholder: 'e.g. usr_abc123'         },
-    { key: 'url',  label: 'Page URL',   placeholder: 'e.g. /dashboard'         },
+    { key: 'type',       label: 'Event type', placeholder: 'click, pageview, custom' },
+    { key: 'name',       label: 'Event name', placeholder: 'e.g. button_click'       },
+    { key: 'user',       label: 'User ID',    placeholder: 'e.g. usr_abc123'         },
+    { key: 'url',        label: 'Page URL',   placeholder: 'e.g. /dashboard'         },
+    { key: 'experiment', label: 'Experiment', placeholder: 'e.g. My Experiment'      },
 ];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -405,7 +406,7 @@ function FacetSearchBar({
                         >
                             {item.kind === 'facet' ? (
                                 <>
-                                    <span className="w-10 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
+                                    <span className="shrink-0 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
                                     <span className="text-slate-600">·</span>
                                     <span className="text-slate-300">{item.facet.label}</span>
                                     <span className="ml-auto text-[10px] text-slate-600">{item.facet.placeholder}</span>
@@ -436,17 +437,18 @@ export const EventsPage: React.FC = () => {
     const [daysBack, setDaysBack]           = React.useState(30);
     const [page, setPage]                   = React.useState(0);
     const [liveEnabled, setLiveEnabled]     = React.useState(true);
-    const [experimentId, setExperimentId]   = React.useState('');
 
     const { data: experiments = [] } = useQuery({
         queryKey: ['experiments'],
         queryFn: () => experimentApi.list().then(r => r.data),
     });
 
-    const typeFilter = activeFilters.find(f => f.facet === 'type')?.value;
-    const nameFilter = activeFilters.find(f => f.facet === 'name')?.value;
+    const typeFilter           = activeFilters.find(f => f.facet === 'type')?.value;
+    const nameFilter           = activeFilters.find(f => f.facet === 'name')?.value;
+    const experimentNameFilter = activeFilters.find(f => f.facet === 'experiment')?.value;
+    const experimentId         = experiments.find(e => e.name === experimentNameFilter)?.id;
 
-    React.useEffect(() => { setPage(0); }, [activeFilters, daysBack, experimentId]);
+    React.useEffect(() => { setPage(0); }, [activeFilters, daysBack]);
 
     const queryParams = {
         event_type: typeFilter,
@@ -454,11 +456,11 @@ export const EventsPage: React.FC = () => {
         days_back: daysBack,
         limit: 1000,
         offset: 0,
-        experiment_id: experimentId || undefined,
+        experiment_id: experimentId,
     };
 
     const { data, isLoading, refetch } = useQuery({
-        queryKey: ['events-all', activeAccountId, queryParams, experimentId],
+        queryKey: ['events-all', activeAccountId, queryParams],
         queryFn: async () => (await trackApi.listAllEvents(queryParams)).data,
         enabled: !!activeAccountId,
         refetchInterval: liveEnabled ? 60_000 : false,
@@ -479,11 +481,12 @@ export const EventsPage: React.FC = () => {
 
     // Value suggestions derived from the currently loaded (backend-filtered) events
     const valueSuggestions: Record<FilterKey, string[]> = React.useMemo(() => ({
-        type: ['click', 'pageview', 'custom'],
-        name: [...new Set(events.map(e => e.event_name))].slice(0, 20),
-        user: [...new Set(events.map(e => e.user_id).filter((v): v is string => !!v))].slice(0, 20),
-        url:  [...new Set(events.map(e => e.url))].slice(0, 20),
-    }), [events]);
+        type:       ['click', 'pageview', 'custom'],
+        name:       [...new Set(events.map(e => e.event_name))].slice(0, 20),
+        user:       [...new Set(events.map(e => e.user_id).filter((v): v is string => !!v))].slice(0, 20),
+        url:        [...new Set(events.map(e => e.url))].slice(0, 20),
+        experiment: experiments.map(e => e.name),
+    }), [events, experiments]);
 
     const topEventNames = React.useMemo(() => {
         const counts: Record<string, number> = {};
@@ -522,25 +525,6 @@ export const EventsPage: React.FC = () => {
 
             {/* ── Faceted filter toolbar ──────────────────────────────────────── */}
             <div className="space-y-2">
-                {/* Row 0: experiment selector */}
-                <div className="relative inline-block">
-                    <select
-                        value={experimentId}
-                        onChange={e => setExperimentId(e.target.value)}
-                        className="input appearance-none !pr-12 !h-[42px]"
-                    >
-                        <option value="">All experiments</option>
-                        {experiments.map(exp => (
-                            <option key={exp.id} value={exp.id} className="bg-slate-900">{exp.name}</option>
-                        ))}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-                        </svg>
-                    </span>
-                </div>
-
                 {/* Row 1: facet search bar + time range + live toggle */}
                 <div className="flex gap-2">
                     <FacetSearchBar
