@@ -15,6 +15,7 @@ pub struct Session {
     pub duration_seconds: Option<u32>,
     pub clicks_count: Option<u64>,
     pub replay_events_count: Option<u64>,
+    pub experiment_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

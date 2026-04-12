@@ -232,6 +232,7 @@ struct AccountEventsQuery {
     days_back: Option<u32>,
     limit: Option<usize>,
     offset: Option<usize>,
+    experiment_id: Option<String>,
 }
 
 #[rate_limit(group = "tracking")]
@@ -256,6 +257,7 @@ async fn list_account_events(
             days_back,
             limit,
             offset,
+            query.experiment_id.as_deref(),
         )
         .await
     {

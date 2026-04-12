@@ -66,6 +66,7 @@ import type {
   TelemetryEvent,
   CreateTelemetryEventRequest,
   UpdateTelemetryEventRequest,
+  BulkCreateTelemetryEventRequest,
 } from "../types";
 
 const API_BASE = "http://localhost:8080/api";
@@ -295,6 +296,7 @@ export const trackApi = {
     days_back?: number;
     limit?: number;
     offset?: number;
+    experiment_id?: string;
   }) =>
     api.get<{ events: ActivityEvent[]; total: number }>("/track/events/all", { params }),
 };
@@ -385,6 +387,8 @@ export const telemetryApi = {
     api.get<TelemetryEvent[]>(`/experiments/${experimentId}/telemetry`),
   create: (experimentId: string, data: CreateTelemetryEventRequest) =>
     api.post<TelemetryEvent>(`/experiments/${experimentId}/telemetry`, data),
+  createBulk: (experimentId: string, data: BulkCreateTelemetryEventRequest) =>
+    api.post<TelemetryEvent[]>(`/experiments/${experimentId}/telemetry/bulk`, data),
   update: (experimentId: string, eventId: string, data: UpdateTelemetryEventRequest) =>
     api.put<TelemetryEvent>(`/experiments/${experimentId}/telemetry/${eventId}`, data),
   delete: (experimentId: string, eventId: string) =>

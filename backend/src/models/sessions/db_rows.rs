@@ -13,6 +13,7 @@ pub struct SessionRow {
     pub ended_at: Option<u32>,
     pub duration_seconds: Option<u32>,
     pub updated_at: u32,
+    pub experiment_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, clickhouse::Row)]

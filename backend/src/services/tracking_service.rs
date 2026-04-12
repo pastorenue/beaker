@@ -37,6 +37,7 @@ impl TrackingService {
             duration_seconds: None,
             clicks_count: None,
             replay_events_count: None,
+            experiment_id: req.experiment_id,
         };
 
         self.write_session_row(&account_id.to_string(), &session, started_at).await?;
@@ -65,6 +66,7 @@ impl TrackingService {
                     duration_seconds: Some(0),
                     clicks_count: None,
                     replay_events_count: None,
+                    experiment_id: None,
                 };
                 self.write_session_row(&account_id_str, &fallback, ended_at).await?;
                 return Ok(fallback);
@@ -296,12 +298,26 @@ impl TrackingService {
         days_back: u32,
         limit: usize,
         offset: usize,
+        experiment_id: Option<&str>,
     ) -> Result<(Vec<ActivityEvent>, u64)> {
         let account_id_str = account_id.to_string();
 
+        let session_subquery = if let Some(eid) = experiment_id {
+            format!(
+                "SELECT session_id FROM sessions FINAL WHERE account_id = {} AND experiment_id = {}",
+                Self::sql_str(&account_id_str),
+                Self::sql_str(eid),
+            )
+        } else {
+            format!(
+                "SELECT session_id FROM sessions FINAL WHERE account_id = {}",
+                Self::sql_str(&account_id_str),
+            )
+        };
+
         let mut count_query = format!(
-            "SELECT count() as total FROM activity_events ae INNER JOIN (SELECT session_id FROM sessions FINAL WHERE account_id = {}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
-            Self::sql_str(&account_id_str),
+            "SELECT count() as total FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
+            session_subquery,
             days_back,
         );
         if let Some(et) = event_type {
@@ -320,8 +336,8 @@ impl TrackingService {
             .context("Failed to count account activity events")?;
 
         let mut data_query = format!(
-            "SELECT ae.event_id, ae.session_id, ae.user_id, ae.event_name, ae.event_type, ae.url, ae.selector, ae.x, ae.y, ae.metadata, ae.timestamp FROM activity_events ae INNER JOIN (SELECT session_id FROM sessions FINAL WHERE account_id = {}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
-            Self::sql_str(&account_id_str),
+            "SELECT ae.event_id, ae.session_id, ae.user_id, ae.event_name, ae.event_type, ae.url, ae.selector, ae.x, ae.y, ae.metadata, ae.timestamp FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
+            session_subquery,
             days_back,
         );
         if let Some(et) = event_type {
@@ -397,10 +413,11 @@ impl TrackingService {
             ended_at: session.ended_at.map(Self::datetime_to_ts),
             duration_seconds: session.duration_seconds,
             updated_at: Self::datetime_to_ts(updated_at),
+            experiment_id: session.experiment_id.clone(),
         };
 
         let insert = format!(
-            "INSERT INTO sessions (account_id, session_id, user_id, entry_url, referrer, user_agent, metadata, started_at, ended_at, duration_seconds, updated_at) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+            "INSERT INTO sessions (account_id, session_id, user_id, entry_url, referrer, user_agent, metadata, started_at, ended_at, duration_seconds, updated_at, experiment_id) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
             Self::sql_str(&row.account_id),
             Self::sql_str(&row.session_id),
             Self::sql_opt_str(&row.user_id),
@@ -412,6 +429,7 @@ impl TrackingService {
             Self::sql_opt_u32(row.ended_at),
             Self::sql_opt_u32(row.duration_seconds),
             row.updated_at,
+            Self::sql_opt_str(&row.experiment_id),
         );
         self.db.client().query(&insert).execute().await?;
         Ok(())
@@ -455,6 +473,7 @@ impl TrackingService {
             duration_seconds: row.duration_seconds,
             clicks_count: None,
             replay_events_count: None,
+            experiment_id: row.experiment_id,
         })
     }
 

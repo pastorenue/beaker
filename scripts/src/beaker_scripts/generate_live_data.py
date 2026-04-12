@@ -195,6 +195,7 @@ def _simulate_session(
     variant: str,
     pool: list[tuple[str, str]],
     min_events: int,
+    experiment_id: str | None = None,
 ) -> None:
     """Start a session, fire min_events activity events, then end the session."""
     session_id = f"sess_{uuid.uuid4().hex[:16]}"
@@ -207,6 +208,7 @@ def _simulate_session(
         "referrer": random.choice(["https://www.google.com/", "https://twitter.com/", None]),
         "user_agent": random.choice(USER_AGENTS),
         "metadata": {"variant": variant},
+        "experiment_id": experiment_id,
     })
 
     for step in range(random.randint(min_events, min_events + 20)):
@@ -320,7 +322,7 @@ def cli(
             })
 
             # Simulate a full browsing session
-            _simulate_session(client, user_id, variant_name, event_pool, min_events)
+            _simulate_session(client, user_id, variant_name, event_pool, min_events, experiment_id)
 
             # Record conversion if applicable
             rate = DEFAULT_CONVERSION_RATES.get(variant_name.lower(), 0.10)

@@ -399,6 +399,7 @@ export interface StartSessionRequest {
     referrer?: string;
     user_agent?: string;
     metadata?: Record<string, unknown>;
+    experiment_id?: string;
 }
 
 export interface StartSessionResponse {
@@ -847,4 +848,8 @@ export interface UpdateTelemetryEventRequest {
     url_pattern?: string;
     visual_guide?: string;
     is_active?: boolean;
+}
+
+export interface BulkCreateTelemetryEventRequest {
+    events: CreateTelemetryEventRequest[];
 }

@@ -11,6 +11,7 @@ pub struct StartSessionRequest {
     pub referrer: Option<String>,
     pub user_agent: Option<String>,
     pub metadata: Option<serde_json::Value>,
+    pub experiment_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

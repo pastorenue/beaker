@@ -16,6 +16,7 @@ export interface BeakerTrackerConfig {
     autoEndOnRouteChange?: boolean;
     autoRestartOnRouteChange?: boolean;
     replaySnapshotGraceMs?: number;
+    experimentId?: string;
 }
 
 export class BeakerTracker {
@@ -45,6 +46,7 @@ export class BeakerTracker {
     };
     private lastUrl: string;
     private endInProgress = false;
+    private experimentId?: string;
     private replayHasFullSnapshot = false;
     private replayFullSnapshotPromise?: Promise<void>;
     private replayFullSnapshotResolve?: () => void;
@@ -63,6 +65,7 @@ export class BeakerTracker {
         this.autoEndOnRouteChange = config.autoEndOnRouteChange ?? true;
         this.autoRestartOnRouteChange = config.autoRestartOnRouteChange ?? true;
         this.replaySnapshotGraceMs = config.replaySnapshotGraceMs ?? 1500;
+        this.experimentId = config.experimentId;
         this.lastUrl = window.location.href;
     }
 
@@ -81,6 +84,10 @@ export class BeakerTracker {
 
     identify(userId: string) {
         this.userId = userId;
+    }
+
+    setExperimentId(id: string) {
+        this.experimentId = id;
     }
 
     getSessionId() {
@@ -141,6 +148,7 @@ export class BeakerTracker {
                 language: navigator.language,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             },
+            experiment_id: this.experimentId,
         });
     }
 

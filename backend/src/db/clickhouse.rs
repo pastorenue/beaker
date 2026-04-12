@@ -108,6 +108,7 @@ impl ClickHouseClient {
         let session_alters = [
             "ALTER TABLE beaker.sessions ADD COLUMN IF NOT EXISTS updated_at DateTime DEFAULT now()",
             "ALTER TABLE beaker.sessions ADD COLUMN IF NOT EXISTS account_id String DEFAULT ''",
+            "ALTER TABLE beaker.sessions ADD COLUMN IF NOT EXISTS experiment_id Nullable(String)",
         ];
 
         for alter in session_alters {
