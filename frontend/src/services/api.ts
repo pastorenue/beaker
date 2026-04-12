@@ -67,6 +67,7 @@ import type {
   CreateTelemetryEventRequest,
   UpdateTelemetryEventRequest,
   BulkCreateTelemetryEventRequest,
+  VariantActivityBucket,
 } from "../types";
 
 const API_BASE = "http://localhost:8080/api";
@@ -156,6 +157,9 @@ export const experimentApi = {
 
   unlinkJiraIssue: (id: string) =>
     api.delete<{ ok: boolean }>(`/experiments/${id}/jira/link`),
+
+  variantActivity: (id: string) =>
+    api.get<VariantActivityBucket[]>(`/experiments/${id}/variant-activity`),
 };
 
 // Events
@@ -324,6 +328,24 @@ export const aiStrategistApi = {
     api.post<MetricSuggestionsResponse>("/ai/suggest-metrics", data),
   summarizeExperiment: (id: string) =>
     api.post<ExperimentSummaryResponse>(`/ai/summarize-experiment/${id}`),
+  summarizeSession: (data: {
+    session_id: string;
+    user_id?: string;
+    entry_url: string;
+    referrer?: string;
+    user_agent?: string;
+    duration_seconds?: number;
+    started_at: string;
+    events: Array<{
+      offset_seconds: number;
+      event_name: string;
+      event_type: string;
+      url: string;
+      selector?: string;
+      x?: number;
+      y?: number;
+    }>;
+  }) => api.post<{ journey: string }>('/ai/session-journey', data),
 };
 
 // AI Insights

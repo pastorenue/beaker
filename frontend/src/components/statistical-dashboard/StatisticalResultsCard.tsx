@@ -7,6 +7,8 @@ import type { ExperimentAnalysis } from '../../types';
 type DisplayResult = {
     variant_a: string;
     variant_b: string;
+    mean_a: number;
+    mean_b: number;
     effect_size: number;
     p_value: number;
     bayes_probability?: number;
@@ -17,6 +19,9 @@ type DisplayResult = {
     test_type: string;
     sample_size_a?: number;
     sample_size_b?: number;
+    n_matched_users_a?: number;
+    n_matched_users_b?: number;
+    variance_reduction?: number;
     metric_name?: string;
 };
 
@@ -118,21 +123,39 @@ export const StatisticalResultsCard: React.FC<StatisticalResultsCardProps> = ({
     }, [analysisKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
-        <div className="card">
-            <h3 className="mb-4">Statistical Analysis</h3>
+        <div className="card mt-6">
+            <h3 className="text-xl mb-4">Statistical Analysis</h3>
             <div className="space-y-6">
                 {results.map((result, idx) => (
                     <div key={idx} className="border-b border-slate-800/70 pb-6 last:border-0">
                         <div className="mb-3 flex items-center justify-between">
-                            <h4 className="text-lg font-semibold text-slate-100">
-                                {result.variant_b} vs {result.variant_a}
-                            </h4>
                             <SignificanceIndicator
                                 pValue={result.p_value}
                                 bayesProbability={result.bayes_probability}
                                 eValue={result.e_value}
                                 sequentialThreshold={result.sequential_threshold}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-lg">
+                            <div>
+                                <p className="text-xs text-slate-500 mb-0.5">{result.variant_a} (Control)</p>
+                                <p className="text-lg font-semibold text-slate-100">{formatNumber(result.mean_a, 3)}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {result.variance_reduction
+                                        ? <span className="text-indigo-300">Using Adjusted Mean</span>
+                                        : `n = ${(result.n_matched_users_a ?? result.sample_size_a)?.toLocaleString()}`}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-500 mb-0.5">{result.variant_b} (Treatment)</p>
+                                <p className="text-lg font-semibold text-slate-100">{formatNumber(result.mean_b, 3)}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {result.variance_reduction
+                                        ? <span className="text-indigo-300">Using Adjusted Mean</span>
+                                        : `n = ${(result.n_matched_users_b ?? result.sample_size_b)?.toLocaleString()}`}
+                                </p>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

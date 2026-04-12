@@ -4,11 +4,10 @@ import { CupedImpactAnalysis } from './statistical-dashboard/CupedImpactAnalysis
 import { EffectSizeChart } from './statistical-dashboard/EffectSizeChart';
 import { EventIngestionCard } from './statistical-dashboard/EventIngestionCard';
 import { HealthChecksPanel } from './statistical-dashboard/HealthChecksPanel';
-import { KeyMetricsGrid } from './statistical-dashboard/KeyMetricsGrid';
-import { SampleSizeProgressCard } from './statistical-dashboard/SampleSizeProgressCard';
 import { StatisticalResultsCard } from './statistical-dashboard/StatisticalResultsCard';
 import { VarianceReductionGrid } from './statistical-dashboard/VarianceReductionGrid';
 import { VariantComparisonChart } from './statistical-dashboard/VariantComparisonChart';
+import { VariantEventsChart } from './statistical-dashboard/VariantEventsChart';
 
 interface StatisticalDashboardProps {
     analysis: ExperimentAnalysis;
@@ -26,7 +25,7 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
         color: 'var(--chart-tooltip-text)',
     };
 
-    const { experiment, results, sample_sizes, cuped_adjusted_results } = analysis;
+    const { experiment, results, cuped_adjusted_results } = analysis;
 
     // Determine which results to display
     const activeResults: Array<StatisticalResult | CupedAdjustedResult> =
@@ -115,9 +114,6 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
     return (
         <div className="space-y-6 animate-fade-in">
 
-            {/* Key Metrics Grid */}
-            <KeyMetricsGrid results={displayResults} formatNumber={formatNumber} />
-
             {/* CUPED Variance Reduction Stats */}
             {useCuped && cuped_adjusted_results && (
                 <VarianceReductionGrid results={displayResults} formatPercent={formatPercent} />
@@ -143,11 +139,15 @@ export const StatisticalDashboard: React.FC<StatisticalDashboardProps> = ({
                 />
             )}
 
-            {/* Effect Size with CI */}
-            <EffectSizeChart data={variantComparison} tooltipStyles={tooltipStyles} />
-
-            {/* Sample Size Progress */}
-            <SampleSizeProgressCard sampleSizes={sample_sizes} />
+            {/* Effect Size with CI + Variant Events side-by-side */}
+            <div className="grid grid-cols-2 gap-6">
+                <EffectSizeChart data={variantComparison} tooltipStyles={tooltipStyles} />
+                <VariantEventsChart
+                    experimentId={experiment.id}
+                    variants={experiment.variants.map(v => v.name)}
+                    tooltipStyles={tooltipStyles}
+                />
+            </div>
 
             <HealthChecksPanel checks={analysis.health_checks} formatNumber={formatNumber} />
 

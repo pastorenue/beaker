@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Experiment } from '../../types';
+import type { Experiment, ExperimentAnalysis } from '../../types';
 import { ExperimentStatus } from '../../types';
 import { ControlButtons } from './ControlButtons';
 import { HypothesisCard } from './HypothesisCard';
@@ -13,6 +13,7 @@ interface ExperimentMonitorProps {
     onStop: () => void;
     isLoading?: boolean;
     extraTopContent?: React.ReactNode;
+    sampleSizes?: ExperimentAnalysis['sample_sizes'];
 }
 
 export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
@@ -22,6 +23,7 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
     onStop,
     isLoading,
     extraTopContent,
+    sampleSizes,
 }) => {
     const getStatusColor = () => {
         switch (experiment.status) {
@@ -79,7 +81,7 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
                         <p className="text-xs font-semibold text-slate-500">Traffic</p>
                         <span className="text-xs text-slate-400">{experiment.variants.length} variants</span>
                     </div>
-                    <TrafficDistribution experiment={experiment} />
+                    <TrafficDistribution experiment={experiment} sampleSizes={sampleSizes} />
                 </div>
             </div>
 

@@ -357,6 +357,23 @@ impl ExperimentService {
             });
         }
 
+        // Include control variant in sample sizes
+        let required_size = experiment
+            .hypothesis
+            .as_ref()
+            .unwrap()
+            .minimum_sample_size
+            .unwrap_or(0);
+        let control_current = variant_data
+            .get(&control_variant.name)
+            .map(|d| d.total)
+            .unwrap_or(0);
+        sample_sizes.insert(0, VariantSampleSize {
+            variant: control_variant.name.clone(),
+            current_size: control_current,
+            required_size,
+        });
+
         let health_checks = self.evaluate_health_checks(&experiment).await?;
 
         Ok(ExperimentAnalysisResponse {
@@ -543,6 +560,67 @@ impl ExperimentService {
         Ok(map)
     }
 
+    pub async fn get_variant_activity(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+    ) -> Result<Vec<VariantActivityBucket>> {
+        #[derive(clickhouse::Row, serde::Deserialize)]
+        struct Row {
+            variant: String,
+            event_name: String,
+            bucket: u32,
+            event_count: u64,
+        }
+
+        let exp_str = experiment_id.to_string();
+        let acc_str = account_id.to_string();
+
+        // Join activity_events through sessions (which carries experiment_id) and
+        // then user_assignments (which carries variant).  Direct join on
+        // activity_events.user_id is unreliable because that column is Nullable.
+        let rows = self
+            .ch
+            .client()
+            .query(&format!(
+                "SELECT
+                    sv.variant AS variant,
+                    ae.event_name,
+                    toUInt32(intDiv(toUnixTimestamp(ae.timestamp), 300) * 300) AS bucket,
+                    toUInt64(count(*)) AS event_count
+                 FROM activity_events ae
+                 INNER JOIN (
+                     SELECT s.session_id, ua.variant
+                     FROM (
+                         SELECT session_id, assumeNotNull(user_id) AS user_id
+                         FROM sessions FINAL
+                         WHERE experiment_id = '{exp_str}'
+                           AND user_id IS NOT NULL
+                     ) s
+                     INNER JOIN (
+                         SELECT user_id, variant
+                         FROM user_assignments FINAL
+                         WHERE experiment_id = '{exp_str}' AND account_id = '{acc_str}'
+                     ) ua ON s.user_id = ua.user_id
+                 ) sv ON ae.session_id = sv.session_id
+                 GROUP BY variant, ae.event_name, bucket
+                 ORDER BY bucket ASC"
+            ))
+            .fetch_all::<Row>()
+            .await
+            .context("Failed to fetch variant activity")?;
+
+        Ok(rows
+            .iter()
+            .map(|r| VariantActivityBucket {
+                variant: r.variant.clone(),
+                event_name: r.event_name.clone(),
+                bucket: r.bucket,
+                event_count: r.event_count,
+            })
+            .collect())
+    }
+
     async fn evaluate_health_checks(
         &self,
         experiment: &Experiment,
@@ -690,6 +768,14 @@ fn row_to_experiment(row: ExperimentRow) -> Result<Experiment> {
         created_at: row.created_at,
         updated_at: row.updated_at,
     })
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct VariantActivityBucket {
+    pub variant: String,
+    pub event_name: String,
+    pub bucket: u32,
+    pub event_count: u64,
 }
 
 #[derive(Debug)]

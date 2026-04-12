@@ -22,6 +22,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}/jira/create-issue", web::post().to(jira_create_issue))
             .route("/{id}/jira/link", web::put().to(jira_link_issue))
             .route("/{id}/jira/link", web::delete().to(jira_unlink_issue))
+            .route("/{id}/variant-activity", web::get().to(variant_activity))
             // Telemetry events — nested under /{experiment_id}/telemetry
             .service(
                 web::scope("/{experiment_id}")
@@ -384,6 +385,31 @@ async fn jira_unlink_issue(
     .await
     {
         Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Variant activity endpoint
+// ---------------------------------------------------------------------------
+
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn variant_activity(
+    service: web::Data<ExperimentService>,
+    id: web::Path<Uuid>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    match service
+        .get_variant_activity(user.account_id, id.into_inner())
+        .await
+    {
+        Ok(data) => HttpResponse::Ok().json(data),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": e.to_string()
         })),

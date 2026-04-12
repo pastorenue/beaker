@@ -80,6 +80,20 @@ export function ExperimentDetailPage() {
         }
     });
 
+    // Build a complete sample sizes list that always includes control.
+    // analysis.sample_sizes only has treatment variants from older backend builds,
+    // so we derive control's count from results[0].sample_size_a if missing.
+    const allSampleSizes = React.useMemo(() => {
+        if (!analysis) return undefined;
+        const firstResult = analysis.results[0];
+        const requiredSize = analysis.sample_sizes[0]?.required_size ?? 0;
+        const hasControl = analysis.sample_sizes.some(s => s.variant === firstResult?.variant_a);
+        const controlEntry = !hasControl && firstResult
+            ? [{ variant: firstResult.variant_a, current_size: firstResult.sample_size_a ?? 0, required_size: requiredSize }]
+            : [];
+        return [...controlEntry, ...analysis.sample_sizes];
+    }, [analysis]);
+
     if (expLoading) return <LoadingSpinner fullHeight />;
     if (!experiment) return <div>Experiment not found</div>;
 
@@ -109,6 +123,7 @@ export function ExperimentDetailPage() {
                 onPause={() => pauseMutation.mutate()}
                 onStop={() => stopMutation.mutate()}
                 isLoading={startMutation.isPending || pauseMutation.isPending || stopMutation.isPending}
+                sampleSizes={allSampleSizes}
                 extraTopContent={
                     analysis ? (
                         <StatisticalHeader

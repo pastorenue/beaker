@@ -854,3 +854,10 @@ export interface UpdateTelemetryEventRequest {
 export interface BulkCreateTelemetryEventRequest {
     events: CreateTelemetryEventRequest[];
 }
+
+export interface VariantActivityBucket {
+    variant: string;
+    event_name: string;
+    bucket: number;       // Unix timestamp seconds (5-min buckets)
+    event_count: number;
+}
