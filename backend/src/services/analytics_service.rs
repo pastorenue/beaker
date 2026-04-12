@@ -107,7 +107,7 @@ struct FreshnessRow {
 
 #[derive(clickhouse::Row, serde::Deserialize)]
 struct AvgRow {
-    value: Option<f64>,
+    value: f64,
 }
 
 #[derive(clickhouse::Row, serde::Deserialize)]
@@ -366,8 +366,8 @@ impl AnalyticsService {
             .await
             .context("Failed to fetch previous conversion rate")?;
 
-        let current_conversion = conversion_row.value.unwrap_or(0.0);
-        let prev_conversion = conversion_prev.value.unwrap_or(0.0);
+        let current_conversion = if conversion_row.value.is_nan() { 0.0 } else { conversion_row.value };
+        let prev_conversion = if conversion_prev.value.is_nan() { 0.0 } else { conversion_prev.value };
 
         let (guardrail_breaches, guardrail_detail) = self
             .evaluate_guardrails(now)
@@ -1139,12 +1139,12 @@ impl AnalyticsService {
             )
             .fetch_one::<AvgRow>()
             .await
-            .unwrap_or(AvgRow { value: None });
+            .unwrap_or(AvgRow { value: 0.0 });
 
         Ok(AnalyticsSystemHealth {
             data_freshness_seconds,
             sdk_error_rate,
-            evaluation_latency_ms: latency_row.value.unwrap_or(0.0),
+            evaluation_latency_ms: if latency_row.value.is_nan() { 0.0 } else { latency_row.value },
         })
     }
 
@@ -1172,9 +1172,9 @@ impl AnalyticsService {
                     .bind(&check.metric_name)
                     .fetch_one::<AvgRow>()
                     .await
-                    .unwrap_or(AvgRow { value: None });
+                    .unwrap_or(AvgRow { value: 0.0 });
 
-                let value = value_row.value.unwrap_or(0.0);
+                let value = if value_row.value.is_nan() { 0.0 } else { value_row.value };
                 let passing = match check.direction {
                     HealthCheckDirection::AtLeast => {
                         check.min.map(|min| value >= min).unwrap_or(true)

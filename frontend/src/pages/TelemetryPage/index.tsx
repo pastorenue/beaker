@@ -66,16 +66,6 @@ function parseInput(input: string):
     return { mode: 'value', facet: input.slice(0, colonIdx), query: input.slice(colonIdx + 1) };
 }
 
-function relativeTime(iso: string): string {
-    const diffMs = Date.now() - new Date(iso).getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return `${diffSec}s ago`;
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-    return `${Math.floor(diffHr / 24)}d ago`;
-}
 
 // ─── FilterChip ───────────────────────────────────────────────────────────────
 
@@ -685,7 +675,7 @@ export const TelemetryPage: React.FC = () => {
     }, [trackedData, events]);
 
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => telemetryApi.delete(experimentId, id),
+        mutationFn: (ev: TelemetryEvent) => telemetryApi.delete(ev.experiment_id, ev.id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] });
             setDeletingId(null);
@@ -694,7 +684,7 @@ export const TelemetryPage: React.FC = () => {
 
     const toggleMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) =>
-            telemetryApi.update(experimentId, ev.id, { is_active: !ev.is_active }),
+            telemetryApi.update(ev.experiment_id, ev.id, { is_active: !ev.is_active }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] }),
     });
 
@@ -819,7 +809,7 @@ export const TelemetryPage: React.FC = () => {
                                         return (
                                             <tr key={ev.id} className="transition-colors hover:bg-slate-800/30">
                                                 <td className="px-4 py-3">
-                                                    <span className="rounded border border-slate-700/50 bg-slate-800/60 px-2 py-0.5 font-mono text-xs text-slate-200">
+                                                    <span className="px-2 py-0.5 text-sm font-mono text-slate-200">
                                                         {ev.name}
                                                     </span>
                                                 </td>
@@ -849,7 +839,7 @@ export const TelemetryPage: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-400 text-xs">
-                                                    {relativeTime(ev.created_at)}
+                                                    {formatEventDate(ev)}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1">
@@ -883,7 +873,7 @@ export const TelemetryPage: React.FC = () => {
 
                                                         {deletingId === ev.id ? (
                                                             <button
-                                                                onClick={() => deleteMutation.mutate(ev.id)}
+                                                                onClick={() => deleteMutation.mutate(ev)}
                                                                 disabled={deleteMutation.isPending}
                                                                 className="rounded px-2 py-0.5 text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 transition-colors disabled:opacity-40"
                                                             >
@@ -936,3 +926,7 @@ export const TelemetryPage: React.FC = () => {
 };
 
 export default TelemetryPage;
+function formatEventDate(ev: TelemetryEvent): React.ReactNode {
+    return ev.created_at ? new Date(ev.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : <span className="text-slate-600">—</span>;
+}
+

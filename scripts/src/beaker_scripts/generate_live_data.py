@@ -177,24 +177,16 @@ def _fetch_telemetry_pool(
     client: BeakerClient,
     experiment_id: str,
 ) -> list[tuple[str, str]] | None:
-    """Fetch active telemetry definitions via SDK endpoint and return an event pool."""
-    try:
-        resp = client._http.get(
-            "/api/sdk/telemetry",
-            params={"experiment_id": experiment_id},
-            headers={"x-beaker-key": client.tracking_key()},
-        )
-        resp.raise_for_status()
-        definitions = resp.json().get("definitions", [])
-        pool = [
-            (ev["event_type"], ev["name"])
-            for defn in definitions
-            for ev in defn.get("events", [])
-        ]
-        return pool if pool else None
-    except Exception as e:
-        click.echo(f"Warning: could not fetch telemetry: {e}", err=True)
+    """Fetch active telemetry events for the experiment and return an event pool."""
+    events = client.get(f"/experiments/{experiment_id}/telemetry")
+    if not events:
         return None
+    pool = [
+        (ev["event_type"], ev["name"])
+        for ev in events
+        if ev.get("is_active", True)
+    ]
+    return pool if pool else None
 
 
 def _simulate_session(
@@ -245,11 +237,14 @@ def _simulate_session(
               help="Seconds to sleep between users.")
 @click.option("--min-events", default=60, show_default=True, type=int,
               help="Minimum activity events to fire per user session.")
+@click.option("--use-existing-telemetry", "use_existing_telemetry", is_flag=True, default=False,
+              help="Use telemetry events already defined for the experiment instead of creating them from the script.")
 @api_options
 def cli(
     experiment_id: str | None,
     interval: float,
     min_events: int,
+    use_existing_telemetry: bool,
     base_url: str,
     email: str,
     password: str,
@@ -291,16 +286,19 @@ def cli(
     click.echo(f"Variants: {variant_names}")
     click.echo(f"Primary metric: {metric}")
 
-    click.echo("Creating telemetry definitions...")
-    _create_telemetry_for_experiment(client, experiment_id, metric)
-
-    click.echo("Fetching telemetry via SDK endpoint...")
-    event_pool = _fetch_telemetry_pool(client, experiment_id)
-    if event_pool:
-        click.echo(f"Loaded {len(event_pool)} events from telemetry definitions.")
+    if use_existing_telemetry:
+        click.echo("Fetching existing telemetry definitions for experiment...")
+        event_pool = _fetch_telemetry_pool(client, experiment_id)
+        if event_pool:
+            click.echo(f"Loaded {len(event_pool)} active events from experiment telemetry.")
+        else:
+            event_pool = _event_pool(metric)
+            click.echo(f"No telemetry defined for experiment, falling back to '{metric}' pool ({len(event_pool)} events).")
     else:
+        click.echo("Creating telemetry definitions from script...")
+        _create_telemetry_for_experiment(client, experiment_id, metric)
         event_pool = _event_pool(metric)
-        click.echo(f"No telemetry found, using default pool ({len(event_pool)} events).")
+        click.echo(f"Using script-generated pool ({len(event_pool)} events).")
 
     click.echo(f"Generating live data for experiment {experiment_id} (Group: {group_id})...")
     click.echo("Press Ctrl+C to stop.\n")

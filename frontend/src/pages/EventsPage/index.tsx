@@ -641,7 +641,7 @@ export const EventsPage: React.FC = () => {
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-800/60 text-left text-xs uppercase tracking-wide text-slate-500">
+                                    <tr className="border-b border-slate-800/60 text-left text-xs capitalize tracking-wide text-slate-500">
                                         <th className="px-4 py-3">Event Name</th>
                                         <th className="px-4 py-3">Type</th>
                                         <th className="px-4 py-3">User</th>
@@ -668,7 +668,7 @@ export const EventsPage: React.FC = () => {
                                                     className="transition-colors hover:bg-slate-800/30"
                                                 >
                                                     <td className="px-4 py-3">
-                                                        <span className="rounded border border-slate-700/50 bg-slate-800/60 px-2 py-0.5 font-mono text-xs text-slate-200">
+                                                        <span className="rounded border border-slate-500/50 bg-slate-300/60 px-2 py-0.5 font-mono text-xs text-slate-200">
                                                             {ev.event_name}
                                                         </span>
                                                     </td>
