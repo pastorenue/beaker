@@ -12,6 +12,7 @@ pub mod notification_service;
 pub mod polling_service;
 pub mod sdk_token_service;
 pub mod targeting;
+pub mod telemetry_service;
 pub mod tracking_service;
 pub mod user_group_service;
 
@@ -28,5 +29,6 @@ pub use invite_service::InviteService;
 pub use notification_service::NotificationService;
 pub use polling_service::PollingService;
 pub use sdk_token_service::SdkTokenService;
+pub use telemetry_service::TelemetryService;
 pub use tracking_service::TrackingService;
 pub use user_group_service::UserGroupService;

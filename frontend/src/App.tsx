@@ -21,6 +21,7 @@ import { HomePage } from './pages/HomePage';
 import { ExperimentDetailPage } from './pages/ExperimentDetailPage';
 import { LandingPage } from './pages/LandingPage';
 import { EventsPage } from './pages/EventsPage';
+import { TelemetryPage } from './pages/TelemetryPage';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -107,6 +108,15 @@ function Layout({ children }: { children: React.ReactNode }) {
                     icon: (
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18m0-15h9l-2 3 2 3H5" />
+                        </svg>
+                    ),
+                },
+                {
+                    to: '/telemetry',
+                    label: 'Telemetry',
+                    icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18" />
                         </svg>
                     ),
                 },
@@ -536,6 +546,7 @@ function App() {
                                 <Route path="/templates" element={<TemplatesPlan />} />
                                 <Route path="/settings" element={<UserSettings />} />
                                 <Route path="/events" element={<EventsPage />} />
+                                <Route path="/telemetry" element={<TelemetryPage />} />
                                 <Route
                                     path="/sessions"
                                     element={

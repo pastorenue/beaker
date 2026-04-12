@@ -11,6 +11,7 @@ pub mod integrations;
 pub mod invites;
 pub mod mcp;
 pub mod sdk;
+pub mod telemetry;
 pub mod track;
 pub mod user_groups;
 
@@ -38,6 +39,7 @@ pub fn configure(cfg: &mut web::ServiceConfig, pool: PgPool, config: Config) {
             .configure(ai::configure)
             .configure(track::configure)
             .configure(integrations::configure)
+            .configure(telemetry::configure)
             .configure(move |cfg| {
                 if mcp_enabled {
                     mcp::configure(cfg);

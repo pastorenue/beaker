@@ -21,7 +21,7 @@ use mcp::server::McpServer;
 use services::{
     AnalyticsService, AuthService, CupedService, EventService, ExperimentService,
     FeatureFlagService, FeatureGateService, InviteService, NotificationService, PollingService,
-    SdkTokenService, TrackingService, UserGroupService,
+    SdkTokenService, TelemetryService, TrackingService, UserGroupService,
 };
 
 #[actix_web::main]
@@ -93,6 +93,7 @@ async fn main() -> std::io::Result<()> {
         web::Data::new(UserGroupService::new(pg_pool.clone(), db_with_auth.clone()));
     let feature_flag_service = web::Data::new(FeatureFlagService::new(pg_pool.clone()));
     let feature_gate_service = web::Data::new(FeatureGateService::new(pg_pool.clone()));
+    let telemetry_service = web::Data::new(TelemetryService::new(pg_pool.clone()));
     let event_service = web::Data::new(EventService::new(db_with_auth.clone()));
     let analytics_service =
         web::Data::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone()));
@@ -156,6 +157,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(sdk_token_service_data.clone())
             .app_data(tracking_service.clone())
             .app_data(notification_service.clone())
+            .app_data(telemetry_service.clone())
             .app_data(mcp_server.clone())
             .configure(|cfg| api::configure(cfg, pg_pool.clone(), config.clone()))
     })

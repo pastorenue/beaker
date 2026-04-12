@@ -21,7 +21,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}/cuped/config", web::post().to(save_cuped_config))
             .route("/{id}/jira/create-issue", web::post().to(jira_create_issue))
             .route("/{id}/jira/link", web::put().to(jira_link_issue))
-            .route("/{id}/jira/link", web::delete().to(jira_unlink_issue)),
+            .route("/{id}/jira/link", web::delete().to(jira_unlink_issue))
+            // Telemetry events — nested under /{experiment_id}/telemetry
+            .service(
+                web::scope("/{experiment_id}")
+                    .service(super::telemetry::scope())
+            ),
     );
 }
 

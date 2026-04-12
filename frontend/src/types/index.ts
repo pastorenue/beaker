@@ -811,3 +811,40 @@ export interface JiraTestConnectionResponse {
     ok: boolean;
     display_name: string;
 }
+
+// ── Telemetry types ───────────────────────────────────────────────────────────
+
+/** Flat event returned by the list/create/update REST API. */
+export interface TelemetryEvent {
+    id: string;
+    definition_id: string;
+    experiment_id: string;
+    is_active: boolean;
+    name: string;
+    description: string;
+    event_type: string;
+    selector?: string;
+    url_pattern?: string;
+    visual_guide?: string;
+    created_at: string;
+}
+
+export interface CreateTelemetryEventRequest {
+    name: string;
+    description?: string;
+    event_type?: string;
+    selector?: string;
+    url_pattern?: string;
+    visual_guide?: string;
+    is_active?: boolean;
+}
+
+export interface UpdateTelemetryEventRequest {
+    name?: string;
+    description?: string;
+    event_type?: string;
+    selector?: string;
+    url_pattern?: string;
+    visual_guide?: string;
+    is_active?: boolean;
+}

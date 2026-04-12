@@ -7,7 +7,8 @@ use uuid::Uuid;
 use crate::utils::{authed};
 use crate::config::Config;
 use crate::models::{EvaluateFeatureGateRequest, FeatureFlagStatus, FeatureGateStatus};
-use crate::services::{FeatureFlagService, FeatureGateService, SdkTokenService};
+use crate::models::TelemetryDefinition;
+use crate::services::{FeatureFlagService, FeatureGateService, SdkTokenService, TelemetryService};
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -15,7 +16,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/tokens", web::get().to(tokens))
             .route("/tokens/rotate", web::post().to(rotate_tokens))
             .route("/evaluate/flags", web::post().to(evaluate_flags))
-            .route("/evaluate/gate/{gate_id}", web::post().to(evaluate_gate)),
+            .route("/evaluate/gate/{gate_id}", web::post().to(evaluate_gate))
+            .route("/telemetry", web::get().to(get_telemetry)),
     );
 }
 
@@ -226,6 +228,64 @@ pub async fn evaluate_flags(
     }
 
     HttpResponse::Ok().json(SdkFlagsResponse { flags: evaluations })
+}
+
+#[derive(Deserialize)]
+struct TelemetryQuery {
+    experiment_id: Uuid,
+}
+
+#[derive(Serialize)]
+struct SdkTelemetryResponse {
+    definitions: Vec<TelemetryDefinition>,
+}
+
+#[rate_limit(group = "sdk")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn get_telemetry(
+    req: HttpRequest,
+    token_service: web::Data<SdkTokenService>,
+    telemetry_service: web::Data<TelemetryService>,
+    query: web::Query<TelemetryQuery>,
+) -> impl Responder {
+    let api_key = if let Some(v) = req.headers().get("x-beaker-key") {
+        v.to_str().unwrap_or("").to_string()
+    } else if let Some(v) = req.headers().get("Authorization") {
+        v.to_str()
+            .unwrap_or("")
+            .trim_start_matches("Bearer ")
+            .trim()
+            .to_string()
+    } else {
+        return HttpResponse::Unauthorized().json(SdkErrorResponse {
+            error: "Missing API key".into(),
+        });
+    };
+
+    if api_key.is_empty() {
+        return HttpResponse::Unauthorized().json(SdkErrorResponse {
+            error: "Missing API key".into(),
+        });
+    }
+
+    let account_id = match token_service.get_account_id_by_token(&api_key).await {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::Unauthorized().json(SdkErrorResponse {
+                error: "Invalid API key".into(),
+            })
+        }
+    };
+
+    match telemetry_service
+        .list_active_definitions_for_sdk(account_id, query.experiment_id)
+        .await
+    {
+        Ok(definitions) => HttpResponse::Ok().json(SdkTelemetryResponse { definitions }),
+        Err(e) => HttpResponse::InternalServerError().json(SdkErrorResponse {
+            error: e.to_string(),
+        }),
+    }
 }
 
 #[rate_limit(group = "sdk")]

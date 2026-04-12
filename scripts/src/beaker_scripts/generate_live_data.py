@@ -154,11 +154,54 @@ def _event_pool(metric_name: str) -> list[tuple[str, str]]:
     return DEFAULT_EVENT_POOL
 
 
+def _create_telemetry_for_experiment(
+    client: BeakerClient,
+    experiment_id: str,
+    metric: str,
+) -> None:
+    """Create telemetry definitions for the experiment based on metric event pools."""
+    pool = _event_pool(metric)
+    created = 0
+    for event_type, name in pool:
+        result = client.post(f"/experiments/{experiment_id}/telemetry", json={
+            "name": name,
+            "event_type": event_type,
+            "is_active": True,
+        })
+        if result:
+            created += 1
+    click.echo(f"Created {created}/{len(pool)} telemetry definitions.")
+
+
+def _fetch_telemetry_pool(
+    client: BeakerClient,
+    experiment_id: str,
+) -> list[tuple[str, str]] | None:
+    """Fetch active telemetry definitions via SDK endpoint and return an event pool."""
+    try:
+        resp = client._http.get(
+            "/api/sdk/telemetry",
+            params={"experiment_id": experiment_id},
+            headers={"x-beaker-key": client.tracking_key()},
+        )
+        resp.raise_for_status()
+        definitions = resp.json().get("definitions", [])
+        pool = [
+            (ev["event_type"], ev["name"])
+            for defn in definitions
+            for ev in defn.get("events", [])
+        ]
+        return pool if pool else None
+    except Exception as e:
+        click.echo(f"Warning: could not fetch telemetry: {e}", err=True)
+        return None
+
+
 def _simulate_session(
     client: BeakerClient,
     user_id: str,
     variant: str,
-    metric_name: str,
+    pool: list[tuple[str, str]],
     min_events: int,
 ) -> None:
     """Start a session, fire min_events activity events, then end the session."""
@@ -171,10 +214,9 @@ def _simulate_session(
         "entry_url": entry_url,
         "referrer": random.choice(["https://www.google.com/", "https://twitter.com/", None]),
         "user_agent": random.choice(USER_AGENTS),
-        "metadata": {"variant": variant, "experiment_metric": metric_name},
+        "metadata": {"variant": variant},
     })
 
-    pool = _event_pool(metric_name)
     for step in range(random.randint(min_events, min_events + 20)):
         event_type, event_name = random.choice(pool)
         is_pointer = event_type in ("click", "scroll")
@@ -248,6 +290,18 @@ def cli(
 
     click.echo(f"Variants: {variant_names}")
     click.echo(f"Primary metric: {metric}")
+
+    click.echo("Creating telemetry definitions...")
+    _create_telemetry_for_experiment(client, experiment_id, metric)
+
+    click.echo("Fetching telemetry via SDK endpoint...")
+    event_pool = _fetch_telemetry_pool(client, experiment_id)
+    if event_pool:
+        click.echo(f"Loaded {len(event_pool)} events from telemetry definitions.")
+    else:
+        event_pool = _event_pool(metric)
+        click.echo(f"No telemetry found, using default pool ({len(event_pool)} events).")
+
     click.echo(f"Generating live data for experiment {experiment_id} (Group: {group_id})...")
     click.echo("Press Ctrl+C to stop.\n")
 
@@ -268,7 +322,7 @@ def cli(
             })
 
             # Simulate a full browsing session
-            _simulate_session(client, user_id, variant_name, metric, min_events)
+            _simulate_session(client, user_id, variant_name, event_pool, min_events)
 
             # Record conversion if applicable
             rate = DEFAULT_CONVERSION_RATES.get(variant_name.lower(), 0.10)

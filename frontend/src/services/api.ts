@@ -63,6 +63,9 @@ import type {
   VerifyOtpRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  TelemetryEvent,
+  CreateTelemetryEventRequest,
+  UpdateTelemetryEventRequest,
 } from "../types";
 
 const API_BASE = "http://localhost:8080/api";
@@ -372,6 +375,20 @@ export const integrationApi = {
     api.delete<void>(`/integrations/${type}`),
   testJira: () =>
     api.post<JiraTestConnectionResponse>("/integrations/jira/test"),
+};
+
+// Telemetry
+export const telemetryApi = {
+  listAll: () =>
+    api.get<TelemetryEvent[]>('/telemetry'),
+  list: (experimentId: string) =>
+    api.get<TelemetryEvent[]>(`/experiments/${experimentId}/telemetry`),
+  create: (experimentId: string, data: CreateTelemetryEventRequest) =>
+    api.post<TelemetryEvent>(`/experiments/${experimentId}/telemetry`, data),
+  update: (experimentId: string, eventId: string, data: UpdateTelemetryEventRequest) =>
+    api.put<TelemetryEvent>(`/experiments/${experimentId}/telemetry/${eventId}`, data),
+  delete: (experimentId: string, eventId: string) =>
+    api.delete<void>(`/experiments/${experimentId}/telemetry/${eventId}`),
 };
 
 export default api;

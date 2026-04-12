@@ -8,6 +8,7 @@ pub mod feature_gates;
 pub mod integrations;
 pub mod sessions;
 pub mod statistics;
+pub mod telemetry;
 pub mod user_groups;
 
 pub use ai::*;
@@ -20,4 +21,5 @@ pub use feature_gates::*;
 pub use integrations::*;
 pub use sessions::*;
 pub use statistics::*;
+pub use telemetry::*;
 pub use user_groups::*;
