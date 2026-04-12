@@ -1,35 +1,25 @@
 import React from 'react';
 import type { Session } from '../../types';
 import { SessionFilters } from './SessionFilters';
-
-type FilterKey = 'userId' | 'featureGate' | 'status' | 'sessionId';
+import type { SessionActiveFilter, SessionFilterKey } from './SessionFilters';
 
 type SessionListPanelProps = {
     filteredSessions: Session[];
     selectedSession: string | null;
     onSelectSession: (sessionId: string) => void;
     onRefreshSessions: () => void;
-    onLoadMoreSessions: () => void;
-    hasMoreSessions: boolean;
     isLoadingSessions: boolean;
+    sessionsPage: number;
+    totalSessionPages: number;
+    onGoToPage: (page: number) => void;
     copiedSessionId: string | null;
     onCopySessionId: (sessionId: string, event: React.MouseEvent<HTMLButtonElement>) => void;
     getUrl: (value?: string) => string;
-    activeFilters: FilterKey[];
-    filterStatus: 'all' | 'live' | 'completed';
-    filterText: string;
-    userIdFilter: string;
-    featureGateFilter: string;
-    showFilterMenu: boolean;
-    userIdOptions: string[];
-    featureGateOptions: string[];
-    onToggleFilterMenu: () => void;
-    onAddFilter: (filter: FilterKey) => void;
-    onRemoveFilter: (filter: FilterKey) => void;
-    onFilterStatusChange: (value: 'all' | 'live' | 'completed') => void;
-    onFilterTextChange: (value: string) => void;
-    onUserIdFilterChange: (value: string) => void;
-    onFeatureGateFilterChange: (value: string) => void;
+    activeFilters: SessionActiveFilter[];
+    onAddFilter: (facet: SessionFilterKey, value: string) => void;
+    onRemoveFilter: (facet: SessionFilterKey) => void;
+    onClearAllFilters: () => void;
+    filterSuggestions: Record<SessionFilterKey, string[]>;
 };
 
 const formatRelativeTime = (dateStr: string): string => {
@@ -55,27 +45,18 @@ export const SessionListPanel: React.FC<SessionListPanelProps> = ({
     selectedSession,
     onSelectSession,
     onRefreshSessions,
-    onLoadMoreSessions,
-    hasMoreSessions,
     isLoadingSessions,
+    sessionsPage,
+    totalSessionPages,
+    onGoToPage,
     copiedSessionId,
     onCopySessionId,
     getUrl,
     activeFilters,
-    filterStatus,
-    filterText,
-    userIdFilter,
-    featureGateFilter,
-    showFilterMenu,
-    userIdOptions,
-    featureGateOptions,
-    onToggleFilterMenu,
     onAddFilter,
     onRemoveFilter,
-    onFilterStatusChange,
-    onFilterTextChange,
-    onUserIdFilterChange,
-    onFeatureGateFilterChange,
+    onClearAllFilters,
+    filterSuggestions,
 }) => {
     return (
         <div className="card session-panel session-panel--list">
@@ -84,42 +65,29 @@ export const SessionListPanel: React.FC<SessionListPanelProps> = ({
                     <h3>Sessions</h3>
                     <p>Pick a session to replay and inspect activity.</p>
                 </div>
-                <div className="session-actions">
-                    <button
-                        className="btn-secondary icon-btn"
-                        onClick={onRefreshSessions}
-                        title="Refresh sessions"
-                        aria-label="Refresh sessions"
-                    >
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M20 20v-6h-6" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M20 10a8 8 0 0 0-14-4" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 14a8 8 0 0 0 14 4" />
-                        </svg>
-                    </button>
-                </div>
             </div>
 
-            <SessionFilters
-                activeFilters={activeFilters}
-                filterStatus={filterStatus}
-                filterText={filterText}
-                userIdFilter={userIdFilter}
-                featureGateFilter={featureGateFilter}
-                showFilterMenu={showFilterMenu}
-                userIdOptions={userIdOptions}
-                featureGateOptions={featureGateOptions}
-                onToggleFilterMenu={onToggleFilterMenu}
-                onAddFilter={onAddFilter}
-                onRemoveFilter={onRemoveFilter}
-                onFilterStatusChange={onFilterStatusChange}
-                onFilterTextChange={onFilterTextChange}
-                onUserIdFilterChange={onUserIdFilterChange}
-                onFeatureGateFilterChange={onFeatureGateFilterChange}
-            />
-
-            <div className="session-filter-divider" />
+            {/* Filter toolbar */}
+            <div className="flex gap-2 px-3 pb-3">
+                <SessionFilters
+                    activeFilters={activeFilters}
+                    onAdd={onAddFilter}
+                    onRemove={onRemoveFilter}
+                    onClearAll={onClearAllFilters}
+                    suggestions={filterSuggestions}
+                />
+                <button
+                    className="flex items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-[9px] text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-colors focus:outline-none focus:ring-1 focus:ring-cyan-500/40 shrink-0"
+                    onClick={onRefreshSessions}
+                    title="Refresh sessions"
+                    aria-label="Refresh sessions"
+                >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.93 9A8 8 0 1 1 4 12" />
+                    </svg>
+                </button>
+            </div>
 
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -207,15 +175,28 @@ export const SessionListPanel: React.FC<SessionListPanelProps> = ({
                 )}
             </div>
 
-            {hasMoreSessions && (
-                <button
-                    className="btn-secondary session-load-more"
-                    onClick={onLoadMoreSessions}
-                    disabled={isLoadingSessions}
-                    aria-busy={isLoadingSessions}
-                >
-                    Load more sessions
-                </button>
+            {totalSessionPages > 1 && (
+                <div className="flex items-center justify-between border-t border-slate-700/60 px-4 py-3">
+                    <span className="text-xs text-slate-500">
+                        Page {sessionsPage + 1} of {totalSessionPages}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            className="btn-secondary text-xs disabled:opacity-40"
+                            onClick={() => onGoToPage(sessionsPage - 1)}
+                            disabled={sessionsPage === 0 || isLoadingSessions}
+                        >
+                            Prev
+                        </button>
+                        <button
+                            className="btn-secondary text-xs disabled:opacity-40"
+                            onClick={() => onGoToPage(sessionsPage + 1)}
+                            disabled={sessionsPage >= totalSessionPages - 1 || isLoadingSessions}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

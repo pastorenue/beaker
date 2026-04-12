@@ -4,6 +4,7 @@ import type { ActivityEvent, ReplayEvent, Session } from '../types';
 import { trackApi } from '../services/api';
 import { ReplayPanel } from './session-replay/ReplayPanel';
 import { SessionListPanel } from './session-replay/SessionListPanel';
+import type { SessionActiveFilter, SessionFilterKey } from './session-replay/SessionFilters';
 import { useAccount } from '../contexts/AccountContext';
 
 const formatOffset = (ms: number): string => {
@@ -31,7 +32,10 @@ export function SessionReplayPanel() {
     };
 
     const replayLimit = 200;
+    const SESSION_PAGE_SIZE = 20;
     const [sessions, setSessions] = React.useState<Session[]>([]);
+    const [sessionsPage, setSessionsPage] = React.useState(0);
+    const [sessionsTotalCount, setSessionsTotalCount] = React.useState(0);
     const [selectedSession, setSelectedSession] = React.useState<string | null>(null);
     const [replayEvents, setReplayEvents] = React.useState<ReplayEvent[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
@@ -40,8 +44,6 @@ export function SessionReplayPanel() {
     const [heatmapEvents, setHeatmapEvents] = React.useState<HeatmapEvent[]>([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = React.useState(false);
     const [hasMoreReplay, setHasMoreReplay] = React.useState(true);
-    const [hasMoreSessions, setHasMoreSessions] = React.useState(true);
-    const sessionsOffsetRef = React.useRef(0);
     const isLoadingSessionsRef = React.useRef(false);
     const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
     const [copiedSessionId, setCopiedSessionId] = React.useState<string | null>(null);
@@ -49,12 +51,7 @@ export function SessionReplayPanel() {
     const replayOffsetRef = React.useRef(0);
     const heatmapCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
     const heatmapContainerRef = React.useRef<HTMLDivElement | null>(null);
-    const [filterText, setFilterText] = React.useState('');
-    const [filterStatus, setFilterStatus] = React.useState<'all' | 'live' | 'completed'>('all');
-    const [showFilterMenu, setShowFilterMenu] = React.useState(false);
-    const [userIdFilter, setUserIdFilter] = React.useState('');
-    const [featureGateFilter, setFeatureGateFilter] = React.useState('');
-    const [activeFilters, setActiveFilters] = React.useState<Array<'userId' | 'featureGate' | 'status' | 'sessionId'>>([]);
+    const [activeFilters, setActiveFilters] = React.useState<SessionActiveFilter[]>([]);
 
     // Events drawer state
     const EVENTS_PAGE_SIZE = 20;
@@ -94,31 +91,26 @@ export function SessionReplayPanel() {
         [replayLimit],
     );
 
-    const loadSessions = React.useCallback(async (reset = false) => {
-        if (isLoadingSessionsRef.current) {
-            return;
-        }
+    const loadSessions = React.useCallback(async (page: number) => {
+        if (isLoadingSessionsRef.current) return;
         isLoadingSessionsRef.current = true;
         setIsLoadingSessions(true);
         try {
-            const nextOffset = reset ? 0 : sessionsOffsetRef.current;
-            if (reset) sessionsOffsetRef.current = 0;
-            const response = await trackApi.listSessions(20, nextOffset);
+            const response = await trackApi.listSessions(SESSION_PAGE_SIZE, page * SESSION_PAGE_SIZE);
             const payload = response.data;
-            setSessions((prev) => (reset ? payload.sessions : [...prev, ...payload.sessions]));
-            const updatedOffset = nextOffset + payload.sessions.length;
-            sessionsOffsetRef.current = updatedOffset;
-            setHasMoreSessions(updatedOffset < payload.total);
+            setSessions(payload.sessions);
+            setSessionsTotalCount(payload.total);
+            setSessionsPage(page);
         } catch (error) {
             setErrorMessage('Failed to load sessions.');
         } finally {
             isLoadingSessionsRef.current = false;
             setIsLoadingSessions(false);
         }
-    }, []);
+    }, [SESSION_PAGE_SIZE]);
 
     React.useEffect(() => {
-        loadSessions(true);
+        loadSessions(0);
     }, [loadSessions, activeAccountId]);
 
     React.useEffect(() => {
@@ -211,50 +203,38 @@ export function SessionReplayPanel() {
         return undefined;
     };
 
-    const userIdOptions = React.useMemo(
-        () =>
-            Array.from(
-                new Set(
-                    sessions
-                        .map((session) => session.user_id)
-                        .filter((value): value is string => Boolean(value)),
-                ),
-            ),
-        [sessions],
-    );
+    const addFilter = React.useCallback((facet: SessionFilterKey, value: string) => {
+        setActiveFilters(prev => [...prev.filter(f => f.facet !== facet), { facet, value }]);
+    }, []);
 
-    const featureGateOptions = React.useMemo(
-        () =>
-            Array.from(
-                new Set(
-                    sessions
-                        .map((session) => getFeatureGate(session))
-                        .filter((value): value is string => Boolean(value)),
-                ),
-            ),
-        [sessions],
-    );
+    const removeFilter = React.useCallback((facet: SessionFilterKey) => {
+        setActiveFilters(prev => prev.filter(f => f.facet !== facet));
+    }, []);
+
+    const clearAllFilters = React.useCallback(() => setActiveFilters([]), []);
+
+    const filterSuggestions: Record<SessionFilterKey, string[]> = React.useMemo(() => ({
+        status: ['live', 'completed'],
+        session: [],
+        user: Array.from(new Set(sessions.map(s => s.user_id).filter((v): v is string => !!v))).slice(0, 20),
+        gate: Array.from(new Set(sessions.map(s => getFeatureGate(s)).filter((v): v is string => !!v))).slice(0, 20),
+    }), [sessions]);
 
     const filteredSessions = sessions.filter((session) => {
-        const matchesText = activeFilters.includes('sessionId')
-            ? session.session_id.toLowerCase().includes(filterText.toLowerCase())
-            : true;
-        const isLive = !session.ended_at;
-        const matchesStatus = activeFilters.includes('status')
-            ? filterStatus === 'all'
-                ? true
-                : filterStatus === 'live'
-                    ? isLive
-                    : !isLive
-            : true;
-        const matchesUserId = activeFilters.includes('userId')
-            ? (session.user_id || '').toLowerCase().includes(userIdFilter.toLowerCase())
-            : true;
-        const featureGateValue = getFeatureGate(session);
-        const matchesFeatureGate = activeFilters.includes('featureGate')
-            ? (featureGateValue || '').toLowerCase().includes(featureGateFilter.toLowerCase())
-            : true;
-        return matchesText && matchesStatus && matchesUserId && matchesFeatureGate;
+        for (const f of activeFilters) {
+            if (f.facet === 'status') {
+                const isLive = !session.ended_at;
+                if (f.value === 'live' && !isLive) return false;
+                if (f.value === 'completed' && isLive) return false;
+            }
+            if (f.facet === 'session' && !session.session_id.toLowerCase().includes(f.value.toLowerCase())) return false;
+            if (f.facet === 'user' && !(session.user_id || '').toLowerCase().includes(f.value.toLowerCase())) return false;
+            if (f.facet === 'gate') {
+                const gate = getFeatureGate(session) || '';
+                if (!gate.toLowerCase().includes(f.value.toLowerCase())) return false;
+            }
+        }
+        return true;
     });
 
     const replayRenderKey = `${selectedSession ?? 'none'}`;
@@ -271,22 +251,6 @@ export function SessionReplayPanel() {
             }, 1200);
         } catch (error) {
             console.warn('Failed to copy session id', error);
-        }
-    };
-
-    const handleRemoveFilter = (filter: 'userId' | 'featureGate' | 'status' | 'sessionId') => {
-        setActiveFilters((prev) => prev.filter((item) => item !== filter));
-        if (filter === 'status') {
-            setFilterStatus('all');
-        }
-        if (filter === 'sessionId') {
-            setFilterText('');
-        }
-        if (filter === 'userId') {
-            setUserIdFilter('');
-        }
-        if (filter === 'featureGate') {
-            setFeatureGateFilter('');
         }
     };
 
@@ -350,31 +314,19 @@ export function SessionReplayPanel() {
                 filteredSessions={filteredSessions}
                 selectedSession={selectedSession}
                 onSelectSession={setSelectedSession}
-                onRefreshSessions={() => loadSessions(true)}
-                onLoadMoreSessions={() => loadSessions(false)}
-                hasMoreSessions={hasMoreSessions}
+                onRefreshSessions={() => loadSessions(0)}
                 isLoadingSessions={isLoadingSessions}
+                sessionsPage={sessionsPage}
+                totalSessionPages={Math.ceil(sessionsTotalCount / SESSION_PAGE_SIZE)}
+                onGoToPage={loadSessions}
                 copiedSessionId={copiedSessionId}
                 onCopySessionId={handleCopySessionId}
                 getUrl={getUrl}
                 activeFilters={activeFilters}
-                filterStatus={filterStatus}
-                filterText={filterText}
-                userIdFilter={userIdFilter}
-                featureGateFilter={featureGateFilter}
-                showFilterMenu={showFilterMenu}
-                userIdOptions={userIdOptions}
-                featureGateOptions={featureGateOptions}
-                onToggleFilterMenu={() => setShowFilterMenu((prev) => !prev)}
-                onAddFilter={(filter) => {
-                    setActiveFilters((prev) => [...prev, filter]);
-                    setShowFilterMenu(false);
-                }}
-                onRemoveFilter={handleRemoveFilter}
-                onFilterStatusChange={setFilterStatus}
-                onFilterTextChange={setFilterText}
-                onUserIdFilterChange={setUserIdFilter}
-                onFeatureGateFilterChange={setFeatureGateFilter}
+                onAddFilter={addFilter}
+                onRemoveFilter={removeFilter}
+                onClearAllFilters={clearAllFilters}
+                filterSuggestions={filterSuggestions}
             />
 
             {/* Replay drawer */}
