@@ -314,6 +314,104 @@ Return JSON with:
         })
     }
 
+    pub async fn summarize_session(
+        &self,
+        user_id: Option<&str>,
+        entry_url: &str,
+        referrer: Option<&str>,
+        user_agent: Option<&str>,
+        duration_seconds: Option<u32>,
+        started_at: &str,
+        events: &[crate::api::ai::SessionEventInput],
+    ) -> Result<String> {
+        let event_log = events
+            .iter()
+            .map(|e| {
+                let pos = match (e.x, e.y) {
+                    (Some(x), Some(y)) => format!(" at ({:.0},{:.0})", x, y),
+                    _ => String::new(),
+                };
+                let selector = e
+                    .selector
+                    .as_deref()
+                    .map(|s| format!(" [{}]", s))
+                    .unwrap_or_default();
+                let path = e
+                    .url
+                    .find("://")
+                    .and_then(|i| e.url[i + 3..].find('/').map(|j| e.url[i + 3 + j..].to_string()))
+                    .unwrap_or_else(|| e.url.clone());
+                format!(
+                    "  +{:.1}s  {:12}  {:15}  {}{}{}",
+                    e.offset_seconds, e.event_type, e.event_name, path, selector, pos
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let duration_str = duration_seconds
+            .map(|d| format!("{}m {}s", d / 60, d % 60))
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let system_prompt = "\
+You are an expert UX analyst who specialises in reconstructing user experiences \
+from raw behavioural telemetry. You write with clarity and precision — your narratives \
+help product teams understand exactly what a real person thought and did during a session.";
+
+        let user_prompt = format!(
+            r#"Below is the full telemetry log for a single browser session. \
+Reconstruct this user's journey as a vivid narrative. Your description must: \
+
+1. Walk through their journey chronologically, referencing REAL timestamps, page paths, and \
+   event names from the log. Describe the rhythm — rapid-fire clicks signal confidence or \
+   excitement; long pauses suggest hesitation, distraction, or reading.
+2. Identify the emotional arc: moments of engagement, confusion, momentum, or frustration. \
+   Ground each observation in specific data points (e.g. "fourteen clicks in the first 8 seconds \
+   on /pricing suggest intense comparison behaviour").
+3. Call out any pivots, back-navigations, repeated interactions with the same selector, or \
+   abrupt drop-offs — and speculate on what drove them.
+4. Close with a sharp summary of what this session reveals about the user's intent, their \
+   success or failure in achieving it, and one concrete UX insight a product team could act on.
+
+Be vivid. Be specific. Sound like a senior researcher narrating a usability lab recording.
+
+Important notes:
+- Use the event log data verbatim to ground your narrative — don't make up events or timelines.
+- Don't speculate wildly about the user's feelings or motivations. Base your insights on the data.
+- Highlight/style specific data points (timestamps, event names, page paths) to support your narrative.
+
+--- SESSION METADATA ---
+User:          {}
+Entry URL:     {}
+Referrer:      {}
+User agent:    {}
+Session start: {}
+Duration:      {}
+Total events:  {}
+
+--- EVENT LOG (offset from session start | type | name | path [selector] (x,y)) ---
+{}
+
+Return a JSON object with a single key "journey" whose value is the full narrative (plain text, \
+paragraph breaks with \n\n, no markdown)."#,
+            user_id.unwrap_or("anonymous"),
+            entry_url,
+            referrer.unwrap_or("direct / unknown"),
+            user_agent.unwrap_or("unknown"),
+            started_at,
+            duration_str,
+            events.len(),
+            event_log,
+        );
+
+        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        Ok(json_resp
+            .get("journey")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Journey narrative unavailable.")
+            .to_string())
+    }
+
     pub async fn generate_insight_narrative(
         &self,
         insight_type: &str,

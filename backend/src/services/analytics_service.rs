@@ -81,9 +81,9 @@ struct ExperimentRowSlim {
     primary_metric: String,
 }
 
-#[derive(clickhouse::Row, serde::Deserialize)]
+#[derive(sqlx::FromRow)]
 struct UserGroupRowSlim {
-    id: String,
+    id: uuid::Uuid,
     name: String,
 }
 
@@ -946,17 +946,14 @@ impl AnalyticsService {
             .await
             .context("Failed to fetch segment lift")?;
 
-        let group_rows = self
-            .db
-            .client()
-            .query("SELECT id, name FROM user_groups FINAL")
-            .fetch_all::<UserGroupRowSlim>()
+        let group_rows = sqlx::query_as::<_, UserGroupRowSlim>("SELECT id, name FROM user_groups")
+            .fetch_all(&self.pg)
             .await
             .unwrap_or_default();
 
         let mut group_map = std::collections::HashMap::new();
         for row in group_rows {
-            group_map.insert(row.id, row.name);
+            group_map.insert(row.id.to_string(), row.name);
         }
 
         let mut segments = Vec::new();

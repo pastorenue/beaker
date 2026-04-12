@@ -46,6 +46,7 @@ export const ReplayPanel: React.FC<ReplayPanelProps> = ({
                     <h3>Replay</h3>
                     <p>
                         {selectedSession ? `Session ${selectedSession.session_id.slice(0, 8)}` : 'Pick a session'}
+                        {selectedSession?.user_id ? ` · ${selectedSession.user_id}` : ''}
                         {replayEvents.length > 0 ? ` · ${replayEvents.length} events` : ''}
                     </p>
                 </div>

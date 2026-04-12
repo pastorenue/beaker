@@ -95,6 +95,7 @@ export const SessionListPanel: React.FC<SessionListPanelProps> = ({
                         <tr className="text-left text-xs text-slate-400 border-b border-slate-700/60">
                             <th className="px-3 py-2 font-medium">Status</th>
                             <th className="px-3 py-2 font-medium">Session ID</th>
+                            <th className="px-3 py-2 font-medium">User</th>
                             <th className="px-3 py-2 font-medium">Entry URL</th>
                             <th className="px-3 py-2 font-medium">Started</th>
                             <th className="px-3 py-2 font-medium">Duration</th>
@@ -147,6 +148,11 @@ export const SessionListPanel: React.FC<SessionListPanelProps> = ({
                                                 </svg>
                                             </button>
                                         </div>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        <span className="font-mono text-xs text-slate-300 truncate max-w-[120px] block">
+                                            {session.user_id ?? <span className="text-slate-500">—</span>}
+                                        </span>
                                     </td>
                                     <td className="px-3 py-2.5">
                                         <span className="max-w-[200px] truncate block text-slate-300">

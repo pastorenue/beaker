@@ -167,6 +167,7 @@
   .card {
     @apply rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6 transition-all duration-300;
     box-shadow: 0 25px 60px -40px rgba(15, 23, 42, 0.9);
+    border-radius: 0.25rem;
   }
 
   .btn {

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreateFlagModal } from './feature-flags/CreateFlagModal';
 import { FeatureGatePanel } from './feature-flags/FeatureGatePanel';
 import { FeatureFlagHeader } from './feature-flags/FeatureFlagHeader';
-import { FlagFilters } from './feature-flags/FlagFilters';
+import { FlagFilters, type ActiveFilter, type FilterKey } from './feature-flags/FlagFilters';
 import { FlagTable } from './feature-flags/FlagTable';
 import {
     CreateFeatureFlagRequest,
@@ -46,7 +46,6 @@ export const FeatureFlagManager: React.FC = () => {
     const [showFlagForm, setShowFlagForm] = useState(false);
     const [showGateForm, setShowGateForm] = useState(false);
     const [openGateDetailId, setOpenGateDetailId] = useState<string | null>(null);
-    const [gateTooltipSide, setGateTooltipSide] = useState<'left' | 'right'>('left');
     const [flagForm, setFlagForm] = useState<CreateFeatureFlagRequest>({ ...emptyFlag });
     const [tagInput, setTagInput] = useState('');
     const [groupInput, setGroupInput] = useState('');
@@ -64,10 +63,7 @@ export const FeatureFlagManager: React.FC = () => {
         user_groups: [] as string[],
         groupInput: '',
     });
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-    const [filterTags, setFilterTags] = useState('');
-    const [filterEnvironment, setFilterEnvironment] = useState('');
-    const [filterOwner, setFilterOwner] = useState('');
+    const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
 
     const { data: flags = [], isLoading: flagsLoading } = useQuery({
         queryKey: ['featureFlags', activeAccountId],
@@ -201,18 +197,23 @@ export const FeatureFlagManager: React.FC = () => {
 
     const filteredFlags = useMemo(() => {
         return flags.filter((flag) => {
-            const matchesStatus =
-                filterStatus === 'all' ? true : filterStatus === 'active' ? flag.status === FeatureFlagStatus.Active : flag.status === FeatureFlagStatus.Inactive;
-            const matchesTags = filterTags
-                ? (flag.tags || []).some((tag) => tag.toLowerCase().includes(filterTags.toLowerCase()))
-                : true;
-            const matchesEnvironment = filterEnvironment
-                ? (flag.environment || '').toLowerCase().includes(filterEnvironment.toLowerCase())
-                : true;
-            const matchesOwner = filterOwner ? (flag.owner || '').toLowerCase().includes(filterOwner.toLowerCase()) : true;
-            return matchesStatus && matchesTags && matchesEnvironment && matchesOwner;
+            for (const f of activeFilters) {
+                if (f.facet === 'status') {
+                    const isActive = flag.status === FeatureFlagStatus.Active;
+                    if (f.value === 'active' && !isActive) return false;
+                    if (f.value === 'inactive' && isActive) return false;
+                }
+                if (f.facet === 'environment' && !(flag.environment || '').toLowerCase().includes(f.value.toLowerCase())) return false;
+                if (f.facet === 'owner' && !(flag.owner || '').toLowerCase().includes(f.value.toLowerCase())) return false;
+                if (f.facet === 'tag' && !(flag.tags || []).some(t => t.toLowerCase().includes(f.value.toLowerCase()))) return false;
+                if (f.facet === 'experiment') {
+                    const exp = experiments.find((e: Experiment) => e.name === f.value);
+                    if (!exp || exp.feature_flag_id !== flag.id) return false;
+                }
+            }
+            return true;
         });
-    }, [flags, filterStatus, filterTags, filterEnvironment, filterOwner]);
+    }, [flags, activeFilters, experiments]);
 
     const sortedFlags = useMemo(() => {
         const data = [...filteredFlags];
@@ -236,6 +237,14 @@ export const FeatureFlagManager: React.FC = () => {
         userGroups.forEach((group) => map.set(group.name.toLowerCase(), group));
         return map;
     }, [userGroups]);
+
+    const valueSuggestions = useMemo(() => ({
+        status:      ['active', 'inactive'],
+        environment: environmentOptions,
+        owner:       ownerOptions,
+        tag:         tagOptions,
+        experiment:  experiments.map((e: Experiment) => e.name),
+    }), [tagOptions, environmentOptions, ownerOptions, experiments]);
 
     const startEditFlag = (flag: FeatureFlag) => {
         setEditingFlagId(flag.id);
@@ -301,8 +310,71 @@ export const FeatureFlagManager: React.FC = () => {
     }
 
     return (
-        <div className="space-y-0">
+        <div className="space-y-4">
             <FeatureFlagHeader onCreate={() => setShowFlagForm((prev) => !prev)} />
+
+            <FlagFilters
+                activeFilters={activeFilters}
+                onAdd={(facet: FilterKey, value: string) =>
+                    setActiveFilters((prev) => [...prev.filter((f) => f.facet !== facet), { facet, value }])
+                }
+                onRemove={(facet: FilterKey) =>
+                    setActiveFilters((prev) => prev.filter((f) => f.facet !== facet))
+                }
+                onClearAll={() => setActiveFilters([])}
+                suggestions={valueSuggestions}
+            />
+
+            <FlagTable
+                flags={flags}
+                sortedFlags={sortedFlags}
+                selectedFlag={selectedFlag}
+                flagSort={flagSort}
+                editingFlagId={editingFlagId}
+                editForm={editForm}
+                onToggleSort={toggleFlagSort}
+                onSelectFlag={(flag) => {
+                    setSelectedFlag(flag);
+                    setGateForm({ ...emptyGate, flag_id: flag.id });
+                }}
+                onStartEdit={startEditFlag}
+                onSaveEdit={saveEditFlag}
+                onCancelEdit={() => setEditingFlagId(null)}
+                onDelete={(flag) => {
+                    if (window.confirm(`Delete ${flag.name}?`)) {
+                        deleteFlag.mutate(flag.id);
+                    }
+                }}
+                onEditFormChange={setEditForm}
+                onAddTag={addTagChip}
+                onRemoveTag={removeTagChip}
+            />
+
+            <FeatureGatePanel
+                isOpen={!!selectedFlag}
+                onClose={() => setSelectedFlag(null)}
+                selectedFlag={selectedFlag}
+                selectedGates={selectedGates}
+                rolloutAdvice={rolloutAdvice}
+                showGateForm={showGateForm}
+                gateForm={gateForm}
+                setGateForm={setGateForm}
+                openGateDetailId={openGateDetailId}
+                setOpenGateDetailId={setOpenGateDetailId}
+                onOpenGateForm={() => {
+                    if (!selectedFlag && flags.length > 0) {
+                        setSelectedFlag(flags[0]);
+                        setGateForm({ ...emptyGate, flag_id: flags[0].id });
+                    }
+                    setShowGateForm(true);
+                }}
+                onCloseGateForm={() => setShowGateForm(false)}
+                onCreateGate={() => {
+                    if (!selectedFlag) return;
+                    createGate.mutate({ ...gateForm, flag_id: selectedFlag.id });
+                }}
+                isCreatePending={createGate.isPending}
+            />
 
             {showFlagForm && (
                 <CreateFlagModal
@@ -324,82 +396,6 @@ export const FeatureFlagManager: React.FC = () => {
                 />
             )}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.8fr_1fr]">
-                <div className="space-y-4">
-                    <FlagFilters
-                        filterStatus={filterStatus}
-                        filterTags={filterTags}
-                        filterEnvironment={filterEnvironment}
-                        filterOwner={filterOwner}
-                        tagOptions={tagOptions}
-                        environmentOptions={environmentOptions}
-                        ownerOptions={ownerOptions}
-                        onFilterStatusChange={setFilterStatus}
-                        onFilterTagsChange={setFilterTags}
-                        onFilterEnvironmentChange={setFilterEnvironment}
-                        onFilterOwnerChange={setFilterOwner}
-                        onReset={() => {
-                            setFilterStatus('all');
-                            setFilterTags('');
-                            setFilterEnvironment('');
-                            setFilterOwner('');
-                        }}
-                    />
-                    <FlagTable
-                        flags={flags}
-                        sortedFlags={sortedFlags}
-                        selectedFlag={selectedFlag}
-                        flagSort={flagSort}
-                        editingFlagId={editingFlagId}
-                        editForm={editForm}
-                        userGroupById={userGroupById}
-                        onToggleSort={toggleFlagSort}
-                        onSelectFlag={(flag) => {
-                            setSelectedFlag(flag);
-                            setGateForm({ ...emptyGate, flag_id: flag.id });
-                        }}
-                        onStartEdit={startEditFlag}
-                        onSaveEdit={saveEditFlag}
-                        onCancelEdit={() => setEditingFlagId(null)}
-                        onDelete={(flag) => {
-                            if (window.confirm(`Delete ${flag.name}?`)) {
-                                deleteFlag.mutate(flag.id);
-                            }
-                        }}
-                        onEditFormChange={setEditForm}
-                        onAddTag={addTagChip}
-                        onRemoveTag={removeTagChip}
-                        onAddGroup={addGroupChip}
-                        onRemoveGroup={removeGroupChip}
-                    />
-                </div>
-
-                <FeatureGatePanel
-                    selectedFlag={selectedFlag}
-                    selectedGates={selectedGates}
-                    rolloutAdvice={rolloutAdvice}
-                    showGateForm={showGateForm}
-                    gateForm={gateForm}
-                    setGateForm={setGateForm}
-                    openGateDetailId={openGateDetailId}
-                    gateTooltipSide={gateTooltipSide}
-                    setGateTooltipSide={setGateTooltipSide}
-                    setOpenGateDetailId={setOpenGateDetailId}
-                    onOpenGateForm={() => {
-                        if (!selectedFlag && flags.length > 0) {
-                            setSelectedFlag(flags[0]);
-                            setGateForm({ ...emptyGate, flag_id: flags[0].id });
-                        }
-                        setShowGateForm(true);
-                    }}
-                    onCloseGateForm={() => setShowGateForm(false)}
-                    onCreateGate={() => {
-                        if (!selectedFlag) return;
-                        createGate.mutate({ ...gateForm, flag_id: selectedFlag.id });
-                    }}
-                    isCreatePending={createGate.isPending}
-                />
-            </div>
             <datalist id="feature-flag-user-groups">
                 {userGroups.map((group) => (
                     <option key={group.id} value={group.name} />

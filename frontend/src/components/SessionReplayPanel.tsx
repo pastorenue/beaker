@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { ActivityEvent, ReplayEvent, Session } from '../types';
-import { experimentApi, trackApi } from '../services/api';
+import { experimentApi, trackApi, aiStrategistApi } from '../services/api';
 import { ReplayPanel } from './session-replay/ReplayPanel';
 import { SessionListPanel } from './session-replay/SessionListPanel';
 import type { SessionActiveFilter, SessionFilterKey } from './session-replay/SessionFilters';
@@ -65,6 +65,11 @@ export function SessionReplayPanel() {
     const [activityEvents, setActivityEvents] = React.useState<ActivityEvent[]>([]);
     const [isLoadingEvents, setIsLoadingEvents] = React.useState(false);
     const [eventsPage, setEventsPage] = React.useState(0);
+
+    // AI Journey state
+    const [aiJourney, setAiJourney] = React.useState<string | null>(null);
+    const [isGeneratingJourney, setIsGeneratingJourney] = React.useState(false);
+    const [journeyError, setJourneyError] = React.useState<string | null>(null);
 
     const handleMissingSnapshot = React.useCallback(() => {
         setErrorMessage('Replay missing full snapshot. Start a new session to capture a snapshot.');
@@ -276,6 +281,8 @@ export function SessionReplayPanel() {
     const handleOpenEventsDrawer = async () => {
         if (!selectedSession) return;
         setEventsPage(0);
+        setAiJourney(null);
+        setJourneyError(null);
         setEventsDrawerOpen(true);
         setIsLoadingEvents(true);
         try {
@@ -283,6 +290,40 @@ export function SessionReplayPanel() {
             setActivityEvents(res.data);
         } finally {
             setIsLoadingEvents(false);
+        }
+    };
+
+    const handleGenerateJourney = async () => {
+        if (!selected || sortedActivityEvents.length === 0) return;
+        setIsGeneratingJourney(true);
+        setJourneyError(null);
+        setAiJourney(null);
+        try {
+            const sessionStartMs = new Date(selected.started_at).getTime();
+            const events = sortedActivityEvents.map((e) => ({
+                offset_seconds: (new Date(e.timestamp).getTime() - sessionStartMs) / 1000,
+                event_name: e.event_name,
+                event_type: e.event_type,
+                url: e.url,
+                selector: e.selector,
+                x: e.x,
+                y: e.y,
+            }));
+            const res = await aiStrategistApi.summarizeSession({
+                session_id: selected.session_id,
+                user_id: selected.user_id,
+                entry_url: selected.entry_url,
+                referrer: selected.referrer,
+                user_agent: selected.user_agent,
+                duration_seconds: selected.duration_seconds,
+                started_at: selected.started_at,
+                events,
+            });
+            setAiJourney(res.data.journey);
+        } catch {
+            setJourneyError('Failed to generate journey. Check that the AI service is configured.');
+        } finally {
+            setIsGeneratingJourney(false);
         }
     };
 
@@ -497,6 +538,55 @@ export function SessionReplayPanel() {
                             </div>
                         )}
                     </div>
+
+                    {/* AI Journey section */}
+                    {!isLoadingEvents && sortedActivityEvents.length > 0 && (
+                        <div className="shrink-0 border-t border-slate-700/60 px-6 py-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <svg viewBox="0 0 24 24" className="h-4 w-4 text-violet-400" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+                                    </svg>
+                                    <span className="text-xs font-semibold text-slate-200">AI User Journey</span>
+                                </div>
+                                <button
+                                    className="flex items-center gap-1.5 rounded-lg border border-violet-800/40 bg-violet-800/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500/20 hover:text-violet-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={handleGenerateJourney}
+                                    disabled={isGeneratingJourney}
+                                >
+                                    {isGeneratingJourney ? (
+                                        <>
+                                            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                            </svg>
+                                            Generating…
+                                        </>
+                                    ) : aiJourney ? 'Regenerate' : 'Generate Journey'}
+                                </button>
+                            </div>
+                            {journeyError && (
+                                <p className="text-xs text-red-400">{journeyError}</p>
+                            )}
+                            {aiJourney && (
+                                <div className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-4 py-3 max-h-64 overflow-y-auto">
+                                    {aiJourney.split('\n\n').map((para, i) => (
+                                        <p
+                                            key={i}
+                                            className={`text-sm text-slate-300 leading-relaxed${i > 0 ? ' mt-3' : ''}`}
+                                            dangerouslySetInnerHTML={{ __html: para }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            {!aiJourney && !isGeneratingJourney && !journeyError && (
+                                <p className="text-xs text-slate-500">
+                                    Generate an AI-powered narrative of this user's session based on their events and timeline.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Chart section */}
                     {!isLoadingEvents && eventsOverTime.data.length > 0 && (

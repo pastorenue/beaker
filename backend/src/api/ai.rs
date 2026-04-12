@@ -50,6 +50,29 @@ pub struct ModelListResponse {
     pub models: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SessionEventInput {
+    pub offset_seconds: f64,
+    pub event_name: String,
+    pub event_type: String,
+    pub url: String,
+    pub selector: Option<String>,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SummarizeSessionRequest {
+    pub session_id: String,
+    pub user_id: Option<String>,
+    pub entry_url: String,
+    pub referrer: Option<String>,
+    pub user_agent: Option<String>,
+    pub duration_seconds: Option<u32>,
+    pub started_at: String,
+    pub events: Vec<SessionEventInput>,
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/ai")
@@ -62,6 +85,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/draft-1pager", web::post().to(draft_one_pager))
             .route("/suggest-metrics", web::post().to(suggest_metrics))
             .route("/summarize-experiment/{id}", web::post().to(summarize_experiment))
+            .route("/session-journey", web::post().to(session_journey))
             // AI Insights endpoints
             .route("/insights", web::get().to(list_insights))
             .route("/insights/summary", web::get().to(insights_summary))
@@ -366,6 +390,34 @@ async fn summarize_experiment(
         .await
     {
         Ok(summary) => HttpResponse::Ok().json(summary),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn session_journey(
+    config: web::Data<Config>,
+    pg: web::Data<PgPool>,
+    payload: web::Json<SummarizeSessionRequest>,
+) -> impl Responder {
+    let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
+    let req = payload.into_inner();
+    match ai
+        .summarize_session(
+            req.user_id.as_deref(),
+            &req.entry_url,
+            req.referrer.as_deref(),
+            req.user_agent.as_deref(),
+            req.duration_seconds,
+            &req.started_at,
+            &req.events,
+        )
+        .await
+    {
+        Ok(journey) => HttpResponse::Ok().json(serde_json::json!({ "journey": journey })),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
             "error": e.to_string()
         })),
