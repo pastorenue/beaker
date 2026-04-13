@@ -4,7 +4,7 @@ use crate::models::{
 };
 use crate::services::{SdkTokenService, TrackingService};
 use crate::utils::authed;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use log::error;
 use uuid::Uuid;

@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 

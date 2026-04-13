@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::config::Config;
 use crate::models::ai::{
     DraftHypothesisRequest, ExperimentSuggestion, ExperimentSummary, HypothesisDraft,
-    MetricSuggestion, MetricSuggestionsResponse, OnePagerDraft,
+    MetricSuggestionsResponse, OnePagerDraft,
 };
 use crate::services::analytics_service::AnalyticsService;
 use crate::services::experiment_service::ExperimentService;

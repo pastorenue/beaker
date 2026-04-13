@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use chrono::Utc;
 use futures_util::StreamExt;
@@ -156,9 +156,7 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
         .model
         .clone()
         .unwrap_or_else(|| default_model.clone());
-    let model = if config.ai_models.is_empty() {
-        requested_model
-    } else if config.ai_models.contains(&requested_model) {
+    let model = if config.ai_models.is_empty() || config.ai_models.contains(&requested_model) {
         requested_model
     } else {
         default_model.clone()
@@ -241,9 +239,7 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
         .model
         .clone()
         .unwrap_or_else(|| default_model.clone());
-    let model = if config.ai_models.is_empty() {
-        requested_model
-    } else if config.ai_models.contains(&requested_model) {
+    let model = if config.ai_models.is_empty() || config.ai_models.contains(&requested_model) {
         requested_model
     } else {
         default_model.clone()
@@ -285,7 +281,7 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
     }
 
     let stream = response.bytes_stream().map(|chunk| match chunk {
-        Ok(bytes) => Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(bytes)),
+        Ok(bytes) => Ok::<web::Bytes, actix_web::Error>(bytes),
         Err(err) => Ok::<web::Bytes, actix_web::Error>(web::Bytes::from(format!(
             "data: {{\"error\":\"{}\"}}\n\n",
             err

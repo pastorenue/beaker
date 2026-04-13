@@ -11,7 +11,6 @@ pub mod statistics;
 pub mod telemetry;
 pub mod user_groups;
 
-pub use ai::*;
 pub use analytics::*;
 pub use auth::*;
 pub use events::*;

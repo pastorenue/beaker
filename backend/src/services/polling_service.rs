@@ -225,18 +225,14 @@ impl PollingService {
         }
 
         // SRM check — look for sample ratio mismatch across variants
-        let total_samples: usize = analysis
-            .sample_sizes
-            .iter()
-            .map(|s| s.current_size as usize)
-            .sum();
+        let total_samples: usize = analysis.sample_sizes.iter().map(|s| s.current_size).sum();
         if total_samples > 0 {
             let variant_count = analysis.sample_sizes.len();
             if variant_count > 1 {
                 let expected_per_variant = total_samples / variant_count;
                 let has_srm = analysis.sample_sizes.iter().any(|s| {
                     let ratio = s.current_size as f64 / expected_per_variant as f64;
-                    ratio < 0.85 || ratio > 1.15
+                    !(0.85..=1.15).contains(&ratio)
                 });
 
                 if has_srm {

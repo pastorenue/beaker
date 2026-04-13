@@ -207,7 +207,7 @@ impl TrackingService {
             .map(Self::row_to_session)
             .collect::<Result<_>>()?;
         if let Some(ttl_minutes) = self.session_ttl_minutes {
-            let ttl_seconds = ttl_minutes.saturating_mul(60) as i64;
+            let ttl_seconds = ttl_minutes.saturating_mul(60);
             for session in &mut sessions {
                 if session.ended_at.is_none() {
                     let elapsed = now.signed_duration_since(session.started_at).num_seconds();

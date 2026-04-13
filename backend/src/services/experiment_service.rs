@@ -402,7 +402,7 @@ impl ExperimentService {
         let hypothesis_json = experiment
             .hypothesis
             .as_ref()
-            .map(|h| serde_json::to_value(h))
+            .map(serde_json::to_value)
             .transpose()?;
 
         let status = format!("{:?}", experiment.status).to_lowercase();

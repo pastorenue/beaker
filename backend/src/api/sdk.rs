@@ -1,4 +1,4 @@
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -181,10 +181,10 @@ pub async fn evaluate_flags(
             continue;
         }
 
-        let gates = match gate_service.list_gates(account_id, Some(flag.id)).await {
-            Ok(g) => g,
-            Err(_) => Vec::new(),
-        };
+        let gates = gate_service
+            .list_gates(account_id, Some(flag.id))
+            .await
+            .unwrap_or_default();
 
         let mut matched_gate = None;
         let mut is_enabled = false;

@@ -1,4 +1,4 @@
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use serde::Deserialize;
 

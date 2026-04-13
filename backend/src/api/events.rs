@@ -2,7 +2,7 @@ use crate::middleware::auth::AuthedUser;
 use crate::models::IngestEventRequest;
 use crate::services::event_service::EventService;
 use actix_web::HttpMessage;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use log::error;
 

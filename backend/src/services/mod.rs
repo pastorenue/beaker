@@ -16,7 +16,6 @@ pub mod telemetry_service;
 pub mod tracking_service;
 pub mod user_group_service;
 
-pub use ai_service::AiService;
 pub use analytics_service::AnalyticsService;
 pub use auth_service::AuthService;
 pub use cuped_service::CupedService;
