@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::config::Config;
 use crate::middleware::auth::AuthedUser;
 use crate::models::ai::{DraftHypothesisRequest, DraftOnePagerRequest, SuggestMetricsRequest};
-use crate::services::{AnalyticsService, ExperimentService};
 use crate::services::ai_service::AiService;
+use crate::services::{AnalyticsService, ExperimentService};
 use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,7 +84,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/draft-hypothesis", web::post().to(draft_hypothesis))
             .route("/draft-1pager", web::post().to(draft_one_pager))
             .route("/suggest-metrics", web::post().to(suggest_metrics))
-            .route("/summarize-experiment/{id}", web::post().to(summarize_experiment))
+            .route(
+                "/summarize-experiment/{id}",
+                web::post().to(summarize_experiment),
+            )
             .route("/session-journey", web::post().to(session_journey))
             // AI Insights endpoints
             .route("/insights", web::get().to(list_insights))
@@ -344,11 +347,7 @@ async fn draft_one_pager(
 ) -> impl Responder {
     let ai = AiService::new(pg.get_ref().clone(), config.get_ref().clone());
     match ai
-        .draft_one_pager(
-            &experiment_service,
-            user.account_id,
-            payload.experiment_id,
-        )
+        .draft_one_pager(&experiment_service, user.account_id, payload.experiment_id)
         .await
     {
         Ok(draft) => HttpResponse::Ok().json(draft),
@@ -515,10 +514,7 @@ async fn list_insights(
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
-async fn insights_summary(
-    pg: web::Data<PgPool>,
-    user: web::ReqData<AuthedUser>,
-) -> impl Responder {
+async fn insights_summary(pg: web::Data<PgPool>, user: web::ReqData<AuthedUser>) -> impl Responder {
     let result = sqlx::query(
         r#"
         SELECT

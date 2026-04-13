@@ -27,8 +27,8 @@ export const AccountSetupWizard: React.FC = () => {
             setActiveAccountId(accountId);
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
             setStep('invite_members');
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to create account');
+        } catch (err) {
+            setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to create account');
         } finally {
             setIsLoading(false);
         }
@@ -48,7 +48,7 @@ export const AccountSetupWizard: React.FC = () => {
                 await accountApi.createInvite(createdAccountId, invite);
             }
             setStep('success');
-        } catch (err: any) {
+        } catch (_err) {
             setError('Failed to send some invitations, but your account is ready.');
             setStep('success');
         } finally {
