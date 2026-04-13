@@ -14,8 +14,11 @@ Usage (local dev):
 from __future__ import annotations
 
 import random
+import threading
 import time
 import uuid
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from datetime import datetime, timedelta, timezone
 
 import click
 
@@ -145,6 +148,22 @@ USER_AGENTS = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
 ]
 
+# ---------------------------------------------------------------------------
+# Thread-local client cache
+# ---------------------------------------------------------------------------
+
+_thread_local = threading.local()
+
+
+def _get_client(base_url: str, email: str, password: str) -> BeakerClient:
+    if not hasattr(_thread_local, "client"):
+        _thread_local.client = BeakerClient(base_url, email, password)
+    return _thread_local.client
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _event_pool(metric_name: str) -> list[tuple[str, str]]:
     metric_lower = (metric_name or "").lower()
@@ -152,6 +171,14 @@ def _event_pool(metric_name: str) -> list[tuple[str, str]]:
         if key in metric_lower:
             return pool
     return DEFAULT_EVENT_POOL
+
+
+def _random_base_time(time_spread_hours: float) -> datetime | None:
+    if time_spread_hours <= 0:
+        return None
+    spread_seconds = time_spread_hours * 3600
+    offset = random.uniform(0, spread_seconds)
+    return datetime.now(tz=timezone.utc) - timedelta(seconds=offset)
 
 
 def _create_telemetry_for_experiment(
@@ -196,11 +223,16 @@ def _simulate_session(
     pool: list[tuple[str, str]],
     min_events: int,
     experiment_id: str | None = None,
-) -> None:
-    """Start a session, fire min_events activity events, then end the session."""
+    base_time: datetime | None = None,
+) -> datetime | None:
+    """Start a session, fire min_events activity events, then end the session.
+
+    Returns the session end time (either base_time-derived or None for real-time).
+    """
     session_id = f"sess_{uuid.uuid4().hex[:16]}"
     entry_url = random.choice(SIMULATED_URLS)
 
+    # Session start cannot be backdated; always uses server-side Utc::now()
     client.track("/track/session/start", {
         "session_id": session_id,
         "user_id": user_id,
@@ -211,10 +243,11 @@ def _simulate_session(
         "experiment_id": experiment_id,
     })
 
-    for step in range(random.randint(min_events, min_events + 20)):
+    num_steps = random.randint(min_events, min_events + 20)
+    for step in range(num_steps):
         event_type, event_name = random.choice(pool)
         is_pointer = event_type in ("click", "scroll")
-        client.track("/track/event", {
+        payload: dict = {
             "session_id": session_id,
             "user_id": user_id,
             "event_name": event_name,
@@ -224,9 +257,66 @@ def _simulate_session(
             "x": round(random.uniform(0, 1920), 1) if is_pointer else None,
             "y": round(random.uniform(0, 1080), 1) if is_pointer else None,
             "metadata": {"step": step + 1, "variant": variant},
-        })
+        }
+        if base_time is not None:
+            event_ts = base_time + timedelta(seconds=step * 3)
+            payload["timestamp"] = event_ts.isoformat()
+        client.track("/track/event", payload)
 
-    client.track("/track/session/end", {"session_id": session_id})
+    ended_at: datetime | None = None
+    session_end_payload: dict = {"session_id": session_id}
+    if base_time is not None:
+        ended_at = base_time + timedelta(seconds=num_steps * 3)
+        session_end_payload["ended_at"] = ended_at.isoformat()
+    client.track("/track/session/end", session_end_payload)
+
+    return ended_at
+
+
+def _simulate_user(
+    base_url: str,
+    email: str,
+    password: str,
+    experiment_id: str,
+    group_id: str,
+    variant_names: list[str],
+    event_pool: list[tuple[str, str]],
+    min_events: int,
+    metric: str,
+    time_spread_hours: float,
+) -> tuple[str, bool]:
+    """Simulate one user. Returns (variant_name, did_convert)."""
+    client = _get_client(base_url, email, password)
+
+    variant_name = random.choice(variant_names)
+    user_id = f"sim_user_{random.randint(100000, 999999)}"
+
+    client.post("/user-groups/assign", json={
+        "user_id": user_id,
+        "experiment_id": experiment_id,
+        "group_id": group_id,
+    })
+
+    base_time = _random_base_time(time_spread_hours)
+    ended_at = _simulate_session(
+        client, user_id, variant_name, event_pool, min_events, experiment_id, base_time
+    )
+
+    rate = DEFAULT_CONVERSION_RATES.get(variant_name.lower(), 0.10)
+    converted = random.random() < rate
+    if converted:
+        conversion_payload: dict = {
+            "experiment_id": experiment_id,
+            "user_id": user_id,
+            "variant": variant_name,
+            "metric_name": metric,
+            "metric_value": 1.0,
+        }
+        if ended_at is not None:
+            conversion_payload["timestamp"] = ended_at.isoformat()
+        client.post("/events", json=conversion_payload)
+
+    return variant_name, converted
 
 
 # ---------------------------------------------------------------------------
@@ -236,17 +326,23 @@ def _simulate_session(
 @click.command()
 @click.argument("experiment_id", required=False)
 @click.option("--interval", default=0.5, show_default=True, type=float,
-              help="Seconds to sleep between users.")
+              help="Seconds to sleep between users (single-threaded mode only).")
 @click.option("--min-events", default=60, show_default=True, type=int,
               help="Minimum activity events to fire per user session.")
 @click.option("--use-existing-telemetry", "use_existing_telemetry", is_flag=True, default=False,
               help="Use telemetry events already defined for the experiment instead of creating them from the script.")
+@click.option("--concurrency", default=1, show_default=True, type=int,
+              help="Number of parallel worker threads.")
+@click.option("--time-spread", "time_spread", default=0.0, show_default=True, type=float,
+              help="Hours of historical window to spread events across (0 = real-time).")
 @api_options
 def cli(
     experiment_id: str | None,
     interval: float,
     min_events: int,
     use_existing_telemetry: bool,
+    concurrency: int,
+    time_spread: float,
     base_url: str,
     email: str,
     password: str,
@@ -303,49 +399,71 @@ def cli(
         click.echo(f"Using script-generated pool ({len(event_pool)} events).")
 
     click.echo(f"Generating live data for experiment {experiment_id} (Group: {group_id})...")
+    if concurrency > 1:
+        click.echo(f"Concurrency: {concurrency} workers")
+    if time_spread > 0:
+        click.echo(f"Time spread: {time_spread}h historical window")
     click.echo("Press Ctrl+C to stop.\n")
 
     user_count = 0
     conversions: dict[str, int] = {v: 0 for v in variant_names}
     sessions_per_variant: dict[str, int] = {v: 0 for v in variant_names}
+    stats_lock = threading.Lock()
+
+    worker_kwargs = dict(
+        base_url=base_url,
+        email=email,
+        password=password,
+        experiment_id=experiment_id,
+        group_id=group_id,
+        variant_names=variant_names,
+        event_pool=event_pool,
+        min_events=min_events,
+        metric=metric,
+        time_spread_hours=time_spread,
+    )
 
     try:
-        while True:
-            variant_name = random.choice(variant_names)
-            user_id = f"sim_user_{random.randint(100000, 999999)}"
+        if concurrency <= 1:
+            # Single-threaded path: preserves --interval behaviour
+            while True:
+                variant_name, converted = _simulate_user(**worker_kwargs)
+                with stats_lock:
+                    if converted:
+                        conversions[variant_name] += 1
+                    sessions_per_variant[variant_name] += 1
+                    user_count += 1
+                    if user_count % 5 == 0:
+                        stats = ", ".join(
+                            f"{v}: {conversions[v]}/{sessions_per_variant[v]}" for v in variant_names
+                        )
+                        click.echo(f"Iters: {user_count} | {stats}")
+                time.sleep(interval)
+        else:
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                futures: dict = {}
+                while True:
+                    # Keep pool saturated
+                    while len(futures) < concurrency:
+                        f = executor.submit(_simulate_user, **worker_kwargs)
+                        futures[f] = True
 
-            # Assign to experiment group
-            client.post("/user-groups/assign", json={
-                "user_id": user_id,
-                "experiment_id": experiment_id,
-                "group_id": group_id,
-            })
+                    done, _ = wait(futures, timeout=0.01, return_when=FIRST_COMPLETED)
+                    for f in done:
+                        variant_name, converted = f.result()
+                        with stats_lock:
+                            if converted:
+                                conversions[variant_name] += 1
+                            sessions_per_variant[variant_name] += 1
+                            user_count += 1
+                            if user_count % 5 == 0:
+                                stats = ", ".join(
+                                    f"{v}: {conversions[v]}/{sessions_per_variant[v]}" for v in variant_names
+                                )
+                                click.echo(f"Iters: {user_count} | {stats}")
+                        del futures[f]
 
-            # Simulate a full browsing session
-            _simulate_session(client, user_id, variant_name, event_pool, min_events, experiment_id)
-
-            # Record conversion if applicable
-            rate = DEFAULT_CONVERSION_RATES.get(variant_name.lower(), 0.10)
-            if random.random() < rate:
-                client.post("/events", json={
-                    "experiment_id": experiment_id,
-                    "user_id": user_id,
-                    "variant": variant_name,
-                    "metric_name": metric,
-                    "metric_value": 1.0,
-                })
-                conversions[variant_name] += 1
-
-            sessions_per_variant[variant_name] += 1
-            user_count += 1
-
-            if user_count % 5 == 0:
-                stats = ", ".join(
-                    f"{v}: {conversions[v]}/{sessions_per_variant[v]}" for v in variant_names
-                )
-                click.echo(f"Iters: {user_count} | {stats}")
-
-            time.sleep(interval)
+                    time.sleep(0.01)  # tiny yield to avoid busy-wait
 
     except KeyboardInterrupt:
         click.echo("\nStopping data generation.")

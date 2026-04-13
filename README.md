@@ -65,9 +65,31 @@ We provide a specialized data generator to simulate real-world traffic and verif
 1.  **Create an experiment** via the UI at [http://localhost:3000/create](http://localhost:3000/create).
 2.  **Run the generator**:
     ```bash
-    python3 scripts/generate_live_data.py [EXPERIMENT_ID]
+    # Default: single worker, real-time timestamps
+    make generate-live-data
+
+    # Target a specific experiment
+    make generate-live-data ARGS="<EXPERIMENT_ID>"
+
+    # 5 concurrent workers for higher throughput
+    make generate-live-data ARGS="--concurrency 5"
+
+    # 3 workers with events spread across the last 24 hours (pre-populates dashboards)
+    make generate-live-data ARGS="--concurrency 3 --time-spread 24"
+
+    # Use telemetry events already defined on the experiment
+    make generate-live-data ARGS="--use-existing-telemetry"
     ```
-    *Note: The script will automatically create test user groups and simulate a 20% conversion lift in the treatment variant.*
+
+| Option | Default | Description |
+|---|---|---|
+| `--concurrency` | `1` | Number of parallel worker threads |
+| `--time-spread` | `0` | Hours of historical window to spread events across (0 = real-time) |
+| `--min-events` | `60` | Minimum activity events per user session |
+| `--interval` | `0.5` | Seconds between users (single-threaded mode only) |
+| `--use-existing-telemetry` | off | Use telemetry definitions already on the experiment |
+
+*Note: The script automatically creates a test user group and simulates a 20% conversion lift in the treatment variant.*
 
 ## 📖 API Reference
 

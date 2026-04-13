@@ -225,7 +225,7 @@ export const PlatformSummaryCard: React.FC = () => {
                         </svg>
                     </div>
                     <div>
-                        <h3 className="text-xl font-semibold text-slate-100">Platform Intelligence</h3>
+                        <h3 className="text-2xl font-semibold text-slate-100">Platform Intelligence</h3>
                         <p className="text-sm text-slate-500">AI-generated summary of your account</p>
                     </div>
                 </div>
@@ -235,12 +235,12 @@ export const PlatformSummaryCard: React.FC = () => {
                     {insights.length > 0 && (
                         <div className="flex gap-1.5">
                             {insights.filter((i) => i.severity === 'critical').length > 0 && (
-                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-900/60 text-red-300">
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/60 text-red-800">
                                     {insights.filter((i) => i.severity === 'critical').length} critical
                                 </span>
                             )}
                             {insights.filter((i) => i.severity === 'warning').length > 0 && (
-                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-900/60 text-yellow-300">
+                                <span className="px-3 py-1 rounded text-sm font-medium bg-yellow-500/60 text-yellow-800">
                                     {insights.filter((i) => i.severity === 'warning').length} warnings
                                 </span>
                             )}
@@ -251,7 +251,7 @@ export const PlatformSummaryCard: React.FC = () => {
                         type="button"
                         onClick={generate}
                         disabled={isGenerating || !isDataReady}
-                        className="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-700 hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 rounded-md border border-purple-700 bg-purple-800 px-3 py-1 text-sm text-white transition hover:bg-purple-700/20 hover:text-purple-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -303,7 +303,7 @@ export const PlatformSummaryCard: React.FC = () => {
                 )}
 
                 {summary.status === 'error' && (
-                    <div className="flex items-start gap-2 rounded-lg border border-red-900/40 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+                    <div className="flex items-start gap-2 rounded-lg border border-red-500/80 bg-red-300/20 px-4 py-3 text-sm text-red-800">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 20 20"

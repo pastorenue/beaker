@@ -77,6 +77,8 @@ seed-test-postgres:
 #   make generate-live-data ARGS="--interval 1.0 --min-events 80"
 #   make generate-live-data ARGS="02bf6c74-4220-45cb-92ad-3fb79275f683"
 #   make generate-live-data ARGS="--use-existing-telemetry"
+#   make generate-live-data ARGS="--concurrency 5"
+#   make generate-live-data ARGS="--concurrency 3 --time-spread 24"
 #   make generate-cuped-data ARGS="--users 1000 --lift 0.10"
 #   make generate-test-users-csv ARGS="--count 500 --output /tmp/users.csv"
 #   make migrate-clickhouse-to-postgres ARGS="--dry-run"
