@@ -204,7 +204,7 @@ pub fn circuit_breaker(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let new_block: syn::Block =
         syn::parse2(new_block_tokens).expect("circuit_breaker: failed to parse generated block");
-    func.block = Box::new(new_block);
+    *func.block = new_block;
 
     TokenStream::from(quote! { #func })
 }
