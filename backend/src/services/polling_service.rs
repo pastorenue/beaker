@@ -20,7 +20,12 @@ pub struct PollingService {
 }
 
 impl PollingService {
-    pub fn new(pg: PgPool, ch: ClickHouseClient, config: Config, notification_service: NotificationService) -> Self {
+    pub fn new(
+        pg: PgPool,
+        ch: ClickHouseClient,
+        config: Config,
+        notification_service: NotificationService,
+    ) -> Self {
         let db_with_auth = ch.with_database("beaker");
         let experiment_service = ExperimentService::new(pg.clone(), db_with_auth);
         let ai_service = AiService::new(pg.clone(), config.clone());
@@ -75,10 +80,7 @@ impl PollingService {
 
         for experiment in running {
             if let Err(e) = self.poll_experiment(account_id, &experiment).await {
-                warn!(
-                    "Polling failed for experiment {}: {}",
-                    experiment.id, e
-                );
+                warn!("Polling failed for experiment {}: {}", experiment.id, e);
             }
         }
         Ok(())
@@ -109,10 +111,7 @@ impl PollingService {
             let headline;
             let detail;
 
-            if result.is_significant
-                && result.effect_size < threshold
-                && result.p_value < 0.05
-            {
+            if result.is_significant && result.effect_size < threshold && result.p_value < 0.05 {
                 insight_type = "regression";
                 severity = "critical";
                 headline = format!(
@@ -153,10 +152,11 @@ impl PollingService {
                 .ok();
 
             let mut auto_actioned = false;
-            if insight_type == "regression"
-                && self.config.ai_auto_stop_regressions
-            {
-                info!("Auto-stopping experiment {} due to critical regression", experiment.id);
+            if insight_type == "regression" && self.config.ai_auto_stop_regressions {
+                info!(
+                    "Auto-stopping experiment {} due to critical regression",
+                    experiment.id
+                );
                 if let Err(e) = self
                     .experiment_service
                     .stop_experiment(account_id, experiment.id)
@@ -191,7 +191,10 @@ impl PollingService {
             .execute(&self.pg)
             .await?;
 
-            info!("Persisted {} insight for experiment {}", severity, experiment.id);
+            info!(
+                "Persisted {} insight for experiment {}",
+                severity, experiment.id
+            );
 
             // Fire Slack notification (fire-and-forget)
             if matches!(severity, "critical" | "warning") {
@@ -202,7 +205,8 @@ impl PollingService {
                 let hl = headline.clone();
                 let det = detail.clone();
                 tokio::spawn(async move {
-                    ns.notify_ai_insight(account_id, &exp_name, exp_id, &sev, &hl, &det).await;
+                    ns.notify_ai_insight(account_id, &exp_name, exp_id, &sev, &hl, &det)
+                        .await;
                 });
             }
 
@@ -214,13 +218,18 @@ impl PollingService {
                 let effect = result.effect_size;
                 let pval = result.p_value;
                 tokio::spawn(async move {
-                    ns.notify_winner_detected(account_id, &exp_clone, &variant_b, effect, pval).await;
+                    ns.notify_winner_detected(account_id, &exp_clone, &variant_b, effect, pval)
+                        .await;
                 });
             }
         }
 
         // SRM check — look for sample ratio mismatch across variants
-        let total_samples: usize = analysis.sample_sizes.iter().map(|s| s.current_size as usize).sum();
+        let total_samples: usize = analysis
+            .sample_sizes
+            .iter()
+            .map(|s| s.current_size as usize)
+            .sum();
         if total_samples > 0 {
             let variant_count = analysis.sample_sizes.len();
             if variant_count > 1 {
@@ -255,7 +264,10 @@ impl PollingService {
                     .bind(experiment.id)
                     .bind("warning")
                     .bind("srm")
-                    .bind(format!("Sample Ratio Mismatch detected in '{}'", experiment.name))
+                    .bind(format!(
+                        "Sample Ratio Mismatch detected in '{}'",
+                        experiment.name
+                    ))
                     .bind("Variant sample sizes deviate significantly from expected allocation.")
                     .bind(narrative.as_deref())
                     .bind(Some(total_samples as i64))
@@ -276,13 +288,7 @@ impl PollingService {
         for check in failing_checks {
             let narrative = self
                 .ai_service
-                .generate_insight_narrative(
-                    "guardrail",
-                    &experiment.name,
-                    None,
-                    None,
-                    None,
-                )
+                .generate_insight_narrative("guardrail", &experiment.name, None, None, None)
                 .await
                 .ok();
 

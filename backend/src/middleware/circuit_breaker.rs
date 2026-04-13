@@ -92,11 +92,18 @@ static REGISTRY: Lazy<DashMap<String, Arc<CircuitBreaker>>> = Lazy::new(DashMap:
 ///
 /// The `name` key should be the fully-qualified handler path produced by
 /// `concat!(module_path!(), "::", fn_name)` in the generated code.
-pub fn get_or_create(name: &str, failure_threshold: u32, recovery_timeout_secs: u64) -> Arc<CircuitBreaker> {
+pub fn get_or_create(
+    name: &str,
+    failure_threshold: u32,
+    recovery_timeout_secs: u64,
+) -> Arc<CircuitBreaker> {
     if let Some(cb) = REGISTRY.get(name) {
         return cb.clone();
     }
-    let cb = Arc::new(CircuitBreaker::new(failure_threshold, recovery_timeout_secs));
+    let cb = Arc::new(CircuitBreaker::new(
+        failure_threshold,
+        recovery_timeout_secs,
+    ));
     REGISTRY.insert(name.to_string(), cb.clone());
     cb
 }

@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::models::ai::{
-    DraftHypothesisRequest, ExperimentSuggestion, HypothesisDraft, MetricSuggestion,
-    MetricSuggestionsResponse, OnePagerDraft, ExperimentSummary,
+    DraftHypothesisRequest, ExperimentSuggestion, ExperimentSummary, HypothesisDraft,
+    MetricSuggestion, MetricSuggestionsResponse, OnePagerDraft,
 };
 use crate::services::analytics_service::AnalyticsService;
 use crate::services::experiment_service::ExperimentService;
@@ -114,7 +114,12 @@ Return a JSON object with key "suggestions" containing an array of 5 objects, ea
 - telemetry_touchpoints (array of telemetry event name strings)"#,
             experiments.len(),
             running_count,
-            exp_names.iter().take(10).map(|n| n.as_str()).collect::<Vec<_>>().join(", "),
+            exp_names
+                .iter()
+                .take(10)
+                .map(|n| n.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
             overview.summary.active_experiments_delta,
             overview.summary.daily_exposures,
             overview.summary.primary_conversion_rate * 100.0,
@@ -130,7 +135,8 @@ Return a JSON object with key "suggestions" containing an array of 5 objects, ea
     }
 
     pub async fn draft_hypothesis(&self, req: DraftHypothesisRequest) -> Result<HypothesisDraft> {
-        let system_prompt = "You are an expert in statistical hypothesis testing. Always respond with valid JSON.";
+        let system_prompt =
+            "You are an expert in statistical hypothesis testing. Always respond with valid JSON.";
         let user_prompt = format!(
             r#"Draft a hypothesis for this experiment.
 
@@ -220,7 +226,12 @@ Return a JSON object with:
             experiment.experiment_type,
             experiment.primary_metric,
             experiment.status,
-            experiment.variants.iter().map(|v| v.name.as_str()).collect::<Vec<_>>().join(", "),
+            experiment
+                .variants
+                .iter()
+                .map(|v| v.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
             hypothesis_text,
             sample_info,
         );
@@ -273,11 +284,7 @@ Return a JSON object with:
                     .map(|r| {
                         format!(
                             "{} vs {}: effect={:.4}, p={:.4}, significant={}",
-                            r.variant_a,
-                            r.variant_b,
-                            r.effect_size,
-                            r.p_value,
-                            r.is_significant,
+                            r.variant_a, r.variant_b, r.effect_size, r.p_value, r.is_significant,
                         )
                     })
                     .collect::<Vec<_>>()
@@ -285,7 +292,8 @@ Return a JSON object with:
             })
             .unwrap_or_else(|| "No analysis data yet".to_string());
 
-        let system_prompt = "You are a concise experimentation analyst. Always respond with valid JSON.";
+        let system_prompt =
+            "You are a concise experimentation analyst. Always respond with valid JSON.";
         let user_prompt = format!(
             r#"Summarize this experiment in 2 sentences.
 
@@ -339,7 +347,11 @@ Return JSON with:
                 let path = e
                     .url
                     .find("://")
-                    .and_then(|i| e.url[i + 3..].find('/').map(|j| e.url[i + 3 + j..].to_string()))
+                    .and_then(|i| {
+                        e.url[i + 3..]
+                            .find('/')
+                            .map(|j| e.url[i + 3 + j..].to_string())
+                    })
                     .unwrap_or_else(|| e.url.clone());
                 format!(
                     "  +{:.1}s  {:12}  {:15}  {}{}{}",
@@ -420,7 +432,8 @@ paragraph breaks with \n\n, no markdown)."#,
         p_value: Option<f64>,
         sample_size: Option<i64>,
     ) -> Result<String> {
-        let system_prompt = "You are a concise experimentation analyst. Always respond with valid JSON.";
+        let system_prompt =
+            "You are a concise experimentation analyst. Always respond with valid JSON.";
         let user_prompt = format!(
             r#"Generate a 2-sentence narrative for this experiment insight.
 
@@ -434,9 +447,15 @@ Return JSON with:
 - narrative (string, exactly 2 sentences)"#,
             insight_type,
             experiment_name,
-            effect_size.map(|v| format!("{:.4}", v)).unwrap_or_else(|| "N/A".to_string()),
-            p_value.map(|v| format!("{:.4}", v)).unwrap_or_else(|| "N/A".to_string()),
-            sample_size.map(|v| v.to_string()).unwrap_or_else(|| "N/A".to_string()),
+            effect_size
+                .map(|v| format!("{:.4}", v))
+                .unwrap_or_else(|| "N/A".to_string()),
+            p_value
+                .map(|v| format!("{:.4}", v))
+                .unwrap_or_else(|| "N/A".to_string()),
+            sample_size
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "N/A".to_string()),
         );
 
         let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;

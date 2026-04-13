@@ -2,8 +2,8 @@ use anyhow::Result;
 use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 use statrs::statistics::Statistics;
 
-use crate::models::AnalysisEngine;
 use super::sequential;
+use crate::models::AnalysisEngine;
 
 pub struct EngineResult {
     pub effect_size: f64,
@@ -319,10 +319,8 @@ fn bayes_proportion(
 
     let mean_a = alpha_a / (alpha_a + beta_a);
     let mean_b = alpha_b / (alpha_b + beta_b);
-    let var_a = (alpha_a * beta_a)
-        / ((alpha_a + beta_a).powi(2) * (alpha_a + beta_a + 1.0));
-    let var_b = (alpha_b * beta_b)
-        / ((alpha_b + beta_b).powi(2) * (alpha_b + beta_b + 1.0));
+    let var_a = (alpha_a * beta_a) / ((alpha_a + beta_a).powi(2) * (alpha_a + beta_a + 1.0));
+    let var_b = (alpha_b * beta_b) / ((alpha_b + beta_b).powi(2) * (alpha_b + beta_b + 1.0));
 
     let diff_mean = mean_b - mean_a;
     let diff_var = var_a + var_b;

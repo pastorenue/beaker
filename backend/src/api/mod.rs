@@ -1,6 +1,5 @@
 pub mod accounts;
 pub mod ai;
-pub mod oauth;
 pub mod analytics;
 pub mod auth;
 pub mod events;
@@ -10,6 +9,7 @@ pub mod feature_gates;
 pub mod integrations;
 pub mod invites;
 pub mod mcp;
+pub mod oauth;
 pub mod sdk;
 pub mod telemetry;
 pub mod track;

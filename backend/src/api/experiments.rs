@@ -24,10 +24,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}/jira/link", web::delete().to(jira_unlink_issue))
             .route("/{id}/variant-activity", web::get().to(variant_activity))
             // Telemetry events — nested under /{experiment_id}/telemetry
-            .service(
-                web::scope("/{experiment_id}")
-                    .service(super::telemetry::scope())
-            ),
+            .service(web::scope("/{experiment_id}").service(super::telemetry::scope())),
     );
 }
 
@@ -110,7 +107,8 @@ async fn start_experiment(
             let exp_clone = experiment.clone();
             let account_id = user.account_id;
             tokio::spawn(async move {
-                ns.notify_experiment_status_changed(account_id, &exp_clone, "running").await;
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "running")
+                    .await;
             });
             HttpResponse::Ok().json(experiment)
         }
@@ -125,7 +123,7 @@ async fn start_experiment(
 async fn restart_experiment(
     service: web::Data<ExperimentService>,
     id: web::Path<Uuid>,
-    http: HttpRequest
+    http: HttpRequest,
 ) -> impl Responder {
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
@@ -161,7 +159,8 @@ async fn pause_experiment(
             let exp_clone = experiment.clone();
             let account_id = user.account_id;
             tokio::spawn(async move {
-                ns.notify_experiment_status_changed(account_id, &exp_clone, "paused").await;
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "paused")
+                    .await;
             });
             HttpResponse::Ok().json(experiment)
         }
@@ -191,7 +190,8 @@ async fn stop_experiment(
             let exp_clone = experiment.clone();
             let account_id = user.account_id;
             tokio::spawn(async move {
-                ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped").await;
+                ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped")
+                    .await;
             });
             HttpResponse::Ok().json(experiment)
         }

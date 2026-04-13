@@ -14,7 +14,11 @@ impl EventService {
         Self { db }
     }
 
-    pub async fn ingest_event(&self, req: IngestEventRequest, account_id: uuid::Uuid) -> Result<MetricEvent> {
+    pub async fn ingest_event(
+        &self,
+        req: IngestEventRequest,
+        account_id: uuid::Uuid,
+    ) -> Result<MetricEvent> {
         info!("Ingesting event for experiment: {}", req.experiment_id);
 
         let event = MetricEvent {

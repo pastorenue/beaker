@@ -18,10 +18,7 @@ pub fn scope() -> actix_web::Scope {
 
 /// Top-level scope mounted at `/telemetry` (no experiment filter).
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/telemetry")
-            .route("", web::get().to(list_all)),
-    );
+    cfg.service(web::scope("/telemetry").route("", web::get().to(list_all)));
 }
 
 fn authed(req: &HttpRequest) -> Option<AuthedUser> {
@@ -30,10 +27,7 @@ fn authed(req: &HttpRequest) -> Option<AuthedUser> {
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
-async fn list_all(
-    service: web::Data<TelemetryService>,
-    http: HttpRequest,
-) -> impl Responder {
+async fn list_all(service: web::Data<TelemetryService>, http: HttpRequest) -> impl Responder {
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
     };
@@ -78,7 +72,11 @@ async fn create_event(
         return HttpResponse::Unauthorized().finish();
     };
     match service
-        .create_event(req.into_inner(), user.account_id, experiment_id.into_inner())
+        .create_event(
+            req.into_inner(),
+            user.account_id,
+            experiment_id.into_inner(),
+        )
         .await
     {
         Ok(event) => HttpResponse::Created().json(event),
@@ -123,7 +121,11 @@ async fn bulk_create_events(
         return HttpResponse::Unauthorized().finish();
     };
     match service
-        .bulk_create_events(req.into_inner(), user.account_id, experiment_id.into_inner())
+        .bulk_create_events(
+            req.into_inner(),
+            user.account_id,
+            experiment_id.into_inner(),
+        )
         .await
     {
         Ok(events) => HttpResponse::Created().json(events),

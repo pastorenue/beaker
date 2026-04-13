@@ -89,7 +89,11 @@ impl NotificationService {
             None => return,
         };
 
-        let emoji = if severity == "critical" { "🚨" } else { "⚠️" };
+        let emoji = if severity == "critical" {
+            "🚨"
+        } else {
+            "⚠️"
+        };
 
         let payload = json!({
             "blocks": [
@@ -151,17 +155,15 @@ impl NotificationService {
     }
 
     async fn send_slack_message(&self, webhook_url: &str, payload: Value) {
-        let result = self
-            .client
-            .post(webhook_url)
-            .json(&payload)
-            .send()
-            .await;
+        let result = self.client.post(webhook_url).json(&payload).send().await;
 
         match result {
             Ok(resp) if resp.status().is_success() => {}
             Ok(resp) => {
-                warn!("Slack webhook returned non-success status: {}", resp.status());
+                warn!(
+                    "Slack webhook returned non-success status: {}",
+                    resp.status()
+                );
             }
             Err(e) => {
                 warn!("Failed to send Slack message: {}", e);
@@ -255,13 +257,13 @@ impl NotificationService {
         })
     }
 
-    pub async fn test_jira_connection(
-        &self,
-        account_id: Uuid,
-    ) -> Result<String> {
+    pub async fn test_jira_connection(&self, account_id: Uuid) -> Result<String> {
         let config = self.load_jira_config(account_id).await?;
         let auth = Self::jira_basic_auth(&config.email, &config.api_token);
-        let url = format!("{}/rest/api/3/myself", config.site_url.trim_end_matches('/'));
+        let url = format!(
+            "{}/rest/api/3/myself",
+            config.site_url.trim_end_matches('/')
+        );
 
         let resp = self
             .client

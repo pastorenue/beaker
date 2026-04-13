@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::utils::{authed};
 use crate::config::Config;
-use crate::models::{EvaluateFeatureGateRequest, FeatureFlagStatus, FeatureGateStatus};
 use crate::models::TelemetryDefinition;
+use crate::models::{EvaluateFeatureGateRequest, FeatureFlagStatus, FeatureGateStatus};
 use crate::services::{FeatureFlagService, FeatureGateService, SdkTokenService, TelemetryService};
+use crate::utils::authed;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -32,14 +32,7 @@ async fn tokens(
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
     };
-    match service
-        .ensure_tokens(
-            user.account_id,
-            None,
-            None,
-        )
-        .await
-    {
+    match service.ensure_tokens(user.account_id, None, None).await {
         Ok(tokens) => HttpResponse::Ok().json(SdkTokensResponse {
             tracking_api_key: Some(tokens.tracking_api_key),
             feature_flags_api_key: Some(tokens.feature_flags_api_key),
@@ -79,7 +72,6 @@ async fn rotate_tokens(
         })),
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 struct EvaluateFlagsRequest {
@@ -206,7 +198,10 @@ pub async fn evaluate_flags(
                 attributes: Some(attributes.clone()),
             };
 
-            if let Ok(eval) = gate_service.evaluate_gate(account_id, gate.id, eval_req).await {
+            if let Ok(eval) = gate_service
+                .evaluate_gate(account_id, gate.id, eval_req)
+                .await
+            {
                 if eval.pass {
                     is_enabled = true;
                     matched_gate = Some(gate.id);

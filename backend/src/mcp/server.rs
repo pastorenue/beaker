@@ -1,11 +1,13 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::services::{AnalyticsService, ExperimentService, FeatureFlagService, FeatureGateService};
 use super::tools::{
-    call_analytics_tool, call_experiment_tool, call_feature_flag_tool, call_feature_gate_tool,
-    analytics_tool_definitions, experiment_tool_definitions, feature_flag_tool_definitions,
+    analytics_tool_definitions, call_analytics_tool, call_experiment_tool, call_feature_flag_tool,
+    call_feature_gate_tool, experiment_tool_definitions, feature_flag_tool_definitions,
     feature_gate_tool_definitions,
+};
+use crate::services::{
+    AnalyticsService, ExperimentService, FeatureFlagService, FeatureGateService,
 };
 
 pub struct McpServer {
@@ -56,7 +58,8 @@ impl McpServer {
             "stop_experiment",
         ];
         if experiment_tools.contains(&name) {
-            let result = call_experiment_tool(name, args, &self.experiment_service, account_id).await?;
+            let result =
+                call_experiment_tool(name, args, &self.experiment_service, account_id).await?;
             return Ok(json!({
                 "content": [{ "type": "text", "text": serde_json::to_string_pretty(&result).unwrap_or_default() }]
             }));
@@ -65,7 +68,8 @@ impl McpServer {
         // Feature flag tools
         let flag_tools = ["list_feature_flags", "get_feature_flag"];
         if flag_tools.contains(&name) {
-            let result = call_feature_flag_tool(name, args, &self.feature_flag_service, account_id).await?;
+            let result =
+                call_feature_flag_tool(name, args, &self.feature_flag_service, account_id).await?;
             return Ok(json!({
                 "content": [{ "type": "text", "text": serde_json::to_string_pretty(&result).unwrap_or_default() }]
             }));
@@ -74,7 +78,8 @@ impl McpServer {
         // Feature gate tools
         let gate_tools = ["list_feature_gates", "get_feature_gate"];
         if gate_tools.contains(&name) {
-            let result = call_feature_gate_tool(name, args, &self.feature_gate_service, account_id).await?;
+            let result =
+                call_feature_gate_tool(name, args, &self.feature_gate_service, account_id).await?;
             return Ok(json!({
                 "content": [{ "type": "text", "text": serde_json::to_string_pretty(&result).unwrap_or_default() }]
             }));

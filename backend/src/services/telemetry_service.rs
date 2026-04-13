@@ -134,7 +134,11 @@ impl TelemetryService {
         let event_type = req.event_type.unwrap_or_else(|| "custom".to_string());
         let description = req.description.unwrap_or_default();
 
-        let mut tx = self.pg.begin().await.context("Failed to begin transaction")?;
+        let mut tx = self
+            .pg
+            .begin()
+            .await
+            .context("Failed to begin transaction")?;
 
         sqlx::query(
             r#"INSERT INTO telemetry_definitions
@@ -198,7 +202,11 @@ impl TelemetryService {
         );
 
         let now = Utc::now();
-        let mut tx = self.pg.begin().await.context("Failed to begin transaction")?;
+        let mut tx = self
+            .pg
+            .begin()
+            .await
+            .context("Failed to begin transaction")?;
         let mut results: Vec<TelemetryEventFlat> = Vec::with_capacity(req.events.len());
 
         for event_req in req.events {
@@ -267,7 +275,9 @@ impl TelemetryService {
         experiment_id: Uuid,
         req: UpdateTelemetryEventRequest,
     ) -> Result<TelemetryEventFlat> {
-        let current = self.get_event_flat(event_id, account_id, experiment_id).await?;
+        let current = self
+            .get_event_flat(event_id, account_id, experiment_id)
+            .await?;
 
         let name = req.name.unwrap_or(current.name);
         let description = req.description.unwrap_or(current.description);
@@ -290,7 +300,11 @@ impl TelemetryService {
         let is_active = req.is_active.unwrap_or(current.is_active);
         let now = Utc::now();
 
-        let mut tx = self.pg.begin().await.context("Failed to begin transaction")?;
+        let mut tx = self
+            .pg
+            .begin()
+            .await
+            .context("Failed to begin transaction")?;
 
         sqlx::query(
             r#"UPDATE telemetry_events
@@ -363,13 +377,12 @@ impl TelemetryService {
             .context("Failed to delete telemetry event")?;
 
         // Clean up the parent definition if it has no remaining events
-        let (remaining,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM telemetry_events WHERE definition_id = $1",
-        )
-        .bind(def_id)
-        .fetch_one(&self.pg)
-        .await
-        .context("Failed to count remaining events")?;
+        let (remaining,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM telemetry_events WHERE definition_id = $1")
+                .bind(def_id)
+                .fetch_one(&self.pg)
+                .await
+                .context("Failed to count remaining events")?;
 
         if remaining == 0 {
             sqlx::query("DELETE FROM telemetry_definitions WHERE id = $1")
@@ -442,13 +455,20 @@ impl TelemetryService {
         account_id: Uuid,
         experiment_id: Uuid,
     ) -> Result<TelemetryDefinition> {
-        info!("Creating telemetry definition for experiment {}", experiment_id);
+        info!(
+            "Creating telemetry definition for experiment {}",
+            experiment_id
+        );
 
         let def_id = Uuid::new_v4();
         let now = Utc::now();
         let is_active = req.is_active.unwrap_or(true);
 
-        let mut tx = self.pg.begin().await.context("Failed to begin transaction")?;
+        let mut tx = self
+            .pg
+            .begin()
+            .await
+            .context("Failed to begin transaction")?;
 
         sqlx::query(
             r#"INSERT INTO telemetry_definitions
@@ -593,16 +613,18 @@ impl TelemetryService {
         let mut map: std::collections::HashMap<Uuid, Vec<TelemetryEvent>> =
             std::collections::HashMap::new();
         for r in rows {
-            map.entry(r.definition_id).or_default().push(TelemetryEvent {
-                id: r.id,
-                definition_id: r.definition_id,
-                description: r.description,
-                name: r.name,
-                event_type: r.event_type,
-                selector: r.selector,
-                url_pattern: r.url_pattern,
-                visual_guide: r.visual_guide,
-            });
+            map.entry(r.definition_id)
+                .or_default()
+                .push(TelemetryEvent {
+                    id: r.id,
+                    definition_id: r.definition_id,
+                    description: r.description,
+                    name: r.name,
+                    event_type: r.event_type,
+                    selector: r.selector,
+                    url_pattern: r.url_pattern,
+                    visual_guide: r.visual_guide,
+                });
         }
         Ok(map)
     }

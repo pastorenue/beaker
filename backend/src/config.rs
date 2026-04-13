@@ -62,9 +62,8 @@ impl Config {
                 .expect("SERVER_PORT must be a valid number"),
             clickhouse_url: std::env::var("CLICKHOUSE_URL")
                 .unwrap_or_else(|_| "http://clickhouse:8123".to_string()),
-            postgres_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                "postgres://beaker:beaker@postgres:5432/beaker".to_string()
-            }),
+            postgres_url: std::env::var("DATABASE_URL")
+                .unwrap_or_else(|_| "postgres://beaker:beaker@postgres:5432/beaker".to_string()),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
             tracking_api_key: std::env::var("TRACKING_API_KEY")
                 .ok()
@@ -139,9 +138,7 @@ impl Config {
                 .ok()
                 .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
                 .unwrap_or(true),
-            mcp_api_key: std::env::var("MCP_API_KEY")
-                .ok()
-                .filter(|v| !v.is_empty()),
+            mcp_api_key: std::env::var("MCP_API_KEY").ok().filter(|v| !v.is_empty()),
             mcp_account_id: std::env::var("MCP_ACCOUNT_ID")
                 .ok()
                 .filter(|v| !v.is_empty()),
@@ -163,8 +160,9 @@ impl Config {
                 .unwrap_or(-0.10),
             google_client_id: std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
             google_client_secret: std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
-            google_redirect_uri: std::env::var("GOOGLE_REDIRECT_URI")
-                .unwrap_or_else(|_| "http://localhost:8080/api/auth/oauth/google/callback".to_string()),
+            google_redirect_uri: std::env::var("GOOGLE_REDIRECT_URI").unwrap_or_else(|_| {
+                "http://localhost:8080/api/auth/oauth/google/callback".to_string()
+            }),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:5173".to_string()),
             rate_limit_auth_strict: std::env::var("RATE_LIMIT_AUTH_STRICT")

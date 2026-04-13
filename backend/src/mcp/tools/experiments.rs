@@ -162,13 +162,11 @@ pub async fn call_experiment_tool(
     account_id: Uuid,
 ) -> Result<Value, String> {
     match name {
-        "list_experiments" => {
-            service
-                .list_experiments(account_id)
-                .await
-                .map(|exps| json!(exps))
-                .map_err(|e| e.to_string())
-        }
+        "list_experiments" => service
+            .list_experiments(account_id)
+            .await
+            .map(|exps| json!(exps))
+            .map_err(|e| e.to_string()),
         "get_experiment" => {
             let id_str = args
                 .get("experiment_id")

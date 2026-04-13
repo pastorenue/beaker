@@ -32,7 +32,10 @@ impl ExperimentService {
         let health_checks = req.health_checks.unwrap_or_default();
 
         if matches!(experiment_type, ExperimentType::FeatureGate) && feature_gate_id.is_none() {
-            bail!("Feature gate experiments must reference a feature_gate_id {:?}", feature_gate_id);
+            bail!(
+                "Feature gate experiments must reference a feature_gate_id {:?}",
+                feature_gate_id
+            );
             // return Err(anyhow!(
             //     "Feature gate experiments must reference a feature_gate_id"
             // ));
@@ -98,7 +101,11 @@ impl ExperimentService {
         Ok(experiment)
     }
 
-    pub async fn start_experiment(&self, account_id: Uuid, experiment_id: Uuid) -> Result<Experiment> {
+    pub async fn start_experiment(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+    ) -> Result<Experiment> {
         info!("Starting experiment: {}", experiment_id);
 
         let mut experiment = self
@@ -126,7 +133,7 @@ impl ExperimentService {
 
         Ok(experiment)
     }
-    
+
     pub async fn restart_experiment(
         &self,
         account_id: Uuid,
@@ -134,16 +141,16 @@ impl ExperimentService {
     ) -> Result<Experiment> {
         info!("Restarting experiment: {}", experiment_id);
         let mut experiment = self.get_experiment(account_id, experiment_id).await?;
-        
+
         if !matches!(experiment.status, ExperimentStatus::Stopped) {
-            return Err(
-                anyhow!("Can only restart experiments that have been previously stopped.")
-            );
+            return Err(anyhow!(
+                "Can only restart experiments that have been previously stopped."
+            ));
         }
-        
+
         experiment.status = ExperimentStatus::Running;
         experiment.updated_at = Utc::now();
-        
+
         self.upsert_experiment(&experiment).await?;
 
         Ok(experiment)
@@ -368,11 +375,14 @@ impl ExperimentService {
             .get(&control_variant.name)
             .map(|d| d.total)
             .unwrap_or(0);
-        sample_sizes.insert(0, VariantSampleSize {
-            variant: control_variant.name.clone(),
-            current_size: control_current,
-            required_size,
-        });
+        sample_sizes.insert(
+            0,
+            VariantSampleSize {
+                variant: control_variant.name.clone(),
+                current_size: control_current,
+                required_size,
+            },
+        );
 
         let health_checks = self.evaluate_health_checks(&experiment).await?;
 

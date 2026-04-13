@@ -36,10 +36,8 @@ async fn google_initiate(
         Ok(url) => HttpResponse::Found()
             .insert_header(("Location", url))
             .finish(),
-        Err(err) => {
-            HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": err.to_string() }))
-        }
+        Err(err) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": err.to_string() })),
     }
 }
 
