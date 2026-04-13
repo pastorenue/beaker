@@ -1,10 +1,10 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::middleware::auth::AuthedUser;
 use crate::mcp::server::McpServer;
+use crate::middleware::auth::AuthedUser;
 
 #[derive(Debug, Deserialize)]
 pub struct JsonRpcRequest {
@@ -47,7 +47,11 @@ fn err_response(id: Option<Value>, code: i32, message: String) -> JsonRpcRespons
         jsonrpc: "2.0".to_string(),
         id,
         result: None,
-        error: Some(JsonRpcError { code, message, data: None }),
+        error: Some(JsonRpcError {
+            code,
+            message,
+            data: None,
+        }),
     }
 }
 
@@ -91,14 +95,8 @@ async fn handle_mcp(
         }
         "tools/list" => Ok(mcp.list_tools()),
         "tools/call" => {
-            let tool_name = params
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let args = params
-                .get("arguments")
-                .cloned()
-                .unwrap_or(json!({}));
+            let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            let args = params.get("arguments").cloned().unwrap_or(json!({}));
             mcp.call_tool(tool_name, &args, account_id).await
         }
         "ping" => Ok(json!({})),

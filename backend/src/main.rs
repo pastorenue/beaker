@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use log::info;
@@ -109,7 +110,10 @@ async fn main() -> std::io::Result<()> {
 
     // MCP server (shared across requests)
     let mcp_server = web::Data::new(McpServer::new(
-        Arc::new(ExperimentService::new(pg_pool.clone(), db_with_auth.clone())),
+        Arc::new(ExperimentService::new(
+            pg_pool.clone(),
+            db_with_auth.clone(),
+        )),
         Arc::new(FeatureFlagService::new(pg_pool.clone())),
         Arc::new(FeatureGateService::new(pg_pool.clone())),
         Arc::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone())),

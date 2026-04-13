@@ -299,7 +299,11 @@ impl UserGroupService {
         Ok(())
     }
 
-    pub async fn get_group_metrics(&self, account_id: Uuid, group_id: Uuid) -> Result<GroupMetrics> {
+    pub async fn get_group_metrics(
+        &self,
+        account_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<GroupMetrics> {
         let group = self.get_user_group(account_id, group_id).await?;
 
         Ok(GroupMetrics {
@@ -323,7 +327,10 @@ impl UserGroupService {
                     serde_json::from_value(group.data_source_config.clone())
                         .context("Invalid CSV data source config")?;
                 if !config.headers.is_empty() {
-                    Ok(GroupDataResponse { headers: config.headers, rows: config.rows })
+                    Ok(GroupDataResponse {
+                        headers: config.headers,
+                        rows: config.rows,
+                    })
                 } else {
                     Ok(GroupDataResponse {
                         headers: vec!["user_id".to_string()],
@@ -399,7 +406,10 @@ impl UserGroupService {
         })
     }
 
-    async fn fetch_rows_from_postgres(&self, config: &PostgresDataSourceConfig) -> Result<GroupDataResponse> {
+    async fn fetch_rows_from_postgres(
+        &self,
+        config: &PostgresDataSourceConfig,
+    ) -> Result<GroupDataResponse> {
         let query = config.query.trim().trim_end_matches(';');
         if !query.to_uppercase().starts_with("SELECT") {
             anyhow::bail!("PostgreSQL query must start with SELECT");
@@ -432,7 +442,10 @@ impl UserGroupService {
         };
 
         if json_strs.is_empty() {
-            return Ok(GroupDataResponse { headers: vec![], rows: vec![] });
+            return Ok(GroupDataResponse {
+                headers: vec![],
+                rows: vec![],
+            });
         }
 
         let first: serde_json::Map<String, serde_json::Value> =
@@ -441,7 +454,9 @@ impl UserGroupService {
 
         let rows: Vec<Vec<String>> = json_strs
             .iter()
-            .filter_map(|s| serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(s).ok())
+            .filter_map(|s| {
+                serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(s).ok()
+            })
             .map(|obj| {
                 headers
                     .iter()
@@ -584,7 +599,11 @@ impl UserGroupService {
     }
 
     /// user_assignments write path stays in ClickHouse
-    async fn save_assignment_ch(&self, account_id: Uuid, assignment: &UserAssignment) -> Result<()> {
+    async fn save_assignment_ch(
+        &self,
+        account_id: Uuid,
+        assignment: &UserAssignment,
+    ) -> Result<()> {
         info!(
             "Saving user assignment (ClickHouse): user={} experiment={} variant={}",
             assignment.user_id, assignment.experiment_id, assignment.variant

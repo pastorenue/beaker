@@ -1,9 +1,11 @@
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::models::integrations::{AccountIntegration, AccountIntegrationRow, UpsertIntegrationRequest};
+use crate::models::integrations::{
+    AccountIntegration, AccountIntegrationRow, UpsertIntegrationRequest,
+};
 use crate::services::NotificationService;
 use crate::utils::*;
 
@@ -19,10 +21,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
-async fn list_integrations(
-    pool: web::Data<sqlx::PgPool>,
-    http: HttpRequest,
-) -> impl Responder {
+async fn list_integrations(pool: web::Data<sqlx::PgPool>, http: HttpRequest) -> impl Responder {
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
     };
@@ -41,7 +40,8 @@ async fn list_integrations(
             let integrations: Vec<AccountIntegration> = rows
                 .into_iter()
                 .map(|r| {
-                    let config: Value = serde_json::from_str(&r.config).unwrap_or(serde_json::json!({}));
+                    let config: Value =
+                        serde_json::from_str(&r.config).unwrap_or(serde_json::json!({}));
                     let config = redact_config(&r.integration_type, config);
                     AccountIntegration {
                         id: r.id,
@@ -163,7 +163,10 @@ async fn test_jira(
         return HttpResponse::Unauthorized().finish();
     };
 
-    match notification_service.test_jira_connection(user.account_id).await {
+    match notification_service
+        .test_jira_connection(user.account_id)
+        .await
+    {
         Ok(display_name) => HttpResponse::Ok().json(serde_json::json!({
             "ok": true,
             "display_name": display_name

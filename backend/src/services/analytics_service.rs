@@ -366,8 +366,16 @@ impl AnalyticsService {
             .await
             .context("Failed to fetch previous conversion rate")?;
 
-        let current_conversion = if conversion_row.value.is_nan() { 0.0 } else { conversion_row.value };
-        let prev_conversion = if conversion_prev.value.is_nan() { 0.0 } else { conversion_prev.value };
+        let current_conversion = if conversion_row.value.is_nan() {
+            0.0
+        } else {
+            conversion_row.value
+        };
+        let prev_conversion = if conversion_prev.value.is_nan() {
+            0.0
+        } else {
+            conversion_prev.value
+        };
 
         let (guardrail_breaches, guardrail_detail) = self
             .evaluate_guardrails(now)
@@ -612,7 +620,10 @@ impl AnalyticsService {
             std::collections::HashMap::new();
         for row in &rows {
             let name = row.metric_name.to_lowercase();
-            let category = if name.contains("latency") || name.contains("timeout") || name.contains("response_time") {
+            let category = if name.contains("latency")
+                || name.contains("timeout")
+                || name.contains("response_time")
+            {
                 "latency"
             } else if name.contains("error") {
                 "error_rate"
@@ -892,7 +903,10 @@ impl AnalyticsService {
 
         // Merge active guardrail breaches into today's point so the chart
         // reflects breaches even when no alerts have been manually ingested.
-        let (breaches, _) = self.evaluate_guardrails(now).await.unwrap_or((0, String::new()));
+        let (breaches, _) = self
+            .evaluate_guardrails(now)
+            .await
+            .unwrap_or((0, String::new()));
         if breaches > 0 {
             if let Some(today) = points.last_mut() {
                 today.critical = today.critical.saturating_add(breaches);
@@ -1141,7 +1155,11 @@ impl AnalyticsService {
         Ok(AnalyticsSystemHealth {
             data_freshness_seconds,
             sdk_error_rate,
-            evaluation_latency_ms: if latency_row.value.is_nan() { 0.0 } else { latency_row.value },
+            evaluation_latency_ms: if latency_row.value.is_nan() {
+                0.0
+            } else {
+                latency_row.value
+            },
         })
     }
 
@@ -1171,7 +1189,11 @@ impl AnalyticsService {
                     .await
                     .unwrap_or(AvgRow { value: 0.0 });
 
-                let value = if value_row.value.is_nan() { 0.0 } else { value_row.value };
+                let value = if value_row.value.is_nan() {
+                    0.0
+                } else {
+                    value_row.value
+                };
                 let passing = match check.direction {
                     HealthCheckDirection::AtLeast => {
                         check.min.map(|min| value >= min).unwrap_or(true)

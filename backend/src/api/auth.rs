@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use uuid::Uuid;
 
@@ -56,7 +56,10 @@ async fn login(
 ) -> impl Responder {
     let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
     let remember_me = payload.remember_me.unwrap_or(false);
-    match service.login(&payload.email, &payload.password, remember_me).await {
+    match service
+        .login(&payload.email, &payload.password, remember_me)
+        .await
+    {
         Ok(result) => HttpResponse::Ok().json(result),
         Err(err) => {
             HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
@@ -175,8 +178,12 @@ async fn reset_password(
     body: web::Json<ResetPasswordRequest>,
 ) -> impl Responder {
     let service = AuthService::new(pool.get_ref().clone(), config.get_ref().clone());
-    match service.reset_password(&body.token, &body.new_password).await {
-        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "message": "Password reset successfully." })),
+    match service
+        .reset_password(&body.token, &body.new_password)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok()
+            .json(serde_json::json!({ "message": "Password reset successfully." })),
         Err(err) => {
             HttpResponse::BadRequest().json(serde_json::json!({ "error": err.to_string() }))
         }

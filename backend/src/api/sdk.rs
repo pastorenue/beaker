@@ -1,14 +1,14 @@
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::utils::{authed};
 use crate::config::Config;
-use crate::models::{EvaluateFeatureGateRequest, FeatureFlagStatus, FeatureGateStatus};
 use crate::models::TelemetryDefinition;
+use crate::models::{EvaluateFeatureGateRequest, FeatureFlagStatus, FeatureGateStatus};
 use crate::services::{FeatureFlagService, FeatureGateService, SdkTokenService, TelemetryService};
+use crate::utils::authed;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -32,14 +32,7 @@ async fn tokens(
     let Some(user) = authed(&http) else {
         return HttpResponse::Unauthorized().finish();
     };
-    match service
-        .ensure_tokens(
-            user.account_id,
-            None,
-            None,
-        )
-        .await
-    {
+    match service.ensure_tokens(user.account_id, None, None).await {
         Ok(tokens) => HttpResponse::Ok().json(SdkTokensResponse {
             tracking_api_key: Some(tokens.tracking_api_key),
             feature_flags_api_key: Some(tokens.feature_flags_api_key),
@@ -79,7 +72,6 @@ async fn rotate_tokens(
         })),
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 struct EvaluateFlagsRequest {
@@ -189,10 +181,10 @@ pub async fn evaluate_flags(
             continue;
         }
 
-        let gates = match gate_service.list_gates(account_id, Some(flag.id)).await {
-            Ok(g) => g,
-            Err(_) => Vec::new(),
-        };
+        let gates = gate_service
+            .list_gates(account_id, Some(flag.id))
+            .await
+            .unwrap_or_default();
 
         let mut matched_gate = None;
         let mut is_enabled = false;
@@ -206,7 +198,10 @@ pub async fn evaluate_flags(
                 attributes: Some(attributes.clone()),
             };
 
-            if let Ok(eval) = gate_service.evaluate_gate(account_id, gate.id, eval_req).await {
+            if let Ok(eval) = gate_service
+                .evaluate_gate(account_id, gate.id, eval_req)
+                .await
+            {
                 if eval.pass {
                     is_enabled = true;
                     matched_gate = Some(gate.id);

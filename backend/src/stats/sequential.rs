@@ -88,7 +88,10 @@ mod tests {
     fn test_null_effect_proportion() {
         // No difference — should yield high p-value and low M_t
         let (p_value, m_t) = msprt_proportion(500, 1000, 500, 1000, 0.01).unwrap();
-        assert!(p_value > 0.5, "null effect p-value should be > 0.5, got {p_value}");
+        assert!(
+            p_value > 0.5,
+            "null effect p-value should be > 0.5, got {p_value}"
+        );
         assert!(m_t >= 0.0, "M_t should be non-negative, got {m_t}");
     }
 
@@ -96,7 +99,10 @@ mod tests {
     fn test_strong_effect_proportion() {
         // 10% vs 20% conversion — clear winner
         let (p_value, m_t) = msprt_proportion(100, 1000, 200, 1000, 0.01).unwrap();
-        assert!(p_value < 0.05, "strong effect p-value should be < 0.05, got {p_value}");
+        assert!(
+            p_value < 0.05,
+            "strong effect p-value should be < 0.05, got {p_value}"
+        );
         assert!(m_t > 20.0, "strong effect M_t should be > 20, got {m_t}");
     }
 
@@ -110,14 +116,23 @@ mod tests {
     #[test]
     fn test_null_effect_continuous() {
         let (p_value, m_t) = msprt_continuous(10.0, 2.0, 1000, 10.0, 2.0, 1000, 0.01).unwrap();
-        assert!(p_value > 0.5, "null continuous p-value should be > 0.5, got {p_value}");
+        assert!(
+            p_value > 0.5,
+            "null continuous p-value should be > 0.5, got {p_value}"
+        );
         assert!(m_t >= 0.0);
     }
 
     #[test]
     fn test_strong_effect_continuous() {
         let (p_value, m_t) = msprt_continuous(10.0, 1.0, 1000, 11.0, 1.0, 1000, 0.25).unwrap();
-        assert!(p_value < 0.05, "strong continuous p-value should be < 0.05, got {p_value}");
-        assert!(m_t > 20.0, "strong continuous M_t should be > 20, got {m_t}");
+        assert!(
+            p_value < 0.05,
+            "strong continuous p-value should be < 0.05, got {p_value}"
+        );
+        assert!(
+            m_t > 20.0,
+            "strong continuous M_t should be > 20, got {m_t}"
+        );
     }
 }

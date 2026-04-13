@@ -129,9 +129,7 @@ impl AuthService {
         let user = self.get_user_by_email(email).await?;
 
         let hash = user.password_hash.as_deref().ok_or_else(|| {
-            anyhow::anyhow!(
-                "This account uses Google Sign-In. Please use 'Continue with Google'."
-            )
+            anyhow::anyhow!("This account uses Google Sign-In. Please use 'Continue with Google'.")
         })?;
         self.verify_password(password, hash)?;
 
@@ -268,7 +266,11 @@ impl AuthService {
             }
 
             if self.config.log_only_otp {
-                log::info!("LOG_ONLY_OTP enabled. Password reset link for {}: {}", email, reset_url);
+                log::info!(
+                    "LOG_ONLY_OTP enabled. Password reset link for {}: {}",
+                    email,
+                    reset_url
+                );
             } else {
                 match mailer.build().send(email_message).await {
                     Ok(_) => log::info!("Sent password reset email to {} via SMTP {}", email, host),
@@ -276,7 +278,11 @@ impl AuthService {
                 }
             }
         } else {
-            log::info!("SMTP not configured. Password reset link for {}: {}", email, reset_url);
+            log::info!(
+                "SMTP not configured. Password reset link for {}: {}",
+                email,
+                reset_url
+            );
         }
 
         Ok(())

@@ -4,7 +4,7 @@ use crate::models::{
 };
 use crate::services::{SdkTokenService, TrackingService};
 use crate::utils::authed;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 use log::error;
 use uuid::Uuid;
@@ -36,7 +36,10 @@ async fn start_session(
         Ok(id) => id,
         Err(resp) => return resp,
     };
-    match tracking_service.start_session(account_id, payload.into_inner()).await {
+    match tracking_service
+        .start_session(account_id, payload.into_inner())
+        .await
+    {
         Ok(session) => HttpResponse::Ok().json(session),
         Err(e) => {
             error!("Failed to start session: {}", e);
@@ -59,7 +62,10 @@ async fn end_session(
         Ok(id) => id,
         Err(resp) => return resp,
     };
-    match tracking_service.end_session(account_id, payload.into_inner()).await {
+    match tracking_service
+        .end_session(account_id, payload.into_inner())
+        .await
+    {
         Ok(session) => HttpResponse::Ok().json(session),
         Err(e) => {
             error!("Failed to end session: {}", e);
@@ -171,7 +177,10 @@ async fn list_sessions(
     };
     let limit = query.limit.unwrap_or(20);
     let offset = query.offset.unwrap_or(0);
-    match tracking_service.list_sessions(user.account_id, limit, offset).await {
+    match tracking_service
+        .list_sessions(user.account_id, limit, offset)
+        .await
+    {
         Ok((sessions, total)) => HttpResponse::Ok().json(ListSessionsResponse {
             sessions,
             total,
@@ -261,7 +270,9 @@ async fn list_account_events(
         )
         .await
     {
-        Ok((events, total)) => HttpResponse::Ok().json(serde_json::json!({ "events": events, "total": total })),
+        Ok((events, total)) => {
+            HttpResponse::Ok().json(serde_json::json!({ "events": events, "total": total }))
+        }
         Err(e) => {
             error!("Failed to list account events: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({

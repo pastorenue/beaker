@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use beaker_macros::{circuit_breaker, rate_limit};
 
 use crate::config::Config;
@@ -36,10 +36,8 @@ async fn google_initiate(
         Ok(url) => HttpResponse::Found()
             .insert_header(("Location", url))
             .finish(),
-        Err(err) => {
-            HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": err.to_string() }))
-        }
+        Err(err) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": err.to_string() })),
     }
 }
 

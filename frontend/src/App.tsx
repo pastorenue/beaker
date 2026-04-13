@@ -320,8 +320,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                             <img src="/beaker-icon.svg" alt="Beaker" style={{ height: '26px', width: 'auto' }} />
                         ) : (
                             <>
-                                <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '26px', width: 'auto' }} />
-                                <div className="pl-2 text-xs capitalize text-slate-500">Labs</div>
+                                <div className='flex-basis'>
+                                    <img src="/beaker-logo.svg" alt="Beaker" style={{ height: '26px', width: 'auto' }} />
+                                    <div className="pl-2 text-xs capitalize text-slate-500">Labs</div>
+                                </div>
                             </>
                         )}
                     </Link>

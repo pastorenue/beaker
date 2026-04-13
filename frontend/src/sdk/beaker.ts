@@ -179,7 +179,7 @@ export class BeakerTracker {
     private startReplayRecording() {
         this.resetReplaySnapshotState();
         this.stopRecord = record({
-            emit: (event: any) => {
+            emit: (event: unknown) => {
                 const payload = event as EventPayload;
                 if (payload?.type === 2 && !this.replayHasFullSnapshot) {
                     this.replayHasFullSnapshot = true;

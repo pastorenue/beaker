@@ -16,13 +16,18 @@ struct CountRow {
 
 impl TrackingService {
     pub fn new(db: ClickHouseClient, session_ttl_minutes: Option<i64>) -> Self {
-        Self { db, session_ttl_minutes }
+        Self {
+            db,
+            session_ttl_minutes,
+        }
     }
 
-    pub async fn start_session(&self, account_id: Uuid, req: StartSessionRequest) -> Result<StartSessionResponse> {
-        let session_id = req
-            .session_id
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+    pub async fn start_session(
+        &self,
+        account_id: Uuid,
+        req: StartSessionRequest,
+    ) -> Result<StartSessionResponse> {
+        let session_id = req.session_id.unwrap_or_else(|| Uuid::new_v4().to_string());
         let started_at = Utc::now();
 
         let session = Session {
@@ -40,7 +45,8 @@ impl TrackingService {
             experiment_id: req.experiment_id,
         };
 
-        self.write_session_row(&account_id.to_string(), &session, started_at).await?;
+        self.write_session_row(&account_id.to_string(), &session, started_at)
+            .await?;
 
         Ok(StartSessionResponse {
             session_id,
@@ -68,7 +74,8 @@ impl TrackingService {
                     replay_events_count: None,
                     experiment_id: None,
                 };
-                self.write_session_row(&account_id_str, &fallback, ended_at).await?;
+                self.write_session_row(&account_id_str, &fallback, ended_at)
+                    .await?;
                 return Ok(fallback);
             }
         };
@@ -81,7 +88,8 @@ impl TrackingService {
         session.ended_at = Some(ended_at);
         session.duration_seconds = Some(duration_seconds);
 
-        self.write_session_row(&account_id_str, &session, ended_at).await?;
+        self.write_session_row(&account_id_str, &session, ended_at)
+            .await?;
 
         Ok(session)
     }
@@ -165,7 +173,12 @@ impl TrackingService {
         Ok(start_sequence as usize)
     }
 
-    pub async fn list_sessions(&self, account_id: Uuid, limit: usize, offset: usize) -> Result<(Vec<Session>, u64)> {
+    pub async fn list_sessions(
+        &self,
+        account_id: Uuid,
+        limit: usize,
+        offset: usize,
+    ) -> Result<(Vec<Session>, u64)> {
         let account_id_str = account_id.to_string();
 
         let total_row = self
@@ -194,7 +207,7 @@ impl TrackingService {
             .map(Self::row_to_session)
             .collect::<Result<_>>()?;
         if let Some(ttl_minutes) = self.session_ttl_minutes {
-            let ttl_seconds = ttl_minutes.saturating_mul(60) as i64;
+            let ttl_seconds = ttl_minutes.saturating_mul(60);
             for session in &mut sessions {
                 if session.ended_at.is_none() {
                     let elapsed = now.signed_duration_since(session.started_at).num_seconds();
@@ -227,7 +240,12 @@ impl TrackingService {
                 session_id: String,
                 clicks: u64,
             }
-            let click_rows = self.db.client().query(&query).fetch_all::<ClickRow>().await?;
+            let click_rows = self
+                .db
+                .client()
+                .query(&query)
+                .fetch_all::<ClickRow>()
+                .await?;
             let mut click_map = std::collections::HashMap::new();
             for row in click_rows {
                 click_map.insert(row.session_id, row.clicks);
@@ -245,7 +263,12 @@ impl TrackingService {
                 session_id: String,
                 events: u64,
             }
-            let replay_rows = self.db.client().query(&replay_query).fetch_all::<ReplayRow>().await?;
+            let replay_rows = self
+                .db
+                .client()
+                .query(&replay_query)
+                .fetch_all::<ReplayRow>()
+                .await?;
             let mut replay_map = std::collections::HashMap::new();
             for row in replay_rows {
                 replay_map.insert(row.session_id, row.events);
@@ -324,7 +347,10 @@ impl TrackingService {
             count_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
         }
         if let Some(en) = event_name {
-            count_query.push_str(&format!(" AND ae.event_name LIKE {}", Self::sql_str(&format!("%{}%", en))));
+            count_query.push_str(&format!(
+                " AND ae.event_name LIKE {}",
+                Self::sql_str(&format!("%{}%", en))
+            ));
         }
 
         let total_row = self
@@ -344,9 +370,15 @@ impl TrackingService {
             data_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
         }
         if let Some(en) = event_name {
-            data_query.push_str(&format!(" AND ae.event_name LIKE {}", Self::sql_str(&format!("%{}%", en))));
+            data_query.push_str(&format!(
+                " AND ae.event_name LIKE {}",
+                Self::sql_str(&format!("%{}%", en))
+            ));
         }
-        data_query.push_str(&format!(" ORDER BY ae.timestamp DESC LIMIT {} OFFSET {}", limit, offset));
+        data_query.push_str(&format!(
+            " ORDER BY ae.timestamp DESC LIMIT {} OFFSET {}",
+            limit, offset
+        ));
 
         let rows = self
             .db
@@ -356,7 +388,10 @@ impl TrackingService {
             .await
             .context("Failed to fetch account activity events")?;
 
-        let events = rows.into_iter().map(Self::row_to_activity_event).collect::<Result<_>>()?;
+        let events = rows
+            .into_iter()
+            .map(Self::row_to_activity_event)
+            .collect::<Result<_>>()?;
         Ok((events, total_row.total))
     }
 
@@ -366,9 +401,7 @@ impl TrackingService {
         event_type: Option<&str>,
         limit: usize,
     ) -> Result<Vec<ActivityEvent>> {
-        let mut query = String::from(
-            "SELECT ?fields FROM activity_events WHERE session_id = ?",
-        );
+        let mut query = String::from("SELECT ?fields FROM activity_events WHERE session_id = ?");
         if event_type.is_some() {
             query.push_str(" AND event_type = ?");
         }
@@ -400,7 +433,12 @@ impl TrackingService {
         Self::row_to_session(row)
     }
 
-    async fn write_session_row(&self, account_id: &str, session: &Session, updated_at: DateTime<Utc>) -> Result<()> {
+    async fn write_session_row(
+        &self,
+        account_id: &str,
+        session: &Session,
+        updated_at: DateTime<Utc>,
+    ) -> Result<()> {
         let row = SessionRow {
             account_id: account_id.to_string(),
             session_id: session.session_id.clone(),
@@ -519,10 +557,14 @@ impl TrackingService {
     }
 
     fn sql_opt_u32(value: Option<u32>) -> String {
-        value.map(|val| val.to_string()).unwrap_or_else(|| "NULL".to_string())
+        value
+            .map(|val| val.to_string())
+            .unwrap_or_else(|| "NULL".to_string())
     }
 
     fn sql_opt_f64(value: Option<f64>) -> String {
-        value.map(|val| val.to_string()).unwrap_or_else(|| "NULL".to_string())
+        value
+            .map(|val| val.to_string())
+            .unwrap_or_else(|| "NULL".to_string())
     }
 }
