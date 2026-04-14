@@ -142,6 +142,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Generate tag
+        id: tag
+        run: echo "tag=v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           generate_release_notes: true
