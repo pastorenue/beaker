@@ -69,5 +69,5 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## Beaker Project Conventions
 
 - **Commit style:** Conventional commits — `type: description` (e.g. `fix: resolve clippy warnings`). No GPG signing. No Co-Authored-By trailers.
-- **Pushing:** Use `GH_TOKEN=$PERSONAL_GH_TOKEN` when pushing to GitHub.
+- **Pushing:** Always push as `pastorenue` using `git push "https://pastorenue:$PERSONAL_GH_TOKEN@github.com/pastorenue/beaker.git" <branch>`.
 - **Allowed shell prefix:** `docker compose` (configured in `.claude/settings.local.json`).
