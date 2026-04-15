@@ -149,6 +149,7 @@ impl ExperimentService {
         }
 
         experiment.status = ExperimentStatus::Running;
+        experiment.end_date = None;
         experiment.updated_at = Utc::now();
 
         self.upsert_experiment(&experiment).await?;

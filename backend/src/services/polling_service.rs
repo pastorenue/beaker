@@ -1,3 +1,4 @@
+use chrono::Utc;
 use log::{error, info, warn};
 use sqlx::PgPool;
 use std::time::Duration;
@@ -73,12 +74,33 @@ impl PollingService {
 
     async fn poll_account(&self, account_id: Uuid) -> anyhow::Result<()> {
         let experiments = self.experiment_service.list_experiments(account_id).await?;
+        let now = Utc::now();
         let running: Vec<_> = experiments
             .into_iter()
             .filter(|e| matches!(e.status, ExperimentStatus::Running))
             .collect();
 
-        for experiment in running {
+        // Auto-stop experiments that have reached their end date
+        let (expired, active): (Vec<_>, Vec<_>) = running
+            .into_iter()
+            .partition(|e| e.end_date.map(|d| d <= now).unwrap_or(false));
+
+        for experiment in expired {
+            info!("Auto-stopping experiment {} (end_date reached)", experiment.id);
+            match self.experiment_service.stop_experiment(account_id, experiment.id).await {
+                Ok(stopped) => {
+                    let ns = self.notification_service.clone();
+                    let exp_clone = stopped.clone();
+                    tokio::spawn(async move {
+                        ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped").await;
+                    });
+                }
+                Err(e) => error!("Failed to auto-stop experiment {}: {}", experiment.id, e),
+            }
+        }
+
+        // Continue AI analysis only for still-running experiments
+        for experiment in active {
             if let Err(e) = self.poll_experiment(account_id, &experiment).await {
                 warn!("Polling failed for experiment {}: {}", experiment.id, e);
             }
