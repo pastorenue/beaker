@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { experimentApi, telemetryApi, trackApi } from '../../services/api';
 import { LoadingSpinner } from '../../components/Common';
+import { useAccount } from '../../contexts/AccountContext';
 import type {
     TelemetryEvent,
     UpdateTelemetryEventRequest,
@@ -350,7 +351,7 @@ function DefinitionModal({
                     is_active: isActive,
                 })),
             } as BulkCreateTelemetryEventRequest);
-            queryClient.invalidateQueries({ queryKey: ['telemetry', selectedExpId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry'] });
             onClose();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to create events');
@@ -540,7 +541,7 @@ function EventModal({
         mutationFn: (data: UpdateTelemetryEventRequest) =>
             telemetryApi.update(experimentId, existing.id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry'] });
             onClose();
         },
     });
@@ -650,6 +651,7 @@ function EventModal({
 
 export const TelemetryPage: React.FC = () => {
     const queryClient = useQueryClient();
+    const { activeAccountId } = useAccount();
     const [activeFilters, setActiveFilters] = React.useState<ActiveFilter[]>([]);
     const [page, setPage] = React.useState(0);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
@@ -657,25 +659,28 @@ export const TelemetryPage: React.FC = () => {
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
     const { data: experiments = [] } = useQuery({
-        queryKey: ['experiments'],
+        queryKey: ['experiments', activeAccountId],
         queryFn: () => experimentApi.list().then(r => r.data),
+        enabled: !!activeAccountId,
     });
 
     const experimentNameFilter = activeFilters.find(f => f.facet === 'experiment')?.value;
     const experimentId = experiments.find(e => e.name === experimentNameFilter)?.id;
 
     const { data: events = [], isLoading } = useQuery({
-        queryKey: ['telemetry', experimentId],
+        queryKey: ['telemetry', activeAccountId, experimentId],
         queryFn: () => experimentId
             ? telemetryApi.list(experimentId).then(r => r.data)
             : telemetryApi.listAll().then(r => r.data),
+        enabled: !!activeAccountId,
     });
 
     // Tracked event names for the name combobox
     const { data: trackedData } = useQuery({
-        queryKey: ['tracked-event-names'],
+        queryKey: ['tracked-event-names', activeAccountId],
         queryFn: () => trackApi.listAllEvents({ limit: 500, offset: 0 }).then(r => r.data),
         staleTime: 5 * 60 * 1000,
+        enabled: !!activeAccountId,
     });
 
     const eventNameSuggestions = React.useMemo(() => {
@@ -687,7 +692,7 @@ export const TelemetryPage: React.FC = () => {
     const deleteMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) => telemetryApi.delete(ev.experiment_id, ev.id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] });
             setDeletingId(null);
         },
     });
@@ -695,7 +700,7 @@ export const TelemetryPage: React.FC = () => {
     const toggleMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) =>
             telemetryApi.update(ev.experiment_id, ev.id, { is_active: !ev.is_active }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] }),
     });
 
     const valueSuggestions: Record<FilterKey, string[]> = React.useMemo(() => ({
