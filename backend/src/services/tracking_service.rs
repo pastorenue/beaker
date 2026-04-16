@@ -460,7 +460,12 @@ impl TrackingService {
 
         Ok(rows
             .into_iter()
-            .map(|r| DailyEventCount { day: r.day, event_name: r.event_name, event_type: r.event_type, count: r.count })
+            .map(|r| DailyEventCount {
+                day: r.day,
+                event_name: r.event_name,
+                event_type: r.event_type,
+                count: r.count,
+            })
             .collect())
     }
 
@@ -638,8 +643,16 @@ impl TrackingService {
     }
 
     fn build_time_clause(days_back: u32, from_date: Option<&str>, to_date: Option<&str>) -> String {
-        let valid_from = from_date.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok().map(|nd| nd.format("%Y-%m-%d").to_string()));
-        let valid_to   = to_date.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok().map(|nd| nd.format("%Y-%m-%d").to_string()));
+        let valid_from = from_date.and_then(|d| {
+            NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                .ok()
+                .map(|nd| nd.format("%Y-%m-%d").to_string())
+        });
+        let valid_to = to_date.and_then(|d| {
+            NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                .ok()
+                .map(|nd| nd.format("%Y-%m-%d").to_string())
+        });
         match (valid_from, valid_to) {
             (Some(from), Some(to)) => format!(
                 "ae.timestamp >= toDateTime('{}') AND ae.timestamp < toDateTime('{}') + INTERVAL 1 DAY",

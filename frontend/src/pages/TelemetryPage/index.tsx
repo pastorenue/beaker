@@ -921,7 +921,7 @@ export const TelemetryPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {ev.visual_guide
-                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => setLightboxSrc(ev.visual_guide)} />
+                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => setLightboxSrc(ev.visual_guide ?? null)} />
                                                         : <span className="text-slate-600">—</span>
                                                     }
                                                 </td>
