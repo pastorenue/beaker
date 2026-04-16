@@ -300,6 +300,75 @@ function NameCombobox({
     );
 }
 
+// ─── InfoTooltip ──────────────────────────────────────────────────────────────
+
+function InfoTooltip({ text }: { text: string }) {
+    return (
+        <span className="group relative inline-flex items-center">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500 cursor-default" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
+            </svg>
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-48 -translate-x-1/2 rounded bg-slate-800 border border-slate-700/60 px-2 py-1 text-[11px] text-slate-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                {text}
+            </span>
+        </span>
+    );
+}
+
+// ─── ImageUpload ──────────────────────────────────────────────────────────────
+
+function ImageUpload({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = e => onChange(e.target?.result as string);
+        reader.readAsDataURL(file);
+    };
+
+    if (value) {
+        return (
+            <div className={`relative overflow-hidden rounded border border-slate-700/60 bg-slate-800/60 ${compact ? 'h-10' : 'h-32'}`}>
+                <img src={value} alt="Visual guide" className="h-full w-full object-cover" />
+                <button
+                    type="button"
+                    onClick={() => onChange('')}
+                    className="absolute right-1 top-1 rounded-full bg-slate-900/80 p-0.5 text-slate-300 hover:text-white transition-colors"
+                    aria-label="Remove image"
+                >
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            />
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className={`flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-slate-600/60 bg-slate-800/30 text-slate-500 hover:border-cyan-500/40 hover:text-slate-400 transition-colors ${compact ? 'h-10 flex-row' : 'h-32 flex-col'}`}
+            >
+                <svg viewBox="0 0 24 24" className={compact ? 'h-4 w-4 shrink-0' : 'h-6 w-6'} fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="text-xs">{compact ? 'Visual guide' : 'Upload image'}</span>
+                {compact && <InfoTooltip text="Annotated UI screenshot showing which element this metric tracks" />}
+            </button>
+        </>
+    );
+}
+
 // ─── DefinitionModal — create multiple events at once ─────────────────────────
 
 function DefinitionModal({
@@ -472,12 +541,10 @@ function DefinitionModal({
                                                 placeholder="URL pattern"
                                                 className="input !py-1.5 !px-2 !text-xs !rounded"
                                             />
-                                            <input
-                                                type="text"
+                                            <ImageUpload
+                                                compact
                                                 value={row.visual_guide}
-                                                onChange={e => updateRow(idx, 'visual_guide', e.target.value)}
-                                                placeholder="Visual guide"
-                                                className="input !py-1.5 !px-2 !text-xs !rounded"
+                                                onChange={v => updateRow(idx, 'visual_guide', v)}
                                             />
                                         </div>
                                     </div>
@@ -623,9 +690,11 @@ function EventModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Visual guide</label>
-                            <input type="text" value={visualGuide} onChange={e => setVisualGuide(e.target.value)} placeholder="Optional screenshot URL or note"
-                                className="input" />
+                            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                                Visual guide
+                                <InfoTooltip text="Annotated UI screenshot showing which element this metric tracks" />
+                            </label>
+                            <ImageUpload value={visualGuide} onChange={setVisualGuide} />
                         </div>
 
                         <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -794,6 +863,7 @@ export const TelemetryPage: React.FC = () => {
                                     <th className="px-4 py-3">Type</th>
                                     <th className="px-4 py-3">Selector</th>
                                     <th className="px-4 py-3">URL Pattern</th>
+                                    <th className="px-4 py-3">Visual Guide</th>
                                     <th className="px-4 py-3">Status</th>
                                     <th className="px-4 py-3">Created</th>
                                     <th className="px-4 py-3">Actions</th>
@@ -802,7 +872,7 @@ export const TelemetryPage: React.FC = () => {
                             <tbody className="divide-y divide-slate-800/40">
                                 {pageEvents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                                        <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                                             No events found
                                         </td>
                                     </tr>
@@ -831,6 +901,12 @@ export const TelemetryPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-400 text-xs">
                                                     {ev.url_pattern || <span className="text-slate-600">—</span>}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {ev.visual_guide
+                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => window.open(ev.visual_guide, '_blank')} />
+                                                        : <span className="text-slate-600">—</span>
+                                                    }
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium border ${
