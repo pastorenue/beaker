@@ -300,6 +300,22 @@ function NameCombobox({
     );
 }
 
+// ─── ImageLightbox ────────────────────────────────────────────────────────────
+
+function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+    React.useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+            <img src={src} alt="Visual guide" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+    );
+}
+
 // ─── InfoTooltip ──────────────────────────────────────────────────────────────
 
 function InfoTooltip({ text }: { text: string }) {
@@ -726,6 +742,7 @@ export const TelemetryPage: React.FC = () => {
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [editingEvent, setEditingEvent] = React.useState<TelemetryEvent | null>(null);
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
+    const [lightboxSrc, setLightboxSrc] = React.useState<string | null>(null);
 
     const { data: experiments = [] } = useQuery({
         queryKey: ['experiments', activeAccountId],
@@ -904,7 +921,7 @@ export const TelemetryPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {ev.visual_guide
-                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => window.open(ev.visual_guide, '_blank')} />
+                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => setLightboxSrc(ev.visual_guide)} />
                                                         : <span className="text-slate-600">—</span>
                                                     }
                                                 </td>
@@ -1004,6 +1021,9 @@ export const TelemetryPage: React.FC = () => {
                     )}
                 </div>
             )}
+
+            {/* Visual guide lightbox */}
+            {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
 
             {/* Create modal (multi-event) */}
             {showCreateModal && (
