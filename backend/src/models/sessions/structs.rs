@@ -40,3 +40,11 @@ pub struct ReplayEvent {
     pub event: serde_json::Value,
     pub timestamp: DateTime<Utc>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct DailyEventCount {
+    pub day: String,
+    pub event_name: String,
+    pub event_type: String,
+    pub count: u64,
+}

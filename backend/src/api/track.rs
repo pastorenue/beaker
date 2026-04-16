@@ -4,7 +4,7 @@ use crate::models::{
 };
 use crate::services::{SdkTokenService, TrackingService};
 use crate::utils::authed;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use beaker_macros::{circuit_breaker, rate_limit};
 use log::error;
 use uuid::Uuid;
@@ -20,7 +20,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/replay/{session_id}", web::get().to(get_replay))
             .route("/sessions", web::get().to(list_sessions))
             .route("/events", web::get().to(list_events))
-            .route("/events/all", web::get().to(list_account_events)),
+            .route("/events/all", web::get().to(list_account_events))
+            .route("/events/daily", web::get().to(daily_event_counts)),
     );
 }
 
@@ -239,6 +240,8 @@ struct AccountEventsQuery {
     event_type: Option<String>,
     event_name: Option<String>,
     days_back: Option<u32>,
+    from_date: Option<String>,
+    to_date: Option<String>,
     limit: Option<usize>,
     offset: Option<usize>,
     experiment_id: Option<String>,
@@ -264,6 +267,8 @@ async fn list_account_events(
             query.event_type.as_deref(),
             query.event_name.as_deref(),
             days_back,
+            query.from_date.as_deref(),
+            query.to_date.as_deref(),
             limit,
             offset,
             query.experiment_id.as_deref(),
@@ -277,6 +282,37 @@ async fn list_account_events(
             error!("Failed to list account events: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Failed to list account events: {}", e)
+            }))
+        }
+    }
+}
+
+async fn daily_event_counts(
+    tracking_service: web::Data<TrackingService>,
+    http_req: HttpRequest,
+    query: web::Query<AccountEventsQuery>,
+) -> impl Responder {
+    let Some(user) = authed(&http_req) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    let days_back = query.days_back.unwrap_or(30);
+    match tracking_service
+        .daily_event_counts(
+            user.account_id,
+            query.event_type.as_deref(),
+            query.event_name.as_deref(),
+            days_back,
+            query.from_date.as_deref(),
+            query.to_date.as_deref(),
+            query.experiment_id.as_deref(),
+        )
+        .await
+    {
+        Ok(counts) => HttpResponse::Ok().json(counts),
+        Err(e) => {
+            error!("Failed to fetch daily event counts: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("{}", e)
             }))
         }
     }

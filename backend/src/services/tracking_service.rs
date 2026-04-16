@@ -1,7 +1,7 @@
 use crate::db::ClickHouseClient;
 use crate::models::*;
 use anyhow::{Context, Result};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use uuid::Uuid;
 
 pub struct TrackingService {
@@ -319,6 +319,8 @@ impl TrackingService {
         event_type: Option<&str>,
         event_name: Option<&str>,
         days_back: u32,
+        from_date: Option<&str>,
+        to_date: Option<&str>,
         limit: usize,
         offset: usize,
         experiment_id: Option<&str>,
@@ -338,10 +340,11 @@ impl TrackingService {
             )
         };
 
+        let time_clause = Self::build_time_clause(days_back, from_date, to_date);
+
         let mut count_query = format!(
-            "SELECT count() as total FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
-            session_subquery,
-            days_back,
+            "SELECT count() as total FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE {}",
+            session_subquery, time_clause,
         );
         if let Some(et) = event_type {
             count_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
@@ -362,9 +365,8 @@ impl TrackingService {
             .context("Failed to count account activity events")?;
 
         let mut data_query = format!(
-            "SELECT ae.event_id, ae.session_id, ae.user_id, ae.event_name, ae.event_type, ae.url, ae.selector, ae.x, ae.y, ae.metadata, ae.timestamp FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE ae.timestamp >= now() - INTERVAL {} DAY",
-            session_subquery,
-            days_back,
+            "SELECT ae.event_id, ae.session_id, ae.user_id, ae.event_name, ae.event_type, ae.url, ae.selector, ae.x, ae.y, ae.metadata, ae.timestamp FROM activity_events ae INNER JOIN ({}) AS s ON ae.session_id = s.session_id WHERE {}",
+            session_subquery, time_clause,
         );
         if let Some(et) = event_type {
             data_query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
@@ -393,6 +395,73 @@ impl TrackingService {
             .map(Self::row_to_activity_event)
             .collect::<Result<_>>()?;
         Ok((events, total_row.total))
+    }
+
+    pub async fn daily_event_counts(
+        &self,
+        account_id: Uuid,
+        event_type: Option<&str>,
+        event_name: Option<&str>,
+        days_back: u32,
+        from_date: Option<&str>,
+        to_date: Option<&str>,
+        experiment_id: Option<&str>,
+    ) -> Result<Vec<DailyEventCount>> {
+        let account_id_str = account_id.to_string();
+
+        let session_subquery = if let Some(eid) = experiment_id {
+            format!(
+                "SELECT session_id FROM sessions FINAL WHERE account_id = {} AND experiment_id = {}",
+                Self::sql_str(&account_id_str),
+                Self::sql_str(eid),
+            )
+        } else {
+            format!(
+                "SELECT session_id FROM sessions FINAL WHERE account_id = {}",
+                Self::sql_str(&account_id_str),
+            )
+        };
+
+        let time_clause = Self::build_time_clause(days_back, from_date, to_date);
+
+        let mut query = format!(
+            "SELECT toString(toDate(ae.timestamp)) as day, ae.event_name, ae.event_type, toUInt64(count()) as count \
+             FROM activity_events ae \
+             INNER JOIN ({}) AS s ON ae.session_id = s.session_id \
+             WHERE {}",
+            session_subquery, time_clause,
+        );
+        if let Some(et) = event_type {
+            query.push_str(&format!(" AND ae.event_type = {}", Self::sql_str(et)));
+        }
+        if let Some(en) = event_name {
+            query.push_str(&format!(
+                " AND ae.event_name LIKE {}",
+                Self::sql_str(&format!("%{}%", en))
+            ));
+        }
+        query.push_str(" GROUP BY day, ae.event_name, ae.event_type ORDER BY day");
+
+        #[derive(clickhouse::Row, serde::Deserialize)]
+        struct Row {
+            day: String,
+            event_name: String,
+            event_type: String,
+            count: u64,
+        }
+
+        let rows = self
+            .db
+            .client()
+            .query(&query)
+            .fetch_all::<Row>()
+            .await
+            .context("Failed to fetch daily event counts")?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| DailyEventCount { day: r.day, event_name: r.event_name, event_type: r.event_type, count: r.count })
+            .collect())
     }
 
     pub async fn list_activity_events(
@@ -566,5 +635,17 @@ impl TrackingService {
         value
             .map(|val| val.to_string())
             .unwrap_or_else(|| "NULL".to_string())
+    }
+
+    fn build_time_clause(days_back: u32, from_date: Option<&str>, to_date: Option<&str>) -> String {
+        let valid_from = from_date.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok().map(|nd| nd.format("%Y-%m-%d").to_string()));
+        let valid_to   = to_date.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok().map(|nd| nd.format("%Y-%m-%d").to_string()));
+        match (valid_from, valid_to) {
+            (Some(from), Some(to)) => format!(
+                "ae.timestamp >= toDateTime('{}') AND ae.timestamp < toDateTime('{}') + INTERVAL 1 DAY",
+                from, to
+            ),
+            _ => format!("ae.timestamp >= now() - INTERVAL {} DAY", days_back),
+        }
     }
 }
