@@ -19,4 +19,15 @@
   - Developer-First "AI Context" (MCP Layer)
     - MCP: Develop an mcp to allow other AI tools to "see" feature flags and experiments
     - vibe-coding opportunities
-  -  
+  - 
+
+# 16.04.2026
+- Add a user_flow in the telemetry-definition: This basically is like a graph that tells the flow the user should follow in the application interaction to show success. e.g. if we have the follow telemetry metrics: click_a, view_b, click_c, view_d, we could have a user_flow defined as: click_a -> view_b -> click_c -> view_d. This is considered the expected behaviour to show that the user got all exposure to the experiment
+- If the user completes the flow, that's a win else, we can analyze where the user dropped off and why
+- Add a chart that shows the user_flow and/or drop-off points.
+- We can create a separate job that computes the user journey and updates the session asynchronously
+- Change the logic of exposure funnel or remove it entirely
+- Remove scrollable from session table
+- Load custom data and run sql queries against them
+- Rework the templating plan. Use AI and add limited fields. Current implementation is too tacky
+- 
