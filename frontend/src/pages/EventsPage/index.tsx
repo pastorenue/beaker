@@ -15,9 +15,12 @@ import {
 import { experimentApi, trackApi } from '../../services/api';
 import { LoadingSpinner } from '../../components/Common';
 import { useAccount } from '../../contexts/AccountContext';
-import type { ActivityEvent } from '../../types';
 
 // ─── types ────────────────────────────────────────────────────────────────────
+
+type TimeRange =
+    | { type: 'preset'; days: number }
+    | { type: 'custom'; from: string; to: string };
 
 type FilterKey = 'type' | 'name' | 'user' | 'url' | 'experiment';
 type ActiveFilter = { facet: FilterKey; value: string };
@@ -84,42 +87,6 @@ function relativeTime(date: Date): string {
     return `${Math.floor(diffHr / 24)}d ago`;
 }
 
-function groupByDayPerName(
-    events: ActivityEvent[],
-    daysBack: number,
-    names: string[],
-): { date: string; [key: string]: number | string }[] {
-    const now = new Date();
-    const days: string[] = [];
-    for (let i = daysBack - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        days.push(d.toISOString().slice(0, 10));
-    }
-    const counts: Record<string, Record<string, number>> = {};
-    for (const day of days) {
-        counts[day] = {};
-        for (const name of names) counts[day][name] = 0;
-    }
-    for (const ev of events) {
-        if (!names.includes(ev.event_name)) continue;
-        const day = new Date(ev.timestamp).toISOString().slice(0, 10);
-        if (day in counts) counts[day][ev.event_name]++;
-    }
-    return days.map(day => ({ date: day.slice(5), ...counts[day] }));
-}
-
-function groupByType(events: ActivityEvent[]): { type: string; count: number }[] {
-    const counts: Record<string, number> = {};
-    for (const ev of events) {
-        counts[ev.event_type] = (counts[ev.event_type] ?? 0) + 1;
-    }
-    return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
-        .map(([type, count]) => ({ type, count }));
-}
-
 /** Close a dropdown when clicking outside its ref element. */
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
     React.useEffect(() => {
@@ -166,17 +133,29 @@ function FilterChip({
 }
 
 function TimeRangePicker({
-    daysBack,
+    value,
     onChange,
 }: {
-    daysBack: number;
-    onChange: (days: number) => void;
+    value: TimeRange;
+    onChange: (v: TimeRange) => void;
 }) {
     const [open, setOpen] = React.useState(false);
+    const [showCustom, setShowCustom] = React.useState(false);
+    const [customFrom, setCustomFrom] = React.useState(value.type === 'custom' ? value.from : '');
+    const [customTo, setCustomTo]     = React.useState(value.type === 'custom' ? value.to : '');
     const ref = React.useRef<HTMLDivElement>(null);
-    useClickOutside(ref, () => setOpen(false));
+    useClickOutside(ref, () => { setOpen(false); setShowCustom(false); });
 
-    const selected = TIME_RANGES.find((r) => r.days === daysBack) ?? TIME_RANGES[3];
+    React.useEffect(() => {
+        if (value.type === 'custom') { setCustomFrom(value.from); setCustomTo(value.to); }
+    }, [value]);
+
+    const isCustom      = value.type === 'custom';
+    const selectedPreset = value.type === 'preset' ? TIME_RANGES.find((r) => r.days === value.days) ?? TIME_RANGES[3] : null;
+
+    const applyCustom = () => {
+        if (customFrom && customTo) { onChange({ type: 'custom', from: customFrom, to: customTo }); setOpen(false); setShowCustom(false); }
+    };
 
     return (
         <div className="relative" ref={ref}>
@@ -184,11 +163,19 @@ function TimeRangePicker({
                 onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-[9px] text-sm hover:bg-slate-800/60 transition-colors focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
             >
-                <span className="font-mono text-xs font-bold text-cyan-400 tracking-wide">
-                    {selected.short}
-                </span>
-                <span className="text-slate-500 text-xs select-none">|</span>
-                <span className="text-slate-200 whitespace-nowrap">{selected.label}</span>
+                {isCustom ? (
+                    <>
+                        <span className="font-mono text-xs font-bold text-cyan-400 tracking-wide">Custom</span>
+                        <span className="text-slate-500 text-xs select-none">|</span>
+                        <span className="text-slate-200 whitespace-nowrap">{value.from} → {value.to}</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="font-mono text-xs font-bold text-cyan-400 tracking-wide">{selectedPreset?.short}</span>
+                        <span className="text-slate-500 text-xs select-none">|</span>
+                        <span className="text-slate-200 whitespace-nowrap">{selectedPreset?.label}</span>
+                    </>
+                )}
                 <svg
                     viewBox="0 0 24 24"
                     className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
@@ -201,29 +188,83 @@ function TimeRangePicker({
             </button>
 
             {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[196px] overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 shadow-2xl">
+                <div className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[220px] overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 shadow-2xl">
                     <div className="border-b border-slate-800/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                         Time range
                     </div>
-                    {TIME_RANGES.map((r) => (
-                        <button
-                            key={r.days}
-                            onClick={() => { onChange(r.days); setOpen(false); }}
-                            className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-slate-800/60 ${
-                                daysBack === r.days
-                                    ? 'text-cyan-400 bg-cyan-500/5'
-                                    : 'text-slate-300'
-                            }`}
-                        >
-                            <span className="w-8 font-mono text-xs font-bold">{r.short}</span>
-                            <span>{r.label}</span>
-                            {daysBack === r.days && (
-                                <svg className="ml-auto h-3.5 w-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                            )}
-                        </button>
-                    ))}
+                    {!showCustom ? (
+                        <>
+                            {TIME_RANGES.map((r) => (
+                                <button
+                                    key={r.days}
+                                    onClick={() => { onChange({ type: 'preset', days: r.days }); setOpen(false); }}
+                                    className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-slate-800/60 ${
+                                        value.type === 'preset' && value.days === r.days
+                                            ? 'text-cyan-400 bg-cyan-500/5'
+                                            : 'text-slate-300'
+                                    }`}
+                                >
+                                    <span className="w-8 font-mono text-xs font-bold">{r.short}</span>
+                                    <span>{r.label}</span>
+                                    {value.type === 'preset' && value.days === r.days && (
+                                        <svg className="ml-auto h-3.5 w-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setShowCustom(true)}
+                                className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-slate-800/60 ${
+                                    isCustom ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-300'
+                                }`}
+                            >
+                                <span className="w-8 font-mono text-xs font-bold">—</span>
+                                <span>Custom</span>
+                                {isCustom && (
+                                    <svg className="ml-auto h-3.5 w-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                )}
+                            </button>
+                        </>
+                    ) : (
+                        <div className="p-3 space-y-2">
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 uppercase tracking-wide">From</label>
+                                <input
+                                    type="date"
+                                    value={customFrom}
+                                    onChange={(e) => setCustomFrom(e.target.value)}
+                                    className="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 uppercase tracking-wide">To</label>
+                                <input
+                                    type="date"
+                                    value={customTo}
+                                    onChange={(e) => setCustomTo(e.target.value)}
+                                    className="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowCustom(false)}
+                                    className="flex-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={applyCustom}
+                                    disabled={!customFrom || !customTo}
+                                    className="flex-1 rounded border border-cyan-600/50 bg-cyan-600/10 px-2 py-1 text-xs text-cyan-400 hover:bg-cyan-600/20 disabled:opacity-40"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -434,7 +475,7 @@ function FacetSearchBar({
 export const EventsPage: React.FC = () => {
     const { activeAccountId } = useAccount();
     const [activeFilters, setActiveFilters] = React.useState<ActiveFilter[]>([]);
-    const [daysBack, setDaysBack]           = React.useState(30);
+    const [timeRange, setTimeRange]         = React.useState<TimeRange>({ type: 'preset', days: 30 });
     const [page, setPage]                   = React.useState(0);
     const [liveEnabled, setLiveEnabled]     = React.useState(true);
 
@@ -448,12 +489,16 @@ export const EventsPage: React.FC = () => {
     const experimentNameFilter = activeFilters.find(f => f.facet === 'experiment')?.value;
     const experimentId         = experiments.find(e => e.name === experimentNameFilter)?.id;
 
-    React.useEffect(() => { setPage(0); }, [activeFilters, daysBack]);
+    React.useEffect(() => { setPage(0); }, [activeFilters, timeRange]);
+
+    const timeParams = timeRange.type === 'preset'
+        ? { days_back: timeRange.days }
+        : { from_date: timeRange.from, to_date: timeRange.to };
 
     const queryParams = {
         event_type: typeFilter,
         event_name: nameFilter,
-        days_back: daysBack,
+        ...timeParams,
         limit: 1000,
         offset: 0,
         experiment_id: experimentId,
@@ -462,6 +507,20 @@ export const EventsPage: React.FC = () => {
     const { data, isLoading, refetch } = useQuery({
         queryKey: ['events-all', activeAccountId, queryParams],
         queryFn: async () => (await trackApi.listAllEvents(queryParams)).data,
+        enabled: !!activeAccountId,
+        refetchInterval: liveEnabled ? 60_000 : false,
+    });
+
+    const chartQueryParams = {
+        event_type: typeFilter,
+        event_name: nameFilter,
+        ...timeParams,
+        experiment_id: experimentId,
+    };
+
+    const { data: dailyCounts = [] } = useQuery({
+        queryKey: ['events-daily', activeAccountId, chartQueryParams],
+        queryFn: async () => (await trackApi.dailyEventCounts(chartQueryParams)).data,
         enabled: !!activeAccountId,
         refetchInterval: liveEnabled ? 60_000 : false,
     });
@@ -489,16 +548,46 @@ export const EventsPage: React.FC = () => {
     }), [events, experiments]);
 
     const topEventNames = React.useMemo(() => {
-        const counts: Record<string, number> = {};
-        for (const ev of filteredEvents) counts[ev.event_name] = (counts[ev.event_name] ?? 0) + 1;
-        return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n]) => n);
-    }, [filteredEvents]);
+        const totals: Record<string, number> = {};
+        for (const row of dailyCounts) totals[row.event_name] = (totals[row.event_name] ?? 0) + row.count;
+        return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n]) => n);
+    }, [dailyCounts]);
 
-    const byDay = React.useMemo(
-        () => groupByDayPerName(filteredEvents, daysBack, topEventNames),
-        [filteredEvents, daysBack, topEventNames],
-    );
-    const byType = React.useMemo(() => groupByType(filteredEvents), [filteredEvents]);
+    const byDay = React.useMemo(() => {
+        let days: string[];
+        if (timeRange.type === 'preset') {
+            const now = new Date();
+            days = [];
+            for (let i = timeRange.days - 1; i >= 0; i--) {
+                const d = new Date(now);
+                d.setDate(d.getDate() - i);
+                days.push(d.toISOString().slice(0, 10));
+            }
+        } else {
+            days = [];
+            const current = new Date(timeRange.from);
+            const end     = new Date(timeRange.to);
+            while (current <= end) {
+                days.push(current.toISOString().slice(0, 10));
+                current.setDate(current.getDate() + 1);
+            }
+        }
+        const counts: Record<string, Record<string, number>> = {};
+        for (const day of days) counts[day] = {};
+        const allNames = new Set(topEventNames);
+        for (const day of days)
+            for (const name of allNames) counts[day][name] = 0;
+        for (const row of dailyCounts) {
+            if (row.day in counts) counts[row.day][row.event_name] = row.count;
+        }
+        return days.map(day => ({ date: day.slice(5), ...counts[day] }));
+    }, [dailyCounts, timeRange, topEventNames]);
+
+    const byType = React.useMemo(() => {
+        const totals: Record<string, number> = {};
+        for (const row of dailyCounts) totals[row.event_type] = (totals[row.event_type] ?? 0) + row.count;
+        return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([type, count]) => ({ type, count }));
+    }, [dailyCounts]);
 
     const pageCount  = Math.ceil(filteredEvents.length / PAGE_SIZE);
     const pageEvents = filteredEvents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -536,7 +625,7 @@ export const EventsPage: React.FC = () => {
                     />
 
                     {/* Time range picker */}
-                    <TimeRangePicker daysBack={daysBack} onChange={setDaysBack} />
+                    <TimeRangePicker value={timeRange} onChange={setTimeRange} />
 
                     {/* Live / pause toggle */}
                     <button
@@ -595,7 +684,7 @@ export const EventsPage: React.FC = () => {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="panel">
                             <p className="mb-3 text-sm font-medium text-slate-300">Events per day</p>
-                            {filteredEvents.length === 0 ? (
+                            {dailyCounts.length === 0 ? (
                                 <div className="flex h-40 items-center justify-center text-sm text-slate-500">
                                     No events in range
                                 </div>

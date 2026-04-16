@@ -86,13 +86,21 @@ impl PollingService {
             .partition(|e| e.end_date.map(|d| d <= now).unwrap_or(false));
 
         for experiment in expired {
-            info!("Auto-stopping experiment {} (end_date reached)", experiment.id);
-            match self.experiment_service.stop_experiment(account_id, experiment.id).await {
+            info!(
+                "Auto-stopping experiment {} (end_date reached)",
+                experiment.id
+            );
+            match self
+                .experiment_service
+                .stop_experiment(account_id, experiment.id)
+                .await
+            {
                 Ok(stopped) => {
                     let ns = self.notification_service.clone();
                     let exp_clone = stopped.clone();
                     tokio::spawn(async move {
-                        ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped").await;
+                        ns.notify_experiment_status_changed(account_id, &exp_clone, "stopped")
+                            .await;
                     });
                 }
                 Err(e) => error!("Failed to auto-stop experiment {}: {}", experiment.id, e),

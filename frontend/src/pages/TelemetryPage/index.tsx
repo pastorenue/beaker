@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { experimentApi, telemetryApi, trackApi } from '../../services/api';
 import { LoadingSpinner } from '../../components/Common';
+import { useAccount } from '../../contexts/AccountContext';
 import type {
     TelemetryEvent,
     UpdateTelemetryEventRequest,
@@ -299,6 +300,91 @@ function NameCombobox({
     );
 }
 
+// ─── ImageLightbox ────────────────────────────────────────────────────────────
+
+function ImageLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+    React.useEffect(() => {
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+            <img src={src} alt="Visual guide" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+    );
+}
+
+// ─── InfoTooltip ──────────────────────────────────────────────────────────────
+
+function InfoTooltip({ text }: { text: string }) {
+    return (
+        <span className="group relative inline-flex items-center">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500 cursor-default" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
+            </svg>
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-48 -translate-x-1/2 rounded bg-slate-800 border border-slate-700/60 px-2 py-1 text-[11px] text-slate-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                {text}
+            </span>
+        </span>
+    );
+}
+
+// ─── ImageUpload ──────────────────────────────────────────────────────────────
+
+function ImageUpload({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onload = e => onChange(e.target?.result as string);
+        reader.readAsDataURL(file);
+    };
+
+    if (value) {
+        return (
+            <div className={`relative overflow-hidden rounded border border-slate-700/60 bg-slate-800/60 ${compact ? 'h-10' : 'h-32'}`}>
+                <img src={value} alt="Visual guide" className="h-full w-full object-cover" />
+                <button
+                    type="button"
+                    onClick={() => onChange('')}
+                    className="absolute right-1 top-1 rounded-full bg-slate-900/80 p-0.5 text-slate-300 hover:text-white transition-colors"
+                    aria-label="Remove image"
+                >
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            />
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className={`flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-slate-600/60 bg-slate-800/30 text-slate-500 hover:border-cyan-500/40 hover:text-slate-400 transition-colors ${compact ? 'h-10 flex-row' : 'h-32 flex-col'}`}
+            >
+                <svg viewBox="0 0 24 24" className={compact ? 'h-4 w-4 shrink-0' : 'h-6 w-6'} fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="text-xs">{compact ? 'Visual guide' : 'Upload image'}</span>
+                {compact && <InfoTooltip text="Annotated UI screenshot showing which element this metric tracks" />}
+            </button>
+        </>
+    );
+}
+
 // ─── DefinitionModal — create multiple events at once ─────────────────────────
 
 function DefinitionModal({
@@ -350,7 +436,7 @@ function DefinitionModal({
                     is_active: isActive,
                 })),
             } as BulkCreateTelemetryEventRequest);
-            queryClient.invalidateQueries({ queryKey: ['telemetry', selectedExpId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry'] });
             onClose();
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to create events');
@@ -471,12 +557,10 @@ function DefinitionModal({
                                                 placeholder="URL pattern"
                                                 className="input !py-1.5 !px-2 !text-xs !rounded"
                                             />
-                                            <input
-                                                type="text"
+                                            <ImageUpload
+                                                compact
                                                 value={row.visual_guide}
-                                                onChange={e => updateRow(idx, 'visual_guide', e.target.value)}
-                                                placeholder="Visual guide"
-                                                className="input !py-1.5 !px-2 !text-xs !rounded"
+                                                onChange={v => updateRow(idx, 'visual_guide', v)}
                                             />
                                         </div>
                                     </div>
@@ -540,7 +624,7 @@ function EventModal({
         mutationFn: (data: UpdateTelemetryEventRequest) =>
             telemetryApi.update(experimentId, existing.id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry'] });
             onClose();
         },
     });
@@ -622,9 +706,11 @@ function EventModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Visual guide</label>
-                            <input type="text" value={visualGuide} onChange={e => setVisualGuide(e.target.value)} placeholder="Optional screenshot URL or note"
-                                className="input" />
+                            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                                Visual guide
+                                <InfoTooltip text="Annotated UI screenshot showing which element this metric tracks" />
+                            </label>
+                            <ImageUpload value={visualGuide} onChange={setVisualGuide} />
                         </div>
 
                         <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -650,32 +736,37 @@ function EventModal({
 
 export const TelemetryPage: React.FC = () => {
     const queryClient = useQueryClient();
+    const { activeAccountId } = useAccount();
     const [activeFilters, setActiveFilters] = React.useState<ActiveFilter[]>([]);
     const [page, setPage] = React.useState(0);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [editingEvent, setEditingEvent] = React.useState<TelemetryEvent | null>(null);
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
+    const [lightboxSrc, setLightboxSrc] = React.useState<string | null>(null);
 
     const { data: experiments = [] } = useQuery({
-        queryKey: ['experiments'],
+        queryKey: ['experiments', activeAccountId],
         queryFn: () => experimentApi.list().then(r => r.data),
+        enabled: !!activeAccountId,
     });
 
     const experimentNameFilter = activeFilters.find(f => f.facet === 'experiment')?.value;
     const experimentId = experiments.find(e => e.name === experimentNameFilter)?.id;
 
     const { data: events = [], isLoading } = useQuery({
-        queryKey: ['telemetry', experimentId],
+        queryKey: ['telemetry', activeAccountId, experimentId],
         queryFn: () => experimentId
             ? telemetryApi.list(experimentId).then(r => r.data)
             : telemetryApi.listAll().then(r => r.data),
+        enabled: !!activeAccountId,
     });
 
     // Tracked event names for the name combobox
     const { data: trackedData } = useQuery({
-        queryKey: ['tracked-event-names'],
+        queryKey: ['tracked-event-names', activeAccountId],
         queryFn: () => trackApi.listAllEvents({ limit: 500, offset: 0 }).then(r => r.data),
         staleTime: 5 * 60 * 1000,
+        enabled: !!activeAccountId,
     });
 
     const eventNameSuggestions = React.useMemo(() => {
@@ -687,7 +778,7 @@ export const TelemetryPage: React.FC = () => {
     const deleteMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) => telemetryApi.delete(ev.experiment_id, ev.id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] });
+            queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] });
             setDeletingId(null);
         },
     });
@@ -695,7 +786,7 @@ export const TelemetryPage: React.FC = () => {
     const toggleMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) =>
             telemetryApi.update(ev.experiment_id, ev.id, { is_active: !ev.is_active }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', experimentId] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] }),
     });
 
     const valueSuggestions: Record<FilterKey, string[]> = React.useMemo(() => ({
@@ -789,6 +880,7 @@ export const TelemetryPage: React.FC = () => {
                                     <th className="px-4 py-3">Type</th>
                                     <th className="px-4 py-3">Selector</th>
                                     <th className="px-4 py-3">URL Pattern</th>
+                                    <th className="px-4 py-3">Visual Guide</th>
                                     <th className="px-4 py-3">Status</th>
                                     <th className="px-4 py-3">Created</th>
                                     <th className="px-4 py-3">Actions</th>
@@ -797,7 +889,7 @@ export const TelemetryPage: React.FC = () => {
                             <tbody className="divide-y divide-slate-800/40">
                                 {pageEvents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                                        <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                                             No events found
                                         </td>
                                     </tr>
@@ -826,6 +918,12 @@ export const TelemetryPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-400 text-xs">
                                                     {ev.url_pattern || <span className="text-slate-600">—</span>}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {ev.visual_guide
+                                                        ? <img src={ev.visual_guide} alt="Visual guide" className="h-8 w-8 object-cover rounded cursor-pointer" onClick={() => setLightboxSrc(ev.visual_guide ?? null)} />
+                                                        : <span className="text-slate-600">—</span>
+                                                    }
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium border ${
@@ -923,6 +1021,9 @@ export const TelemetryPage: React.FC = () => {
                     )}
                 </div>
             )}
+
+            {/* Visual guide lightbox */}
+            {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
 
             {/* Create modal (multi-event) */}
             {showCreateModal && (

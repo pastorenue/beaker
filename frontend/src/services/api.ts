@@ -298,11 +298,26 @@ export const trackApi = {
     event_type?: string;
     event_name?: string;
     days_back?: number;
+    from_date?: string;
+    to_date?: string;
     limit?: number;
     offset?: number;
     experiment_id?: string;
   }) =>
     api.get<{ events: ActivityEvent[]; total: number }>("/track/events/all", { params }),
+
+  dailyEventCounts: (params?: {
+    event_type?: string;
+    event_name?: string;
+    days_back?: number;
+    from_date?: string;
+    to_date?: string;
+    experiment_id?: string;
+  }) =>
+    api.get<{ day: string; event_name: string; event_type: string; count: number }[]>(
+      "/track/events/daily",
+      { params },
+    ),
 };
 
 // Analytics

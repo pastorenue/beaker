@@ -9,7 +9,6 @@ import { SessionReplayPanel } from './components/SessionReplayPanel';
 import { AnalyticsMonitoringDashboard } from './components/AnalyticsMonitoringDashboard';
 import { HomeOverview } from './components/HomeOverview';
 import { AiAssistHub } from './components/AiAssistHub';
-import { TemplatesPlan } from './components/TemplatesPlan';
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from './components/AuthPages';
 import { OAuthCallback } from './components/OAuthCallback';
 import { UserSettings } from './components/UserSettings';
@@ -186,16 +185,6 @@ function Layout({ children }: { children: React.ReactNode }) {
                     icon: (
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3m12.36 6.36-2.12-2.12M8.76 8.76 6.64 6.64m8.72 0-2.12 2.12M8.76 15.24 6.64 17.36" />
-                        </svg>
-                    ),
-                },
-                {
-                    to: '/templates',
-                    label: 'Templates/Plan',
-                    icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6M9 13h6M9 17h4" />
                         </svg>
                     ),
                 },
@@ -545,7 +534,6 @@ function App() {
                                 <Route path="/ai-assist" element={<AiAssistHub />} />
                                 <Route path="/simulation-studio" element={<SimulationStudio />} />
                                 <Route path="/feature-flags" element={<FeatureFlagManager />} />
-                                <Route path="/templates" element={<TemplatesPlan />} />
                                 <Route path="/settings" element={<UserSettings />} />
                                 <Route path="/events" element={<EventsPage />} />
                                 <Route path="/telemetry" element={<TelemetryPage />} />
