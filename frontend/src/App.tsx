@@ -15,6 +15,7 @@ import { UserSettings } from './components/UserSettings';
 import { Account } from './types';
 import { AccountProvider, useAccount } from './contexts/AccountContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { AccountSetupWizard } from './components/onboarding/AccountSetupWizard';
 import { HomePage } from './pages/HomePage';
 import { ExperimentDetailPage } from './pages/ExperimentDetailPage';
@@ -492,18 +493,20 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
             </div>
             {idleWarningVisible && (
-                <div className="toast toast-warning" role="status" aria-live="polite">
-                    <div>
-                        <p className="toast-title">You're about to be signed out</p>
-                        <p className="toast-body">No activity detected. We'll sign you out in {idleSecondsLeft}s.</p>
-                    </div>
-                    <div className="toast-actions">
-                        <button className="btn-secondary" onClick={startIdleTimers}>
-                            Stay signed in
-                        </button>
-                        <button className="btn-danger" onClick={handleLogout}>
-                            Sign out now
-                        </button>
+                <div className="toast-stack">
+                    <div className="toast toast-warning" role="status" aria-live="polite">
+                        <div>
+                            <p className="toast-title">You're about to be signed out</p>
+                            <p className="toast-body">No activity detected. We'll sign you out in {idleSecondsLeft}s.</p>
+                        </div>
+                        <div className="toast-actions">
+                            <button className="btn-secondary" onClick={startIdleTimers}>
+                                Stay signed in
+                            </button>
+                            <button className="btn-danger" onClick={handleLogout}>
+                                Sign out now
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -517,6 +520,7 @@ function App() {
             <BrowserRouter>
                 <AuthProvider>
                     <AccountProvider>
+                        <ToastProvider>
                         <Layout>
                             <Routes>
                                 <Route path="/" element={<LandingPage />} />
@@ -553,6 +557,7 @@ function App() {
                                 />
                             </Routes>
                         </Layout>
+                        </ToastProvider>
                     </AccountProvider>
                 </AuthProvider>
             </BrowserRouter>

@@ -42,3 +42,16 @@ pub struct TelemetryDefinition {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+/// An ordered sequence of event names representing an expected user journey.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserFlow {
+    pub id: Uuid,
+    pub account_id: Uuid,
+    pub experiment_id: Uuid,
+    pub name: String,
+    pub steps: Vec<String>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}

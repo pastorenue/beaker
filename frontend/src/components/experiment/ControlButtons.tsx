@@ -20,7 +20,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     onStop,
 }) => {
     return (
-        <div className="mb-6 flex gap-3">
+        <div className="flex gap-3">
             {canStart && (
                 <button onClick={onStart} className="btn-success" disabled={isLoading}>
                     {isLoading ? 'Processing...' : '▶ Start Experiment'}

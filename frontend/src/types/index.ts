@@ -226,6 +226,18 @@ export interface CreateExperimentRequest {
     requires_existing_users?: boolean;
 }
 
+export interface UpdateExperimentRequest {
+    name: string;
+    description: string;
+    primary_metric: string;
+    end_date?: string;
+    requires_existing_users: boolean;
+    user_groups: string[];
+    variants: Variant[];
+    hypothesis: Hypothesis;
+    health_checks: HealthCheck[];
+}
+
 export interface CreateUserGroupRequest {
     name: string;
     description: string;
@@ -861,3 +873,18 @@ export interface VariantActivityBucket {
     bucket: number;       // Unix timestamp seconds (5-min buckets)
     event_count: number;
 }
+
+// ── User flow types ───────────────────────────────────────────────────────────
+
+export interface UserFlow {
+    id: string;
+    experiment_id: string;
+    account_id: string;
+    name: string;
+    steps: string[];
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface CreateUserFlowRequest { name: string; steps: string[]; is_active?: boolean; }
+export interface UpdateUserFlowRequest { name?: string; steps?: string[]; is_active?: boolean; }

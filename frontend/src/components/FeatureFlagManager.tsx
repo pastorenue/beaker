@@ -18,6 +18,7 @@ import {
 import { featureFlagApi, featureGateApi, userGroupApi, experimentApi } from '../services/api';
 import { LoadingSpinner } from './Common';
 import { useAccount } from '../contexts/AccountContext';
+import { useToast } from '../contexts/ToastContext';
 
 const emptyFlag: CreateFeatureFlagRequest = {
     name: '',
@@ -41,6 +42,7 @@ const emptyGate: CreateFeatureGateRequest = {
 
 export const FeatureFlagManager: React.FC = () => {
     const { activeAccountId } = useAccount();
+    const { addToast } = useToast();
     const queryClient = useQueryClient();
     const [selectedFlag, setSelectedFlag] = useState<FeatureFlag | null>(null);
     const [showFlagForm, setShowFlagForm] = useState(false);
@@ -99,7 +101,9 @@ export const FeatureFlagManager: React.FC = () => {
             setShowFlagForm(false);
             setFlagForm({ ...emptyFlag });
             setTagInput('');
+            addToast('Feature flag created', 'success');
         },
+        onError: () => addToast('Failed to create feature flag', 'error'),
     });
 
     const updateFlag = useMutation({
@@ -111,7 +115,9 @@ export const FeatureFlagManager: React.FC = () => {
                 return existing.map((item: FeatureFlag) => (item.id === response.data.id ? response.data : item));
             });
             setEditingFlagId(null);
+            addToast('Feature flag updated', 'success');
         },
+        onError: () => addToast('Failed to update feature flag', 'error'),
     });
 
     const deleteFlag = useMutation({
@@ -124,7 +130,9 @@ export const FeatureFlagManager: React.FC = () => {
             if (selectedFlag?.id === id) {
                 setSelectedFlag(null);
             }
+            addToast('Feature flag deleted', 'success');
         },
+        onError: () => addToast('Failed to delete feature flag', 'error'),
     });
 
     const createGate = useMutation({
@@ -136,7 +144,9 @@ export const FeatureFlagManager: React.FC = () => {
             });
             setShowGateForm(false);
             setGateForm({ ...emptyGate, flag_id: selectedFlag?.id || '' });
+            addToast('Gate created', 'success');
         },
+        onError: () => addToast('Failed to create gate', 'error'),
     });
 
     const selectedGates = useMemo(() => {

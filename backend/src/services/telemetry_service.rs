@@ -583,6 +583,220 @@ impl TelemetryService {
             .collect())
     }
 
+    // ── User flow methods ─────────────────────────────────────────────────────
+
+    pub async fn list_all_user_flows(&self, account_id: Uuid) -> Result<Vec<UserFlow>> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            id: Uuid,
+            account_id: Uuid,
+            experiment_id: Uuid,
+            name: String,
+            steps: sqlx::types::Json<Vec<String>>,
+            is_active: bool,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let rows = sqlx::query_as::<_, Row>(
+            r#"SELECT id, account_id, experiment_id, name, steps, is_active, created_at, updated_at
+               FROM user_flows
+               WHERE account_id = $1
+               ORDER BY created_at"#,
+        )
+        .bind(account_id)
+        .fetch_all(&self.pg)
+        .await
+        .context("Failed to fetch user flows")?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| UserFlow {
+                id: r.id,
+                account_id: r.account_id,
+                experiment_id: r.experiment_id,
+                name: r.name,
+                steps: r.steps.0,
+                is_active: r.is_active,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+
+    pub async fn list_user_flows(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+    ) -> Result<Vec<UserFlow>> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            id: Uuid,
+            account_id: Uuid,
+            experiment_id: Uuid,
+            name: String,
+            steps: sqlx::types::Json<Vec<String>>,
+            is_active: bool,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let rows = sqlx::query_as::<_, Row>(
+            r#"SELECT id, account_id, experiment_id, name, steps, is_active, created_at, updated_at
+               FROM user_flows
+               WHERE account_id = $1 AND experiment_id = $2
+               ORDER BY created_at"#,
+        )
+        .bind(account_id)
+        .bind(experiment_id)
+        .fetch_all(&self.pg)
+        .await
+        .context("Failed to fetch user flows")?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| UserFlow {
+                id: r.id,
+                account_id: r.account_id,
+                experiment_id: r.experiment_id,
+                name: r.name,
+                steps: r.steps.0,
+                is_active: r.is_active,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect())
+    }
+
+    pub async fn create_user_flow(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+        req: CreateUserFlowRequest,
+    ) -> Result<UserFlow> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            id: Uuid,
+            account_id: Uuid,
+            experiment_id: Uuid,
+            name: String,
+            steps: sqlx::types::Json<Vec<String>>,
+            is_active: bool,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let is_active = req.is_active.unwrap_or(true);
+
+        let row = sqlx::query_as::<_, Row>(
+            r#"INSERT INTO user_flows (account_id, experiment_id, name, steps, is_active)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING id, account_id, experiment_id, name, steps, is_active, created_at, updated_at"#,
+        )
+        .bind(account_id)
+        .bind(experiment_id)
+        .bind(&req.name)
+        .bind(sqlx::types::Json(&req.steps))
+        .bind(is_active)
+        .fetch_one(&self.pg)
+        .await
+        .context("Failed to create user flow")?;
+
+        Ok(UserFlow {
+            id: row.id,
+            account_id: row.account_id,
+            experiment_id: row.experiment_id,
+            name: row.name,
+            steps: row.steps.0,
+            is_active: row.is_active,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
+
+    pub async fn update_user_flow(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+        flow_id: Uuid,
+        req: UpdateUserFlowRequest,
+    ) -> Result<UserFlow> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            id: Uuid,
+            account_id: Uuid,
+            experiment_id: Uuid,
+            name: String,
+            steps: sqlx::types::Json<Vec<String>>,
+            is_active: bool,
+            created_at: chrono::DateTime<chrono::Utc>,
+            updated_at: chrono::DateTime<chrono::Utc>,
+        }
+
+        let current = sqlx::query_as::<_, Row>(
+            r#"SELECT id, account_id, experiment_id, name, steps, is_active, created_at, updated_at
+               FROM user_flows
+               WHERE id = $1 AND account_id = $2 AND experiment_id = $3"#,
+        )
+        .bind(flow_id)
+        .bind(account_id)
+        .bind(experiment_id)
+        .fetch_one(&self.pg)
+        .await
+        .context("User flow not found")?;
+
+        let name = req.name.unwrap_or(current.name);
+        let steps = req.steps.unwrap_or(current.steps.0);
+        let is_active = req.is_active.unwrap_or(current.is_active);
+
+        let row = sqlx::query_as::<_, Row>(
+            r#"UPDATE user_flows
+               SET name = $1, steps = $2, is_active = $3, updated_at = NOW()
+               WHERE id = $4 AND account_id = $5 AND experiment_id = $6
+               RETURNING id, account_id, experiment_id, name, steps, is_active, created_at, updated_at"#,
+        )
+        .bind(&name)
+        .bind(sqlx::types::Json(&steps))
+        .bind(is_active)
+        .bind(flow_id)
+        .bind(account_id)
+        .bind(experiment_id)
+        .fetch_one(&self.pg)
+        .await
+        .context("Failed to update user flow")?;
+
+        Ok(UserFlow {
+            id: row.id,
+            account_id: row.account_id,
+            experiment_id: row.experiment_id,
+            name: row.name,
+            steps: row.steps.0,
+            is_active: row.is_active,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
+
+    pub async fn delete_user_flow(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+        flow_id: Uuid,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"DELETE FROM user_flows
+               WHERE id = $1 AND account_id = $2 AND experiment_id = $3"#,
+        )
+        .bind(flow_id)
+        .bind(account_id)
+        .bind(experiment_id)
+        .execute(&self.pg)
+        .await
+        .context("Failed to delete user flow")?;
+
+        Ok(())
+    }
+
     async fn load_events_for_definitions(
         &self,
         def_ids: &[Uuid],
