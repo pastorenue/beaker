@@ -8,6 +8,19 @@ use crate::models::statistics::cuped::CupedAdjustedResult;
 use crate::models::statistics::structs::StatisticalResult;
 
 #[derive(Debug, Deserialize)]
+pub struct UpdateExperimentRequest {
+    pub name: String,
+    pub description: String,
+    pub primary_metric: String,
+    pub end_date: Option<DateTime<Utc>>,
+    pub requires_existing_users: bool,
+    pub user_groups: Vec<Uuid>,
+    pub variants: Vec<Variant>,
+    pub hypothesis: Hypothesis,
+    pub health_checks: Vec<HealthCheck>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateExperimentRequest {
     pub name: String,
     pub description: String,

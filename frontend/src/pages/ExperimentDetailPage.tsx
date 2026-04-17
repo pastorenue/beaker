@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { experimentApi } from '../services/api';
+import { EditExperimentModal } from '../components/experiment/EditExperimentModal';
 import { ExperimentMonitor } from '../components/experiment/ExperimentMonitor';
 import { JiraIssuePanel } from '../components/experiment/JiraIssuePanel';
 import { StatisticalDashboard } from '../components/StatisticalDashboard';
@@ -9,16 +10,19 @@ import { StatisticalHeader } from '../components/statistical-dashboard/Statistic
 import { CupedConfigurationModal } from '../components/CupedConfigurationModal';
 import { LoadingSpinner } from '../components/Common';
 import { useAccount } from '../contexts/AccountContext';
+import { useToast } from '../contexts/ToastContext';
 import { AiSupportDrawer } from '../components/ai-assist/AiSupportDrawer';
-import type { Experiment } from '../types';
+import type { Experiment, UpdateExperimentRequest } from '../types';
 
 export function ExperimentDetailPage() {
     const { activeAccountId } = useAccount();
+    const { addToast } = useToast();
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
     const [useCuped, setUseCuped] = React.useState(false);
     const [showCupedConfig, setShowCupedConfig] = React.useState(false);
     const [isAiDrawerOpen, setIsAiDrawerOpen] = React.useState(false);
+    const [showEditModal, setShowEditModal] = React.useState(false);
     const [experimentOverride, setExperimentOverride] = React.useState<Experiment | null>(null);
 
     const getMutationErrorMessage = (error: unknown) => {
@@ -80,6 +84,16 @@ export function ExperimentDetailPage() {
         }
     });
 
+    const editMutation = useMutation({
+        mutationFn: (data: UpdateExperimentRequest) => experimentApi.update(id!, data),
+        onSuccess: (response) => {
+            queryClient.setQueryData(['experiment', id, activeAccountId], response.data);
+            setShowEditModal(false);
+            addToast('Experiment updated', 'success');
+        },
+        onError: () => addToast('Failed to update experiment', 'error'),
+    });
+
     // Build a complete sample sizes list that always includes control.
     // analysis.sample_sizes only has treatment variants from older backend builds,
     // so we derive control's count from results[0].sample_size_a if missing.
@@ -122,6 +136,7 @@ export function ExperimentDetailPage() {
                 onStart={() => startMutation.mutate()}
                 onPause={() => pauseMutation.mutate()}
                 onStop={() => stopMutation.mutate()}
+                onEdit={() => setShowEditModal(true)}
                 isLoading={startMutation.isPending || pauseMutation.isPending || stopMutation.isPending}
                 sampleSizes={allSampleSizes}
                 extraTopContent={
@@ -191,6 +206,15 @@ export function ExperimentDetailPage() {
                 onClose={() => setIsAiDrawerOpen(false)}
                 experimentContext={experimentContext}
             />
+
+            {showEditModal && (
+                <EditExperimentModal
+                    experiment={activeExperiment}
+                    onClose={() => setShowEditModal(false)}
+                    onSave={(data) => editMutation.mutate(data)}
+                    isPending={editMutation.isPending}
+                />
+            )}
         </div>
     );
 }

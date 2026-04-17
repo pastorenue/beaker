@@ -54,3 +54,17 @@ pub struct UpdateTelemetryDefinitionRequest {
     pub is_active: Option<bool>,
     pub events: Option<Vec<CreateTelemetryEventInput>>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserFlowRequest {
+    pub name: String,
+    pub steps: Vec<String>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserFlowRequest {
+    pub name: Option<String>,
+    pub steps: Option<Vec<String>>,
+    pub is_active: Option<bool>,
+}

@@ -12,6 +12,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("", web::post().to(create_experiment))
             .route("", web::get().to(list_experiments))
             .route("/{id}", web::get().to(get_experiment))
+            .route("/{id}", web::put().to(update_experiment))
             .route("/{id}/start", web::post().to(start_experiment))
             .route("/{id}/restart", web::post().to(restart_experiment))
             .route("/{id}/pause", web::post().to(pause_experiment))
@@ -23,8 +24,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/{id}/jira/link", web::put().to(jira_link_issue))
             .route("/{id}/jira/link", web::delete().to(jira_unlink_issue))
             .route("/{id}/variant-activity", web::get().to(variant_activity))
-            // Telemetry events — nested under /{experiment_id}/telemetry
-            .service(web::scope("/{experiment_id}").service(super::telemetry::scope())),
+            // Telemetry events and user flows — nested under /{experiment_id}
+            .service(
+                web::scope("/{experiment_id}")
+                    .service(super::telemetry::scope())
+                    .service(super::telemetry::flow_scope()),
+            ),
     );
 }
 
@@ -82,6 +87,28 @@ async fn get_experiment(
     {
         Ok(experiment) => HttpResponse::Ok().json(experiment),
         Err(e) => HttpResponse::NotFound().json(serde_json::json!({
+            "error": e.to_string()
+        })),
+    }
+}
+
+#[rate_limit(group = "api-default")]
+#[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
+async fn update_experiment(
+    service: web::Data<ExperimentService>,
+    id: web::Path<Uuid>,
+    req: web::Json<UpdateExperimentRequest>,
+    http: HttpRequest,
+) -> impl Responder {
+    let Some(user) = authed(&http) else {
+        return HttpResponse::Unauthorized().finish();
+    };
+    match service
+        .update_experiment(user.account_id, id.into_inner(), req.into_inner())
+        .await
+    {
+        Ok(experiment) => HttpResponse::Ok().json(experiment),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
             "error": e.to_string()
         })),
     }

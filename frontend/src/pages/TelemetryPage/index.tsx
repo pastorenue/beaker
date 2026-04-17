@@ -1,23 +1,24 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { experimentApi, telemetryApi, trackApi } from '../../services/api';
+import { experimentApi, telemetryApi, trackApi, userFlowApi } from '../../services/api';
 import { LoadingSpinner } from '../../components/Common';
 import { useAccount } from '../../contexts/AccountContext';
+import { useToast } from '../../contexts/ToastContext';
+import { FacetSearchBar, type FacetDef } from '../../components/FacetSearchBar';
 import type {
     TelemetryEvent,
     UpdateTelemetryEventRequest,
     BulkCreateTelemetryEventRequest,
+    UserFlow,
+    CreateUserFlowRequest,
+    UpdateUserFlowRequest,
 } from '../../types';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type FilterKey = 'status' | 'event_type' | 'name' | 'experiment';
 type ActiveFilter = { facet: FilterKey; value: string };
-type FacetDef = { key: FilterKey; label: string; placeholder: string };
-type DropdownItem =
-    | { kind: 'facet'; facet: FacetDef }
-    | { kind: 'suggestion'; value: string }
-    | { kind: 'add'; value: string };
+type FlowFilter = { facet: string; value: string };
 
 interface EventRow {
     name: string;
@@ -43,6 +44,12 @@ const FACETS: FacetDef[] = [
     { key: 'experiment', label: 'Experiment', placeholder: 'e.g. My Experiment' },
 ];
 
+const FLOW_FACETS: FacetDef[] = [
+    { key: 'experiment', label: 'Experiment', placeholder: 'e.g. My Experiment' },
+    { key: 'status',     label: 'Status',     placeholder: 'active, inactive'   },
+    { key: 'name',       label: 'Flow name',  placeholder: 'e.g. checkout flow' },
+];
+
 const PAGE_SIZE = 20;
 
 const BLANK_ROW: EventRow = {
@@ -62,188 +69,6 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () =
     }, [ref, onClose]);
 }
 
-function parseInput(input: string):
-    | { mode: 'facet'; query: string }
-    | { mode: 'value'; facet: string; query: string } {
-    const colonIdx = input.indexOf(':');
-    if (colonIdx === -1) return { mode: 'facet', query: input };
-    return { mode: 'value', facet: input.slice(0, colonIdx), query: input.slice(colonIdx + 1) };
-}
-
-
-// ─── FilterChip ───────────────────────────────────────────────────────────────
-
-function FilterChip({ prefix, value, onRemove }: { prefix: string; value: string; onRemove: () => void }) {
-    return (
-        <span className="flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300 flex-shrink-0">
-            <span className="text-cyan-500/60">{prefix}:</span>
-            {value}
-            <button
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="ml-0.5 leading-none text-cyan-400/50 hover:text-cyan-200 transition-colors"
-                aria-label={`Remove ${prefix}:${value} filter`}
-            >×</button>
-        </span>
-    );
-}
-
-// ─── FacetSearchBar ───────────────────────────────────────────────────────────
-
-function FacetSearchBar({
-    activeFilters, onAdd, onRemove, onClearAll, suggestions,
-}: {
-    activeFilters: ActiveFilter[];
-    onAdd: (facet: FilterKey, value: string) => void;
-    onRemove: (facet: FilterKey) => void;
-    onClearAll: () => void;
-    suggestions: Record<FilterKey, string[]>;
-}) {
-    const [inputValue, setInputValue] = React.useState('');
-    const [isOpen, setIsOpen] = React.useState(false);
-    const [highlightedIdx, setHighlightedIdx] = React.useState(-1);
-    const containerRef = React.useRef<HTMLDivElement>(null);
-    const inputRef = React.useRef<HTMLInputElement>(null);
-
-    useClickOutside(containerRef, () => { setIsOpen(false); setHighlightedIdx(-1); });
-
-    const parsed = parseInput(inputValue);
-
-    const dropdownItems: DropdownItem[] = React.useMemo(() => {
-        if (parsed.mode === 'facet') {
-            const q = parsed.query.toLowerCase();
-            return FACETS
-                .filter(f => !q || f.key.includes(q) || f.label.toLowerCase().includes(q))
-                .map(f => ({ kind: 'facet' as const, facet: f }));
-        }
-        const facetKey = parsed.facet as FilterKey;
-        const isValid = FACETS.some(f => f.key === facetKey);
-        const suggs = isValid ? (suggestions[facetKey] ?? []) : [];
-        const q = parsed.query.toLowerCase();
-        const filtered: DropdownItem[] = suggs
-            .filter(s => !q || s.toLowerCase().includes(q))
-            .map(s => ({ kind: 'suggestion' as const, value: s }));
-        if (parsed.query) filtered.push({ kind: 'add', value: parsed.query });
-        return filtered;
-    }, [parsed, suggestions]);
-
-    React.useEffect(() => { setHighlightedIdx(-1); }, [inputValue]);
-
-    const commitFilter = React.useCallback((facet: FilterKey, value: string) => {
-        if (!value.trim()) return;
-        onAdd(facet, value.trim());
-        setInputValue('');
-        setHighlightedIdx(-1);
-        setIsOpen(true);
-        setTimeout(() => inputRef.current?.focus(), 0);
-    }, [onAdd]);
-
-    const handleItemClick = React.useCallback((item: DropdownItem) => {
-        if (item.kind === 'facet') {
-            setInputValue(`${item.facet.key}:`);
-            setHighlightedIdx(-1);
-            inputRef.current?.focus();
-        } else if (parsed.mode === 'value') {
-            commitFilter(parsed.facet as FilterKey, item.value);
-        }
-    }, [parsed, commitFilter]);
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setHighlightedIdx(i => Math.min(i + 1, dropdownItems.length - 1));
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setHighlightedIdx(i => Math.max(i - 1, -1));
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (highlightedIdx >= 0 && highlightedIdx < dropdownItems.length) {
-                handleItemClick(dropdownItems[highlightedIdx]);
-            } else if (parsed.mode === 'value' && parsed.query) {
-                commitFilter(parsed.facet as FilterKey, parsed.query);
-            } else if (parsed.mode === 'facet' && parsed.query) {
-                const match = FACETS.find(f => f.key === parsed.query);
-                if (match) { setInputValue(`${match.key}:`); setHighlightedIdx(-1); }
-            }
-        } else if (e.key === 'Backspace' && inputValue === '' && activeFilters.length > 0) {
-            onRemove(activeFilters[activeFilters.length - 1].facet);
-        } else if (e.key === 'Escape') {
-            setIsOpen(false); setInputValue(''); setHighlightedIdx(-1);
-        }
-    };
-
-    return (
-        <div className="relative flex-1" ref={containerRef}>
-            <div
-                className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-[7px] min-h-[42px] transition-all focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/20 cursor-text"
-                onClick={() => { inputRef.current?.focus(); setIsOpen(true); }}
-            >
-                <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" />
-                </svg>
-                {activeFilters.map(f => (
-                    <FilterChip key={f.facet} prefix={f.facet} value={f.value} onRemove={() => onRemove(f.facet)} />
-                ))}
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => { setInputValue(e.target.value); setIsOpen(true); }}
-                    onFocus={() => setIsOpen(true)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={activeFilters.length === 0 ? 'Filter by status, event type, or name…' : ''}
-                    className="min-w-[160px] flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 focus:outline-none py-0.5"
-                />
-                {(inputValue || activeFilters.length > 0) && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setInputValue(''); if (activeFilters.length > 0) onClearAll(); }}
-                        className="flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
-                        aria-label="Clear all filters"
-                    >
-                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                    </button>
-                )}
-            </div>
-
-            {isOpen && dropdownItems.length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-64 overflow-y-auto overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 shadow-2xl">
-                    <div className="sticky top-0 border-b border-slate-800/60 bg-slate-900 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                        {parsed.mode === 'facet' ? 'Filter by' : `${parsed.facet}:`}
-                    </div>
-                    {dropdownItems.map((item, idx) => (
-                        <button
-                            key={idx}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => handleItemClick(item)}
-                            className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                                idx === highlightedIdx ? 'bg-slate-800/80 text-slate-100' : 'text-slate-300 hover:bg-slate-800/60'
-                            }`}
-                        >
-                            {item.kind === 'facet' ? (
-                                <>
-                                    <span className="shrink-0 font-mono text-xs text-cyan-400/80">{item.facet.key}</span>
-                                    <span className="text-slate-600">·</span>
-                                    <span className="text-slate-300">{item.facet.label}</span>
-                                    <span className="ml-auto text-[10px] text-slate-600">{item.facet.placeholder}</span>
-                                </>
-                            ) : item.kind === 'suggestion' ? (
-                                <span>{item.value}</span>
-                            ) : (
-                                <>
-                                    <span className="text-slate-500 text-xs">↵ Add</span>
-                                    <span className="font-mono text-xs text-cyan-300/80">
-                                        {parsed.mode === 'value' ? `${parsed.facet}:${item.value}` : item.value}
-                                    </span>
-                                </>
-                            )}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ─── NameCombobox — searchable event-name picker ──────────────────────────────
 
@@ -385,6 +210,271 @@ function ImageUpload({ value, onChange, compact }: { value: string; onChange: (v
     );
 }
 
+// ─── FlowModal — create or edit a user flow ───────────────────────────────────
+
+function guessEventType(name: string): 'click' | 'pageview' | 'other' {
+    if (/click|tap|press|btn|button|cta/i.test(name)) return 'click';
+    if (/view|page|screen|visit|load/i.test(name)) return 'pageview';
+    return 'other';
+}
+
+const TYPE_DOT: Record<string, string> = {
+    click:    'bg-blue-400',
+    pageview: 'bg-emerald-400',
+    other:    'bg-slate-500',
+};
+
+function FlowModal({
+    experiments,
+    initialExperimentId,
+    existing,
+    onClose,
+    onSaved,
+}: {
+    experiments: import('../../types').Experiment[];
+    initialExperimentId?: string;
+    existing?: UserFlow;
+    onClose: () => void;
+    onSaved?: (experimentId: string) => void;
+}) {
+    const queryClient = useQueryClient();
+    const { addToast } = useToast();
+    const [selectedExpId, setSelectedExpId] = React.useState(
+        existing?.experiment_id ?? initialExperimentId ?? ''
+    );
+    const [name, setName] = React.useState(existing?.name ?? '');
+    const [steps, setSteps] = React.useState<string[]>(existing?.steps ?? []);
+    const [isActive, setIsActive] = React.useState(existing?.is_active ?? true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [dragIdx, setDragIdx] = React.useState<number | null>(null);
+    const [dropIdx, setDropIdx] = React.useState<number | null>(null);
+
+    const { data: expEvents = [] } = useQuery({
+        queryKey: ['telemetry', selectedExpId],
+        queryFn: () => telemetryApi.list(selectedExpId).then(r => r.data),
+        enabled: !!selectedExpId,
+    });
+    const stepSuggestions = React.useMemo(
+        () => expEvents.map(e => e.name).sort(),
+        [expEvents]
+    );
+
+    const saveMutation = useMutation({
+        mutationFn: (data: CreateUserFlowRequest | UpdateUserFlowRequest) =>
+            existing
+                ? userFlowApi.update(selectedExpId, existing.id, data as UpdateUserFlowRequest)
+                : userFlowApi.create(selectedExpId, data as CreateUserFlowRequest),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user-flows'] });
+            onSaved?.(selectedExpId);
+            onClose();
+            addToast('User flow saved', 'success');
+        },
+        onError: (err: unknown) => {
+            setError(err instanceof Error ? err.message : 'Failed to save flow');
+            addToast('Failed to save flow', 'error');
+        },
+    });
+
+    const addStep = () => setSteps(prev => [...prev, '']);
+    const removeStep = (i: number) => setSteps(prev => prev.filter((_, idx) => idx !== i));
+    const updateStep = (i: number, v: string) =>
+        setSteps(prev => prev.map((s, idx) => idx === i ? v : s));
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        if (!selectedExpId) { setError('Experiment is required.'); return; }
+        if (!name.trim()) { setError('Name is required.'); return; }
+        saveMutation.mutate({ name, steps, is_active: isActive });
+    };
+
+    const previewSteps = steps.filter(Boolean);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="relative w-full max-w-2xl rounded-xl border border-slate-700/60 bg-slate-900 shadow-2xl flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between border-b border-slate-800/60 px-6 py-4">
+                    <h3 className="text-lg font-medium text-slate-100">{existing ? 'Edit Flow' : 'New Flow'}</h3>
+                    <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors" aria-label="Close">
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                        {/* Experiment */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                                Experiment <span className="text-rose-400">*</span>
+                            </label>
+                            <select
+                                value={selectedExpId}
+                                onChange={e => setSelectedExpId(e.target.value)}
+                                disabled={!!existing}
+                                required
+                                className="input"
+                            >
+                                <option value="">— select experiment —</option>
+                                {experiments.map(exp => (
+                                    <option key={exp.id} value={exp.id}>{exp.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Name */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                                Name <span className="text-rose-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                required
+                                placeholder="e.g. Checkout Flow"
+                                className="input"
+                            />
+                        </div>
+
+                        {/* Steps builder */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                                Steps
+                            </label>
+                            <div className="space-y-0">
+                                {steps.map((step, i) => (
+                                    <React.Fragment key={i}>
+                                        <div
+                                            draggable
+                                            onDragStart={() => setDragIdx(i)}
+                                            onDragOver={e => { e.preventDefault(); setDropIdx(i); }}
+                                            onDrop={() => {
+                                                if (dragIdx !== null && dragIdx !== i) {
+                                                    setSteps(prev => {
+                                                        const arr = [...prev];
+                                                        const [item] = arr.splice(dragIdx, 1);
+                                                        arr.splice(i, 0, item);
+                                                        return arr;
+                                                    });
+                                                }
+                                                setDragIdx(null); setDropIdx(null);
+                                            }}
+                                            onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
+                                            className={`flow-step-row flex items-center gap-2 rounded-lg border px-3 py-2.5 transition-all ${
+                                                dragIdx === i
+                                                    ? 'opacity-30 scale-95 border-slate-700/40 bg-slate-800/30'
+                                                    : dropIdx === i && dragIdx !== null
+                                                        ? 'border-l-2 border-cyan-500 border-slate-700/40 bg-slate-800/50'
+                                                        : 'border-slate-700/40 bg-slate-800/50'
+                                            }`}
+                                        >
+                                            {/* Drag handle */}
+                                            <span className="cursor-grab text-slate-600 hover:text-slate-400 shrink-0" title="Drag to reorder">
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                                                    <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+                                                    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                                                    <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+                                                </svg>
+                                            </span>
+                                            {/* Step number badge */}
+                                            <span className="flow-step-number flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-[10px] font-bold text-cyan-400">
+                                                {i + 1}
+                                            </span>
+                                            {/* Event type dot */}
+                                            <span className={`h-2 w-2 rounded-full shrink-0 ${TYPE_DOT[guessEventType(step)]}`} />
+                                            {/* Event selector */}
+                                            <select
+                                                value={step}
+                                                onChange={e => updateStep(i, e.target.value)}
+                                                className="input flex-1 !py-1 !px-2 !text-xs !rounded font-mono"
+                                            >
+                                                <option value="">— select event —</option>
+                                                {stepSuggestions.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                                {step && !stepSuggestions.includes(step) && (
+                                                    <option value={step}>{step}</option>
+                                                )}
+                                            </select>
+                                            {/* Remove button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeStep(i)}
+                                                className="text-slate-600 hover:text-rose-400 transition-colors shrink-0"
+                                                title="Remove step"
+                                            >
+                                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {/* Connector arrow between steps */}
+                                        {i < steps.length - 1 && (
+                                            <div className="flex justify-center py-1 text-slate-600 text-sm select-none">↓</div>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={addStep}
+                                className="flow-add-step mt-3 flex items-center gap-1.5 text-xs text-cyan-800 hover:text-cyan-300 transition-colors"
+                            >
+                                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+                                </svg>
+                                Add step
+                            </button>
+
+                            {previewSteps.length > 0 && (
+                                <div className="flow-step-preview mt-3 rounded-lg bg-slate-800/50 border border-slate-700/40 p-3">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Preview</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {previewSteps.map((step, i) => (
+                                            <React.Fragment key={i}>
+                                                <span className="flow-step-badge px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono text-cyan-300">{step}</span>
+                                                {i < previewSteps.length - 1 && <span className="text-slate-500 text-sm">→</span>}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Active */}
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={isActive}
+                                onChange={e => setIsActive(e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/30"
+                            />
+                            <span className="text-sm text-slate-300">Active</span>
+                        </label>
+
+                        {error && (
+                            <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded px-3 py-2">
+                                {error}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 border-t border-slate-800/60 px-6 py-4">
+                        <button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+                        <button type="submit" disabled={saveMutation.isPending} className="btn-primary text-sm disabled:opacity-50">
+                            {saveMutation.isPending ? 'Saving…' : existing ? 'Save changes' : 'Create Flow'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 // ─── DefinitionModal — create multiple events at once ─────────────────────────
 
 function DefinitionModal({
@@ -392,13 +482,16 @@ function DefinitionModal({
     experiments,
     eventNameSuggestions,
     onClose,
+    onCreateFlow,
 }: {
     experimentId: string;
     experiments: import('../../types').Experiment[];
     eventNameSuggestions: string[];
     onClose: () => void;
+    onCreateFlow?: (experimentId: string) => void;
 }) {
     const queryClient = useQueryClient();
+    const { addToast } = useToast();
     const [selectedExpId, setSelectedExpId] = React.useState(
         experimentId || experiments[0]?.id || ''
     );
@@ -406,6 +499,7 @@ function DefinitionModal({
     const [rows, setRows] = React.useState<EventRow[]>([{ ...BLANK_ROW }]);
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [createdExpId, setCreatedExpId] = React.useState<string | null>(null);
 
     const updateRow = (idx: number, field: keyof EventRow, value: string) =>
         setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
@@ -437,9 +531,11 @@ function DefinitionModal({
                 })),
             } as BulkCreateTelemetryEventRequest);
             queryClient.invalidateQueries({ queryKey: ['telemetry'] });
-            onClose();
+            setCreatedExpId(selectedExpId);
+            addToast(`${rows.length} events created`, 'success');
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to create events');
+            addToast('Failed to create events', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -457,6 +553,25 @@ function DefinitionModal({
                     </button>
                 </div>
 
+                {createdExpId !== null ? (
+                    <>
+                        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 gap-4 text-center">
+                            <span className="text-2xl text-emerald-400">✓</span>
+                            <p className="text-slate-200 font-medium">Telemetry events created</p>
+                            <p className="text-sm text-slate-400">Would you like to set up a user flow for these events?</p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-800/60 px-6 py-4">
+                            <button type="button" onClick={onClose} className="btn-secondary text-sm">Skip</button>
+                            <button
+                                type="button"
+                                onClick={() => { onClose(); onCreateFlow?.(createdExpId); }}
+                                className="btn-primary text-sm"
+                            >
+                                Create User Flow →
+                            </button>
+                        </div>
+                    </>
+                ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                         {/* Experiment selector */}
@@ -593,6 +708,7 @@ function DefinitionModal({
                         </button>
                     </div>
                 </form>
+                )}
             </div>
         </div>
     );
@@ -612,6 +728,7 @@ function EventModal({
     onClose: () => void;
 }) {
     const queryClient = useQueryClient();
+    const { addToast } = useToast();
     const [name, setName] = React.useState(existing.name);
     const [description, setDescription] = React.useState(existing.description);
     const [eventType, setEventType] = React.useState(existing.event_type);
@@ -626,7 +743,9 @@ function EventModal({
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['telemetry'] });
             onClose();
+            addToast('Telemetry event updated', 'success');
         },
+        onError: () => addToast('Failed to update event', 'error'),
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -737,12 +856,18 @@ function EventModal({
 export const TelemetryPage: React.FC = () => {
     const queryClient = useQueryClient();
     const { activeAccountId } = useAccount();
+    const { addToast } = useToast();
+    const [activeTab, setActiveTab] = React.useState<'metrics' | 'flows'>('metrics');
     const [activeFilters, setActiveFilters] = React.useState<ActiveFilter[]>([]);
     const [page, setPage] = React.useState(0);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [editingEvent, setEditingEvent] = React.useState<TelemetryEvent | null>(null);
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
     const [lightboxSrc, setLightboxSrc] = React.useState<string | null>(null);
+    const [showFlowModal, setShowFlowModal] = React.useState(false);
+    const [editingFlow, setEditingFlow] = React.useState<UserFlow | null>(null);
+    const [deletingFlowId, setDeletingFlowId] = React.useState<string | null>(null);
+    const [flowFilters, setFlowFilters] = React.useState<FlowFilter[]>([]);
 
     const { data: experiments = [] } = useQuery({
         queryKey: ['experiments', activeAccountId],
@@ -780,13 +905,56 @@ export const TelemetryPage: React.FC = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] });
             setDeletingId(null);
+            addToast('Telemetry event deleted', 'success');
         },
+        onError: () => addToast('Failed to delete event', 'error'),
     });
 
     const toggleMutation = useMutation({
         mutationFn: (ev: TelemetryEvent) =>
             telemetryApi.update(ev.experiment_id, ev.id, { is_active: !ev.is_active }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['telemetry', activeAccountId] });
+            addToast('Event status updated', 'success');
+        },
+        onError: () => addToast('Failed to update event status', 'error'),
+    });
+
+    const { data: allUserFlows = [], isLoading: flowsLoading } = useQuery({
+        queryKey: ['user-flows', activeAccountId],
+        queryFn: () => userFlowApi.listAll().then(r => r.data),
+        enabled: !!activeAccountId,
+    });
+
+    const filteredFlows = React.useMemo(() => {
+        let result = allUserFlows;
+        for (const f of flowFilters) {
+            if (f.facet === 'experiment') {
+                const expId = experiments.find(e => e.name === f.value)?.id;
+                if (expId) result = result.filter(fl => fl.experiment_id === expId);
+            } else if (f.facet === 'status') {
+                result = result.filter(fl => fl.is_active === (f.value === 'active'));
+            } else if (f.facet === 'name') {
+                result = result.filter(fl => fl.name.toLowerCase().includes(f.value.toLowerCase()));
+            }
+        }
+        return result;
+    }, [allUserFlows, flowFilters, experiments]);
+
+    const flowSuggestions = React.useMemo(() => ({
+        experiment: experiments.map(e => e.name),
+        status:     ['active', 'inactive'],
+        name:       [...new Set(allUserFlows.map(f => f.name))].slice(0, 20),
+    }), [allUserFlows, experiments]);
+
+    const deleteFlowMutation = useMutation({
+        mutationFn: (flow: UserFlow) => userFlowApi.delete(flow.experiment_id, flow.id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user-flows', activeAccountId] });
+            setDeletingFlowId(null);
+            addToast('User flow deleted', 'success');
+        },
+        onError: () => addToast('Failed to delete flow', 'error'),
     });
 
     const valueSuggestions: Record<FilterKey, string[]> = React.useMemo(() => ({
@@ -815,11 +983,11 @@ export const TelemetryPage: React.FC = () => {
     const pageCount  = Math.ceil(filteredEvents.length / PAGE_SIZE);
     const pageEvents = filteredEvents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-    const addFilter = React.useCallback((facet: FilterKey, value: string) => {
-        setActiveFilters(prev => [...prev.filter(f => f.facet !== facet), { facet, value }]);
+    const addFilter = React.useCallback((facet: string, value: string) => {
+        setActiveFilters(prev => [...prev.filter(f => f.facet !== facet), { facet: facet as FilterKey, value }]);
     }, []);
 
-    const removeFilter = React.useCallback((facet: FilterKey) => {
+    const removeFilter = React.useCallback((facet: string) => {
         setActiveFilters(prev => prev.filter(f => f.facet !== facet));
     }, []);
 
@@ -844,15 +1012,42 @@ export const TelemetryPage: React.FC = () => {
                 </button>
             </div>
 
+            {/* Tab bar */}
+            <div className="flex gap-0 border-b border-slate-800/60 mt-4">
+                <button
+                    onClick={() => setActiveTab('metrics')}
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                        activeTab === 'metrics'
+                            ? 'border-cyan-500 text-cyan-300'
+                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    Telemetry Metrics
+                </button>
+                <button
+                    onClick={() => setActiveTab('flows')}
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                        activeTab === 'flows'
+                            ? 'border-cyan-500 text-cyan-300'
+                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    User Flows
+                </button>
+            </div>
+
+            {activeTab === 'metrics' && (<>
             {/* Filter toolbar */}
-            <div className="space-y-6">
+            <div className="space-y-6 pt-4">
                 <div className="flex gap-2">
                     <FacetSearchBar
+                        facets={FACETS}
                         activeFilters={activeFilters}
                         onAdd={addFilter}
                         onRemove={removeFilter}
                         onClearAll={() => setActiveFilters([])}
                         suggestions={valueSuggestions}
+                        placeholder="Filter by status, event type, or name…"
                     />
                 </div>
 
@@ -1021,6 +1216,138 @@ export const TelemetryPage: React.FC = () => {
                     )}
                 </div>
             )}
+            </>)}
+
+            {/* User Flows tab */}
+            {activeTab === 'flows' && (
+                <div className="space-y-4 pt-4">
+                    <div className="flex items-center gap-2 pt-4">
+                        <FacetSearchBar
+                            facets={FLOW_FACETS}
+                            activeFilters={flowFilters}
+                            onAdd={(facet, value) =>
+                                setFlowFilters(prev => [...prev.filter(f => f.facet !== facet), { facet, value }])
+                            }
+                            onRemove={facet => setFlowFilters(prev => prev.filter(f => f.facet !== facet))}
+                            onClearAll={() => setFlowFilters([])}
+                            suggestions={flowSuggestions}
+                            placeholder="Filter by experiment, status, or name…"
+                        />
+                        <button
+                            onClick={() => setShowFlowModal(true)}
+                            className="btn-primary flex items-center gap-2 text-sm shrink-0"
+                        >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+                            </svg>
+                            New Flow
+                        </button>
+                    </div>
+                    <div className="panel overflow-hidden p-0">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-800/60 text-left text-xs capitalize tracking-wide text-slate-500">
+                                    <th className="px-4 py-3">#</th>
+                                    <th className="px-4 py-3">Name</th>
+                                    <th className="px-4 py-3">Experiment</th>
+                                    <th className="px-4 py-3">Steps</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3">Created</th>
+                                    <th className="px-4 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/40">
+                                {flowsLoading ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-4 py-10 text-center">
+                                            <LoadingSpinner />
+                                        </td>
+                                    </tr>
+                                ) : filteredFlows.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                                            No flows yet — click New Flow to create one.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                                filteredFlows.map((flow, idx) => (
+                                                    <tr key={flow.id} className="transition-colors hover:bg-slate-800/30">
+                                                        <td className="px-4 py-3 text-slate-500 text-xs">{idx + 1}</td>
+                                                        <td className="px-4 py-3 font-medium text-slate-200">{flow.name}</td>
+                                                        <td className="px-4 py-3 text-slate-400 text-xs">
+                                                            {experiments.find(e => e.id === flow.experiment_id)?.name ?? flow.experiment_id.slice(0, 8)}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex flex-wrap items-center gap-1">
+                                                                {flow.steps.length === 0 ? (
+                                                                    <span className="text-slate-600 text-xs">No steps</span>
+                                                                ) : (
+                                                                    <>
+                                                                        {flow.steps.slice(0, 5).map((step, i) => (
+                                                                            <React.Fragment key={i}>
+                                                                                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-xs font-mono text-slate-300">{step}</span>
+                                                                                {i < Math.min(flow.steps.length, 5) - 1 && <span className="text-slate-500 text-xs">→</span>}
+                                                                            </React.Fragment>
+                                                                        ))}
+                                                                        {flow.steps.length > 5 && (
+                                                                            <span className="text-slate-500 text-xs">+{flow.steps.length - 5} more</span>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium border ${
+                                                                flow.is_active
+                                                                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                                                    : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                                                            }`}>
+                                                                {flow.is_active ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-slate-400 text-xs">
+                                                            {new Date(flow.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={() => setEditingFlow(flow)}
+                                                                    className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300 transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                    </svg>
+                                                                </button>
+                                                                {deletingFlowId === flow.id ? (
+                                                                    <button
+                                                                        onClick={() => deleteFlowMutation.mutate(flow)}
+                                                                        disabled={deleteFlowMutation.isPending}
+                                                                        className="rounded px-2 py-0.5 text-xs bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 transition-colors disabled:opacity-40"
+                                                                    >
+                                                                        Confirm?
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => setDeletingFlowId(flow.id)}
+                                                                        className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-rose-400 transition-colors"
+                                                                        title="Delete"
+                                                                    >
+                                                                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                    </div>
+                </div>
+            )}
 
             {/* Visual guide lightbox */}
             {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
@@ -1032,6 +1359,11 @@ export const TelemetryPage: React.FC = () => {
                     experiments={experiments}
                     eventNameSuggestions={eventNameSuggestions}
                     onClose={() => setShowCreateModal(false)}
+                    onCreateFlow={(expId) => {
+                        const expName = experiments.find(e => e.id === expId)?.name;
+                        if (expName) setFlowFilters([{ facet: 'experiment', value: expName }]);
+                        setShowFlowModal(true);
+                    }}
                 />
             )}
 
@@ -1042,6 +1374,18 @@ export const TelemetryPage: React.FC = () => {
                     existing={editingEvent}
                     eventNameSuggestions={eventNameSuggestions}
                     onClose={() => setEditingEvent(null)}
+                />
+            )}
+
+            {/* Flow modal (create / edit) */}
+            {(showFlowModal || editingFlow) && (
+                <FlowModal
+                    experiments={experiments}
+                    initialExperimentId={
+                        experiments.find(e => e.name === (flowFilters.find(f => f.facet === 'experiment')?.value ?? ''))?.id ?? ''
+                    }
+                    existing={editingFlow ?? undefined}
+                    onClose={() => { setShowFlowModal(false); setEditingFlow(null); }}
                 />
             )}
         </div>

@@ -12,6 +12,7 @@ import type {
   AuthTokenResponse,
   AuthUserProfile,
   CreateExperimentRequest,
+  UpdateExperimentRequest,
   CreateFeatureFlagRequest,
   CreateFeatureGateRequest,
   CreateInviteRequest,
@@ -68,6 +69,9 @@ import type {
   UpdateTelemetryEventRequest,
   BulkCreateTelemetryEventRequest,
   VariantActivityBucket,
+  UserFlow,
+  CreateUserFlowRequest,
+  UpdateUserFlowRequest,
 } from "../types";
 
 const API_BASE = "http://localhost:8080/api";
@@ -129,6 +133,9 @@ export const experimentApi = {
   list: () => api.get<Experiment[]>("/experiments"),
 
   get: (id: string) => api.get<Experiment>(`/experiments/${id}`),
+
+  update: (id: string, data: UpdateExperimentRequest) =>
+    api.put<Experiment>(`/experiments/${id}`, data),
 
   start: (id: string) => api.post<Experiment>(`/experiments/${id}/start`),
 
@@ -430,6 +437,20 @@ export const telemetryApi = {
     api.put<TelemetryEvent>(`/experiments/${experimentId}/telemetry/${eventId}`, data),
   delete: (experimentId: string, eventId: string) =>
     api.delete<void>(`/experiments/${experimentId}/telemetry/${eventId}`),
+};
+
+// User flows
+export const userFlowApi = {
+  listAll: () =>
+    api.get<UserFlow[]>('/user-flows'),
+  list: (experimentId: string) =>
+    api.get<UserFlow[]>(`/experiments/${experimentId}/user-flows`),
+  create: (experimentId: string, data: CreateUserFlowRequest) =>
+    api.post<UserFlow>(`/experiments/${experimentId}/user-flows`, data),
+  update: (experimentId: string, flowId: string, data: UpdateUserFlowRequest) =>
+    api.put<UserFlow>(`/experiments/${experimentId}/user-flows/${flowId}`, data),
+  delete: (experimentId: string, flowId: string) =>
+    api.delete<void>(`/experiments/${experimentId}/user-flows/${flowId}`),
 };
 
 export default api;

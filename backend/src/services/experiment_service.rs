@@ -200,6 +200,60 @@ impl ExperimentService {
         Ok(experiment)
     }
 
+    pub async fn update_experiment(
+        &self,
+        account_id: Uuid,
+        experiment_id: Uuid,
+        req: UpdateExperimentRequest,
+    ) -> Result<Experiment> {
+        info!("Updating experiment: {}", experiment_id);
+
+        let total_allocation: f64 = req.variants.iter().map(|v| v.allocation_percent).sum();
+        if (total_allocation - 100.0).abs() > 0.01 {
+            return Err(anyhow!("Variant allocations must sum to 100%"));
+        }
+
+        let control_count = req.variants.iter().filter(|v| v.is_control).count();
+        if control_count != 1 {
+            return Err(anyhow!("Exactly one variant must be marked as control"));
+        }
+
+        let required_sample = match req.hypothesis.metric_type {
+            MetricType::Proportion => stats::sample_size_proportion(
+                0.10,
+                req.hypothesis.expected_effect_size,
+                req.hypothesis.significance_level,
+                req.hypothesis.power,
+            ),
+            MetricType::Continuous | MetricType::Count => stats::sample_size_continuous(
+                1.0,
+                req.hypothesis.expected_effect_size,
+                req.hypothesis.significance_level,
+                req.hypothesis.power,
+            ),
+        };
+
+        let mut hypothesis = req.hypothesis;
+        hypothesis.minimum_sample_size = Some(required_sample);
+
+        let mut experiment = self.get_experiment(account_id, experiment_id).await?;
+
+        experiment.name = req.name;
+        experiment.description = req.description;
+        experiment.primary_metric = req.primary_metric;
+        experiment.end_date = req.end_date;
+        experiment.requires_existing_users = req.requires_existing_users;
+        experiment.user_groups = req.user_groups;
+        experiment.variants = req.variants;
+        experiment.hypothesis = Some(hypothesis);
+        experiment.health_checks = req.health_checks;
+        experiment.updated_at = Utc::now();
+
+        self.upsert_experiment(&experiment).await?;
+
+        Ok(experiment)
+    }
+
     pub async fn get_experiment(
         &self,
         account_id: Uuid,

@@ -11,6 +11,7 @@ interface ExperimentMonitorProps {
     onStart: () => void;
     onPause: () => void;
     onStop: () => void;
+    onEdit?: () => void;
     isLoading?: boolean;
     extraTopContent?: React.ReactNode;
     sampleSizes?: ExperimentAnalysis['sample_sizes'];
@@ -21,6 +22,7 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
     onStart,
     onPause,
     onStop,
+    onEdit,
     isLoading,
     extraTopContent,
     sampleSizes,
@@ -60,6 +62,15 @@ export const ExperimentMonitor: React.FC<ExperimentMonitorProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {onEdit && (
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            className="btn-secondary text-sm"
+                        >
+                            Edit
+                        </button>
+                    )}
                     <ControlButtons
                         canStart={canStart}
                         canPause={canPause}

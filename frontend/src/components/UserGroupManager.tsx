@@ -10,6 +10,8 @@ import { GroupDetailDrawer } from './user-groups/GroupDetailDrawer';
 import { UserGroupHeader } from './user-groups/UserGroupHeader';
 import { LoadingSpinner } from './Common';
 import { useAccount } from '../contexts/AccountContext';
+import { useToast } from '../contexts/ToastContext';
+import { FacetSearchBar, type FacetDef, type ActiveFilter } from './FacetSearchBar';
 
 type GroupFormData = {
     name: string;
@@ -27,11 +29,19 @@ const emptyFormData: GroupFormData = {
     data_source_config: {} as DataSourceConfig,
 };
 
+const GROUP_FACETS: FacetDef[] = [
+    { key: 'name',       label: 'Name',       placeholder: 'e.g. beta users'               },
+    { key: 'assignment', label: 'Assignment',  placeholder: 'random, hash, manual, custom'  },
+    { key: 'source',     label: 'Data source', placeholder: 'csv, postgres, looker, none'   },
+];
+
 export const UserGroupManager: React.FC = () => {
     const { activeAccountId } = useAccount();
+    const { addToast } = useToast();
     const queryClient = useQueryClient();
     const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null);
     const [showCreateForm, setShowCreateForm] = useState(false);
+    const [filters, setFilters] = useState<ActiveFilter[]>([]);
     const [isEditing, setIsEditing] = useState(false);
     const [rulePrompt, setRulePrompt] = useState('');
     const [editRulePrompt, setEditRulePrompt] = useState('');
@@ -47,13 +57,44 @@ export const UserGroupManager: React.FC = () => {
         enabled: !!activeAccountId,
     });
 
+    const assignmentLabel = (rule: string) => {
+        if (rule === 'random') return 'random';
+        if (rule === 'hash') return 'hash';
+        if (rule === 'manual') return 'manual';
+        if (rule.startsWith('{')) return 'custom';
+        return rule;
+    };
+
+    const groupSuggestions = React.useMemo(() => ({
+        name:       [...new Set(groups.map(g => g.name))].slice(0, 20),
+        assignment: ['random', 'hash', 'manual', 'custom'],
+        source:     ['csv', 'postgres', 'looker', 'none'],
+    }), [groups]);
+
+    const filteredGroups = React.useMemo(() => {
+        let result = groups;
+        for (const f of filters) {
+            if (f.facet === 'name') {
+                result = result.filter(g => g.name.toLowerCase().includes(f.value.toLowerCase()));
+            } else if (f.facet === 'assignment') {
+                result = result.filter(g => assignmentLabel(g.assignment_rule) === f.value);
+            } else if (f.facet === 'source') {
+                const v = f.value === 'postgres' ? 'postgres_query' : f.value;
+                result = result.filter(g => g.data_source_type === v);
+            }
+        }
+        return result;
+    }, [groups, filters]);
+
     const createMutation = useMutation({
         mutationFn: userGroupApi.create,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userGroups', activeAccountId] });
             setShowCreateForm(false);
             setFormData(emptyFormData);
+            addToast('User group created', 'success');
         },
+        onError: () => addToast('Failed to create user group', 'error'),
     });
 
     const syncMutation = useMutation({
@@ -75,7 +116,9 @@ export const UserGroupManager: React.FC = () => {
                     prev ? { ...prev, size: syncResponse.synced_user_count } : prev,
                 );
             }
+            addToast('User group synced', 'success');
         },
+        onError: () => addToast('Failed to sync user group', 'error'),
     });
 
     const updateMutation = useMutation({
@@ -90,7 +133,9 @@ export const UserGroupManager: React.FC = () => {
             });
             setSelectedGroup(group);
             setIsEditing(false);
+            addToast('User group updated', 'success');
         },
+        onError: () => addToast('Failed to update user group', 'error'),
     });
 
     const deleteMutation = useMutation({
@@ -107,7 +152,9 @@ export const UserGroupManager: React.FC = () => {
                 setSelectedGroup(null);
             }
             setIsEditing(false);
+            addToast('User group deleted', 'success');
         },
+        onError: () => addToast('Failed to delete user group', 'error'),
     });
 
     const handleCreate = () => {
@@ -201,8 +248,22 @@ export const UserGroupManager: React.FC = () => {
                 />
             )}
 
+            {groups.length > 0 && (
+                <div className="pt-4">
+                <FacetSearchBar
+                    facets={GROUP_FACETS}
+                    activeFilters={filters}
+                    onAdd={(facet, value) => setFilters(prev => [...prev.filter(f => f.facet !== facet), { facet, value }])}
+                    onRemove={facet => setFilters(prev => prev.filter(f => f.facet !== facet))}
+                    onClearAll={() => setFilters([])}
+                    suggestions={groupSuggestions}
+                    placeholder="Filter by name, assignment, or data source…"
+                />
+                </div>
+            )}
+
             <GroupGrid
-                groups={groups}
+                groups={filteredGroups}
                 selectedGroupId={selectedGroup?.id ?? null}
                 onSelectGroup={setSelectedGroup}
             />
