@@ -2,9 +2,9 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use super::tools::{
-    analytics_tool_definitions, call_analytics_tool, call_experiment_tool, call_feature_flag_tool,
-    call_feature_gate_tool, experiment_tool_definitions, feature_flag_tool_definitions,
-    feature_gate_tool_definitions,
+    ai_insights_tool_definitions, analytics_tool_definitions, call_ai_insights_tool,
+    call_analytics_tool, call_experiment_tool, call_feature_flag_tool, call_feature_gate_tool,
+    experiment_tool_definitions, feature_flag_tool_definitions, feature_gate_tool_definitions,
 };
 use crate::services::{
     AnalyticsService, ExperimentService, FeatureFlagService, FeatureGateService,
@@ -15,6 +15,7 @@ pub struct McpServer {
     pub feature_flag_service: std::sync::Arc<FeatureFlagService>,
     pub feature_gate_service: std::sync::Arc<FeatureGateService>,
     pub analytics_service: std::sync::Arc<AnalyticsService>,
+    pub pg: sqlx::PgPool,
 }
 
 impl McpServer {
@@ -23,12 +24,14 @@ impl McpServer {
         feature_flag_service: std::sync::Arc<FeatureFlagService>,
         feature_gate_service: std::sync::Arc<FeatureGateService>,
         analytics_service: std::sync::Arc<AnalyticsService>,
+        pg: sqlx::PgPool,
     ) -> Self {
         Self {
             experiment_service,
             feature_flag_service,
             feature_gate_service,
             analytics_service,
+            pg,
         }
     }
 
@@ -38,6 +41,7 @@ impl McpServer {
         tools.extend(feature_flag_tool_definitions());
         tools.extend(feature_gate_tool_definitions());
         tools.extend(analytics_tool_definitions());
+        tools.extend(ai_insights_tool_definitions());
         json!({ "tools": tools })
     }
 
@@ -88,6 +92,15 @@ impl McpServer {
         // Analytics tools
         if name == "get_analytics_overview" {
             let result = call_analytics_tool(name, args, &self.analytics_service).await?;
+            return Ok(json!({
+                "content": [{ "type": "text", "text": serde_json::to_string_pretty(&result).unwrap_or_default() }]
+            }));
+        }
+
+        // AI insights tools
+        let ai_insights_tools = ["list_ai_insights", "dismiss_ai_insight"];
+        if ai_insights_tools.contains(&name) {
+            let result = call_ai_insights_tool(name, args, &self.pg, account_id).await?;
             return Ok(json!({
                 "content": [{ "type": "text", "text": serde_json::to_string_pretty(&result).unwrap_or_default() }]
             }));

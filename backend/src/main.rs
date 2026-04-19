@@ -117,6 +117,7 @@ async fn main() -> std::io::Result<()> {
         Arc::new(FeatureFlagService::new(pg_pool.clone())),
         Arc::new(FeatureGateService::new(pg_pool.clone())),
         Arc::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone())),
+        pg_pool.clone(),
     ));
 
     // Spawn AI polling background task
