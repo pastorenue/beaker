@@ -1,6 +1,13 @@
 # Beaker - Real-time A/B Testing Platform
 
+<p align="center">
+  <img src="frontend/public/beaker-logo.svg" alt="Beaker Logo" width="120" />
+</p>
+
 [![CI](https://github.com/pastorenue/beaker/actions/workflows/ci.yml/badge.svg)](https://github.com/pastorenue/beaker/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+[![GitHub release](https://img.shields.io/github/v/release/pastorenue/beaker)](https://github.com/pastorenue/beaker/releases)
 
 Beaker is a high-performance, real-time experimentation platform designed for scale. Built with **Rust**, **React**, **ClickHouse** and **Postgresql**, it provides sub-second statistical analysis on millions of events.
 
