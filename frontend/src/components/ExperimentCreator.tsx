@@ -13,7 +13,7 @@ import {
     AnalysisEngine,
     HealthCheckDirection,
 } from '../types';
-import { userGroupApi, featureFlagApi, featureGateApi, experimentApi } from '../services/api';
+import { userGroupApi, featureFlagApi, featureGateApi, experimentApi, aiStrategistApi } from '../services/api';
 import { BasicsStep } from './experiment/BasicsStep';
 import { HypothesisStep } from './experiment/HypothesisStep';
 import { ReviewStep } from './experiment/ReviewStep';
@@ -208,6 +208,20 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
         updateField('primary_metric', metrics.join(', '));
     };
 
+    const handleAiDraft = async () => {
+        const description = [formData.name, formData.description].filter(Boolean).join(' — ');
+        const { data: draft } = await aiStrategistApi.draftHypothesis({
+            experiment_description: description,
+            metric_type: formData.hypothesis.metric_type,
+        });
+        updateHypothesis('null_hypothesis', draft.null_hypothesis);
+        updateHypothesis('alternative_hypothesis', draft.alternative_hypothesis);
+        updateHypothesis('expected_effect_size', draft.expected_effect_size);
+        updateHypothesis('metric_type', draft.metric_type as MT);
+        updateHypothesis('significance_level', draft.significance_level);
+        updateHypothesis('power', draft.power);
+    };
+
     const applyHypothesisTemplate = () => {
         const primaryMetric = (formData.primary_metric || '')
             .split(',')
@@ -352,6 +366,7 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
                     formData={formData}
                     updateHypothesis={updateHypothesis}
                     applyHypothesisTemplate={applyHypothesisTemplate}
+                    onAiDraft={handleAiDraft}
                 />
             )}
 
