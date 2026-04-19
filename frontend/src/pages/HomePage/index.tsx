@@ -1,5 +1,5 @@
 import React from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { experimentApi } from "../../services/api";
 import { ExperimentCreator } from "../../components/ExperimentCreator";
@@ -27,6 +27,10 @@ export function HomePage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [initialData, setInitialData] = React.useState<Partial<CreateExperimentRequest> | undefined>(
+    (location.state as { initialData?: Partial<CreateExperimentRequest> } | null)?.initialData
+  );
   const [sortConfig, setSortConfig] = React.useState<{
     key: "name" | "start_date";
     direction: "asc" | "desc";
@@ -40,6 +44,13 @@ export function HomePage() {
       setShowCreator(true);
     }
   }, [searchParams]);
+
+  React.useEffect(() => {
+    if (location.state?.initialData) {
+      setShowCreator(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state?.initialData]);
 
   const { data: experiments = [], isLoading } = useQuery({
     queryKey: ["experiments", activeAccountId],
@@ -164,7 +175,8 @@ export function HomePage() {
     return (
       <ExperimentCreator
         onSubmit={(data) => createMutation.mutate(data)}
-        onCancel={() => setShowCreator(false)}
+        onCancel={() => { setShowCreator(false); setInitialData(undefined); }}
+        initialData={initialData}
       />
     );
   }
