@@ -4,6 +4,8 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::config::Config;
@@ -12,6 +14,24 @@ use crate::models::ai::{DraftHypothesisRequest, DraftOnePagerRequest, SuggestMet
 use crate::services::ai_service::AiService;
 use crate::services::{AnalyticsService, ExperimentService};
 use sqlx::PgPool;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AiRuntimeConfig {
+    pub polling_enabled: bool,
+    pub polling_interval_minutes: u64,
+    pub auto_stop_regressions: bool,
+    pub severe_regression_threshold: f64,
+}
+
+pub type SharedAiConfig = Arc<RwLock<AiRuntimeConfig>>;
+
+#[derive(Debug, serde::Deserialize)]
+struct PatchAiConfigPayload {
+    polling_enabled: Option<bool>,
+    polling_interval_minutes: Option<u64>,
+    auto_stop_regressions: Option<bool>,
+    severe_regression_threshold: Option<f64>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatMessage {
@@ -92,8 +112,44 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             // AI Insights endpoints
             .route("/insights", web::get().to(list_insights))
             .route("/insights/summary", web::get().to(insights_summary))
-            .route("/insights/{id}/dismiss", web::post().to(dismiss_insight)),
+            .route("/insights/{id}/dismiss", web::post().to(dismiss_insight))
+            // AI Config endpoints
+            .route("/config", web::get().to(get_ai_config))
+            .route("/config", web::patch().to(patch_ai_config)),
     );
+}
+
+pub async fn get_ai_config(
+    ai_cfg: web::Data<SharedAiConfig>,
+    _user: web::ReqData<AuthedUser>,
+) -> impl actix_web::Responder {
+    let cfg = ai_cfg.read().await;
+    actix_web::HttpResponse::Ok().json(&*cfg)
+}
+
+pub async fn patch_ai_config(
+    ai_cfg: web::Data<SharedAiConfig>,
+    user: web::ReqData<AuthedUser>,
+    payload: web::Json<PatchAiConfigPayload>,
+) -> impl actix_web::Responder {
+    if user.role != "admin" && user.role != "owner" {
+        return actix_web::HttpResponse::Forbidden()
+            .json(serde_json::json!({ "error": "Admin role required" }));
+    }
+    let mut cfg = ai_cfg.write().await;
+    if let Some(v) = payload.polling_enabled {
+        cfg.polling_enabled = v;
+    }
+    if let Some(v) = payload.polling_interval_minutes {
+        cfg.polling_interval_minutes = v;
+    }
+    if let Some(v) = payload.auto_stop_regressions {
+        cfg.auto_stop_regressions = v;
+    }
+    if let Some(v) = payload.severe_regression_threshold {
+        cfg.severe_regression_threshold = v;
+    }
+    actix_web::HttpResponse::Ok().json(&*cfg)
 }
 
 #[rate_limit(group = "api-default")]

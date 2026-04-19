@@ -119,6 +119,15 @@ async fn main() -> std::io::Result<()> {
         Arc::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone())),
     ));
 
+    let ai_runtime_config: api::ai::SharedAiConfig = std::sync::Arc::new(
+        tokio::sync::RwLock::new(api::ai::AiRuntimeConfig {
+            polling_enabled: config.ai_polling_enabled,
+            polling_interval_minutes: config.ai_polling_interval_minutes,
+            auto_stop_regressions: config.ai_auto_stop_regressions,
+            severe_regression_threshold: config.ai_severe_regression_threshold,
+        }),
+    );
+
     // Spawn AI polling background task
     if config.ai_polling_enabled {
         let polling = PollingService::new(
@@ -163,6 +172,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(notification_service.clone())
             .app_data(telemetry_service.clone())
             .app_data(mcp_server.clone())
+            .app_data(web::Data::new(ai_runtime_config.clone()))
             .configure(|cfg| api::configure(cfg, pg_pool.clone(), config.clone()))
     })
     .bind(("0.0.0.0", port))?
