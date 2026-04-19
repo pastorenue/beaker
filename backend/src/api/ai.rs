@@ -26,7 +26,7 @@ pub struct AiRuntimeConfig {
 pub type SharedAiConfig = Arc<RwLock<AiRuntimeConfig>>;
 
 #[derive(Debug, serde::Deserialize)]
-struct PatchAiConfigPayload {
+pub(crate) struct PatchAiConfigPayload {
     polling_enabled: Option<bool>,
     polling_interval_minutes: Option<u64>,
     auto_stop_regressions: Option<bool>,
