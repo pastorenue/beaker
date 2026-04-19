@@ -370,6 +370,19 @@ export const aiStrategistApi = {
   }) => api.post<{ journey: string }>('/ai/session-journey', data),
 };
 
+// AI Runtime Config
+export interface AiRuntimeConfig {
+  polling_enabled: boolean;
+  polling_interval_minutes: number;
+  auto_stop_regressions: boolean;
+  severe_regression_threshold: number;
+}
+
+export const aiConfigApi = {
+  get: () => api.get<AiRuntimeConfig>('/ai/config'),
+  patch: (data: Partial<AiRuntimeConfig>) => api.patch<AiRuntimeConfig>('/ai/config', data),
+};
+
 // AI Insights
 export const aiInsightsApi = {
   list: (params?: {
