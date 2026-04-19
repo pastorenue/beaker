@@ -254,8 +254,10 @@ impl PollingService {
             }
         }
 
-        // SRM check — look for sample ratio mismatch across variants
+        // Total samples — used by both SRM and progress checks
         let total_samples: usize = analysis.sample_sizes.iter().map(|s| s.current_size).sum();
+
+        // SRM check — look for sample ratio mismatch across variants
         if total_samples > 0 {
             let variant_count = analysis.sample_sizes.len();
             if variant_count > 1 {
@@ -342,6 +344,56 @@ impl PollingService {
             .bind(false)
             .execute(&self.pg)
             .await?;
+        }
+
+        // Progress milestone check
+        let total_required: usize = analysis.sample_sizes.iter().map(|s| s.required_size).sum();
+        if total_required > 0 {
+            const MILESTONES: &[(u32, &str)] = &[(25, "25%"), (50, "50%"), (75, "75%"), (100, "100%")];
+
+            for &(pct, label) in MILESTONES {
+                if total_samples * 100 < pct as usize * total_required {
+                    continue;
+                }
+
+                let already_emitted: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (
+                         SELECT 1 FROM ai_polling_insights
+                         WHERE experiment_id = $1
+                           AND insight_type  = 'progress'
+                           AND detail        = $2
+                     )",
+                )
+                .bind(experiment.id)
+                .bind(label)
+                .fetch_one(&self.pg)
+                .await
+                .unwrap_or(false);
+
+                if already_emitted {
+                    continue;
+                }
+
+                let headline = match pct {
+                    50  => format!("Experiment '{}' is halfway to its target sample size", experiment.name),
+                    100 => format!("Experiment '{}' has reached its full target sample size", experiment.name),
+                    _   => format!("Experiment '{}' has reached {}% of target sample size", experiment.name, pct),
+                };
+
+                sqlx::query(
+                    r#"INSERT INTO ai_polling_insights
+                       (account_id, experiment_id, severity, insight_type, headline, detail, sample_size, auto_actioned)
+                       VALUES ($1, $2, 'info', 'progress', $3, $4, $5, false)"#,
+                )
+                .bind(account_id)
+                .bind(experiment.id)
+                .bind(&headline)
+                .bind(label)
+                .bind(total_samples as i64)
+                .execute(&self.pg)
+                .await
+                .ok();
+            }
         }
 
         Ok(())
