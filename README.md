@@ -1,5 +1,7 @@
 # Beaker - Real-time A/B Testing Platform
 
+[![CI](https://github.com/pastorenue/beaker/actions/workflows/ci.yml/badge.svg)](https://github.com/pastorenue/beaker/actions/workflows/ci.yml)
+
 Beaker is a high-performance, real-time experimentation platform designed for scale. Built with **Rust**, **React**, **ClickHouse** and **Postgresql**, it provides sub-second statistical analysis on millions of events.
 
 ![Beaker Dashboard](https://via.placeholder.com/1000x500?text=Beaker+Live+Analytics+Dashboard)
