@@ -25,30 +25,32 @@ import { useAccount } from '../contexts/AccountContext';
 interface ExperimentCreatorProps {
     onSubmit: (experiment: CreateExperimentRequest) => void;
     onCancel: () => void;
+    initialData?: Partial<CreateExperimentRequest>;
 }
 
-export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, onCancel }) => {
+export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, onCancel, initialData }) => {
     const { activeAccountId } = useAccount();
     const [step, setStep] = useState(1);
     const [metricInput, setMetricInput] = useState('');
     const [groupInput, setGroupInput] = useState('');
     const [showGroupOptions, setShowGroupOptions] = useState(false);
     const [showMetricOptions, setShowMetricOptions] = useState(false);
-    const [formData, setFormData] = useState<CreateExperimentRequest>({
+    const defaultHypothesis = {
+        null_hypothesis: '',
+        alternative_hypothesis: '',
+        expected_effect_size: 0.05,
+        metric_type: MT.Proportion,
+        significance_level: 0.05,
+        power: 0.8,
+    };
+    const defaults: CreateExperimentRequest = {
         name: '',
         description: '',
         experiment_type: ExperimentType.AbTest,
         sampling_method: SamplingMethod.Hash,
         analysis_engine: AnalysisEngine.Frequentist,
         health_checks: [],
-        hypothesis: {
-            null_hypothesis: '',
-            alternative_hypothesis: '',
-            expected_effect_size: 0.05,
-            metric_type: MT.Proportion,
-            significance_level: 0.05,
-            power: 0.8,
-        },
+        hypothesis: defaultHypothesis,
         variants: [
             { name: 'Control', description: '', allocation_percent: 50, is_control: true },
             { name: 'Treatment', description: '', allocation_percent: 50, is_control: false },
@@ -57,6 +59,11 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({ onSubmit, 
         user_groups: [],
         end_date: undefined,
         requires_existing_users: false,
+    };
+    const [formData, setFormData] = useState<CreateExperimentRequest>({
+        ...defaults,
+        ...initialData,
+        hypothesis: { ...defaultHypothesis, ...initialData?.hypothesis },
     });
 
     const { data: availableGroups = [] } = useQuery({

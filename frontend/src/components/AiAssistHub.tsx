@@ -1,10 +1,27 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { AssistCards } from './ai-assist/AssistCards';
 import { InsightsFeed } from './ai-assist/InsightsFeed';
 import { AiSupportDrawer } from './ai-assist/AiSupportDrawer';
+import { SuggestionsList } from './ai-assist/SuggestionsList';
+import { suggestionToFormData } from './ai-assist/suggestionToFormData';
+import { aiStrategistApi } from '../services/api';
+import type { ExperimentSuggestion } from '../types';
 
 export const AiAssistHub: React.FC = () => {
     const [isAiDrawerOpen, setIsAiDrawerOpen] = React.useState(false);
+    const [suggestions, setSuggestions] = React.useState<ExperimentSuggestion[]>([]);
+    const navigate = useNavigate();
+
+    const suggestMutation = useMutation({
+        mutationFn: () => aiStrategistApi.suggestExperiments().then(r => r.data),
+        onSuccess: (data) => setSuggestions(data),
+    });
+
+    const handleUseSuggestion = (s: ExperimentSuggestion) => {
+        navigate('/dashboard', { state: { initialData: suggestionToFormData(s) } });
+    };
 
     return (
         <div className="space-y-0 animate-fade-in">
@@ -15,7 +32,12 @@ export const AiAssistHub: React.FC = () => {
                 </p>
             </div>
 
-            <AssistCards />
+            <AssistCards onSuggestExperiments={() => suggestMutation.mutateAsync().then(() => undefined)} />
+
+            {suggestions.length > 0 && (
+                <SuggestionsList suggestions={suggestions} onUse={handleUseSuggestion} />
+            )}
+
             <InsightsFeed />
 
             {/* Floating AI Assist button */}
