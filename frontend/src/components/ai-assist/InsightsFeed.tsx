@@ -18,7 +18,7 @@ const INSIGHT_ICON: Record<string, string> = {
     progress: '→',
 };
 
-function InsightCard({
+export function InsightCard({
     insight,
     onDismiss,
 }: {

@@ -6,7 +6,6 @@ import { UserGroupManager } from './components/UserGroupManager';
 import { SimulationStudio } from './components/SimulationStudio';
 import { FeatureFlagManager } from './components/FeatureFlagManager';
 import { SessionReplayPanel } from './components/SessionReplayPanel';
-import { AnalyticsMonitoringDashboard } from './components/AnalyticsMonitoringDashboard';
 import { HomeOverview } from './components/HomeOverview';
 import { AiAssistHub } from './components/AiAssistHub';
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from './components/AuthPages';
@@ -22,6 +21,7 @@ import { ExperimentDetailPage } from './pages/ExperimentDetailPage';
 import { LandingPage } from './pages/LandingPage';
 import { EventsPage } from './pages/EventsPage';
 import { TelemetryPage } from './pages/TelemetryPage';
+import { InsightsPage } from './pages/InsightsPage';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -534,7 +534,7 @@ function App() {
                                 <Route path="/dashboard" element={<HomePage />} />
                                 <Route path="/experiment/:id" element={<ExperimentDetailPage />} />
                                 <Route path="/user-groups" element={<UserGroupManager />} />
-                                <Route path="/insights" element={<AnalyticsMonitoringDashboard />} />
+                                <Route path="/insights" element={<InsightsPage />} />
                                 <Route path="/ai-assist" element={<AiAssistHub />} />
                                 <Route path="/simulation-studio" element={<SimulationStudio />} />
                                 <Route path="/feature-flags" element={<FeatureFlagManager />} />
