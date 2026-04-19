@@ -5,13 +5,30 @@ type HypothesisStepProps = {
     formData: CreateExperimentRequest;
     updateHypothesis: (field: keyof Hypothesis, value: unknown) => void;
     applyHypothesisTemplate: () => void;
+    onAiDraft: () => Promise<void>;
 };
 
 export const HypothesisStep: React.FC<HypothesisStepProps> = ({
     formData,
     updateHypothesis,
     applyHypothesisTemplate,
+    onAiDraft,
 }) => {
+    const [isDrafting, setIsDrafting] = React.useState(false);
+    const [draftError, setDraftError] = React.useState<string | null>(null);
+
+    const handleAiDraft = async () => {
+        setIsDrafting(true);
+        setDraftError(null);
+        try {
+            await onAiDraft();
+        } catch {
+            setDraftError('Failed to generate draft. Please try again.');
+        } finally {
+            setIsDrafting(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div>
@@ -92,9 +109,17 @@ export const HypothesisStep: React.FC<HypothesisStepProps> = ({
                     Generate a hypothesis template based on your primary metric and experiment type.
                 </p>
                 <div className="mt-3">
-                    <button onClick={applyHypothesisTemplate} className="btn-secondary">
-                        Generate Hypothesis
+                    <button
+                        onClick={handleAiDraft}
+                        disabled={isDrafting}
+                        className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isDrafting ? 'Drafting…' : 'AI Draft'}
                     </button>
+                    <button onClick={applyHypothesisTemplate} className="btn-secondary ml-2">
+                        Template
+                    </button>
+                    {draftError && <p className="mt-2 text-xs text-red-400">{draftError}</p>}
                 </div>
             </div>
         </div>
