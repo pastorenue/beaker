@@ -205,6 +205,9 @@ impl PollingService {
                     (account_id, experiment_id, severity, insight_type, headline, detail,
                      ai_narrative, p_value, effect_size, sample_size, auto_actioned)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ON CONFLICT (experiment_id, insight_type)
+                WHERE dismissed_at IS NULL AND insight_type <> 'guardrail'
+                DO UPDATE SET polled_at = now()
                 "#,
             )
             .bind(account_id)
@@ -284,6 +287,9 @@ impl PollingService {
                             (account_id, experiment_id, severity, insight_type, headline, detail,
                              ai_narrative, sample_size, auto_actioned)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        ON CONFLICT (experiment_id, insight_type)
+                        WHERE dismissed_at IS NULL AND insight_type <> 'guardrail'
+                        DO UPDATE SET polled_at = now()
                         "#,
                     )
                     .bind(account_id)
@@ -322,8 +328,11 @@ impl PollingService {
                 r#"
                 INSERT INTO ai_polling_insights
                     (account_id, experiment_id, severity, insight_type, headline, detail,
-                     ai_narrative, auto_actioned)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     ai_narrative, auto_actioned, metric_name)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (experiment_id, insight_type, metric_name)
+                WHERE dismissed_at IS NULL AND insight_type = 'guardrail'
+                DO UPDATE SET polled_at = now()
                 "#,
             )
             .bind(account_id)
@@ -340,6 +349,7 @@ impl PollingService {
             ))
             .bind(narrative.as_deref())
             .bind(false)
+            .bind(&check.metric_name)
             .execute(&self.pg)
             .await?;
         }
