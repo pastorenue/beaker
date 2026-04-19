@@ -119,14 +119,13 @@ async fn main() -> std::io::Result<()> {
         Arc::new(AnalyticsService::new(db_with_auth.clone(), pg_pool.clone())),
     ));
 
-    let ai_runtime_config: api::ai::SharedAiConfig = std::sync::Arc::new(
-        tokio::sync::RwLock::new(api::ai::AiRuntimeConfig {
+    let ai_runtime_config: api::ai::SharedAiConfig =
+        std::sync::Arc::new(tokio::sync::RwLock::new(api::ai::AiRuntimeConfig {
             polling_enabled: config.ai_polling_enabled,
             polling_interval_minutes: config.ai_polling_interval_minutes,
             auto_stop_regressions: config.ai_auto_stop_regressions,
             severe_regression_threshold: config.ai_severe_regression_threshold,
-        }),
-    );
+        }));
 
     // Spawn AI polling background task
     if config.ai_polling_enabled {
