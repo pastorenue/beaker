@@ -349,7 +349,12 @@ impl PollingService {
         // Progress milestone check
         let total_required: usize = analysis.sample_sizes.iter().map(|s| s.required_size).sum();
         if total_required > 0 {
-            const MILESTONES: &[(u32, &str)] = &[(25, "25%"), (50, "50%"), (75, "75%"), (100, "100%")];
+            const MILESTONES: &[(u32, &str)] = &[
+                (25, "25%"),
+                (50, "50%"),
+                (75, "75%"),
+                (100, "100%"),
+            ];
 
             for &(pct, label) in MILESTONES {
                 if total_samples * 100 < pct as usize * total_required {
@@ -375,9 +380,19 @@ impl PollingService {
                 }
 
                 let headline = match pct {
-                    50  => format!("Experiment '{}' is halfway to its target sample size", experiment.name),
-                    100 => format!("Experiment '{}' has reached its full target sample size", experiment.name),
-                    _   => format!("Experiment '{}' has reached {}% of target sample size", experiment.name, pct),
+                    50 => format!(
+                        "Experiment '{}' is halfway to its target sample size",
+                        experiment.name
+                    ),
+                    100 => format!(
+                        "Experiment '{}' has reached its full target sample size",
+                        experiment.name
+                    ),
+                    _ => format!(
+                        "Experiment '{}' has reached {}% of target sample size",
+                        experiment.name,
+                        pct
+                    ),
                 };
 
                 sqlx::query(
