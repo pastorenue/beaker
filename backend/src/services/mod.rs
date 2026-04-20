@@ -1,4 +1,5 @@
 pub mod ai_service;
+pub mod prompts;
 pub mod analytics_service;
 pub mod auth_service;
 pub mod cuped_service;
