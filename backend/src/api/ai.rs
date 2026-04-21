@@ -76,7 +76,7 @@ fn mcp_tools_as_openai(mcp: &McpServer) -> Vec<Value> {
         .filter(|t| {
             t["name"]
                 .as_str()
-                .map_or(true, |n| !WRITE_TOOLS.contains(&n))
+                .is_none_or(|n| !WRITE_TOOLS.contains(&n))
         })
         .map(|t| {
             serde_json::json!({
