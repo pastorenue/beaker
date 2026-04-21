@@ -330,7 +330,7 @@ LOG_ONLY_OTP=0
 AI_BASE_URL=https://api.groq.com/openai/v1
 AI_API_KEY=$PERSONAL_GROQ_KEY
 AI_DEFAULT_MODEL=llama-3.3-70b-versatile
-AI_MODELS=llama-3.3-70b-versatile,llama-3.1-8b-instant
+AI_MODELS=llama-3.3-70b-versatile,llama-3.1-8b-instant,deepseek-r1-distill-llama-70b
 AI_POLLING_ENABLED=true
 AI_POLLING_INTERVAL_MINUTES=15
 
