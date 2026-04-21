@@ -140,6 +140,14 @@ services:
       - beaker-network
     restart: unless-stopped
 
+  rust-dev:
+    image: rust:1.88-slim-bookworm
+    working_dir: /usr/src/app
+    volumes:
+      - ./backend:/usr/src/app
+      - cargo-cache:/usr/local/cargo/registry
+    profiles: ["dev"]
+
   scripts:
     container_name: beaker-scripts
     build:
@@ -164,3 +172,4 @@ volumes:
   clickhouse_data:
   postgres_data:
   postgres_test_data:
+  cargo-cache:

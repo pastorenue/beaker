@@ -78,7 +78,12 @@ Return a JSON object with key "suggestions" containing an array of 5 objects, ea
 - telemetry_touchpoints (array of telemetry event name strings)"#,
         total,
         running,
-        exp_names.iter().take(10).cloned().collect::<Vec<_>>().join(", "),
+        exp_names
+            .iter()
+            .take(10)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", "),
         delta,
         exposures,
         cr * 100.0,
@@ -136,7 +141,14 @@ Return a JSON object with:
 - estimated_duration_days (integer)
 - sample_size_estimate (integer)
 - risks (array of strings, 2-4 risks, each including a one-sentence mitigation)"#,
-        name, description, experiment_type, primary_metric, status, variants, hypothesis_text, sample_info,
+        name,
+        description,
+        experiment_type,
+        primary_metric,
+        status,
+        variants,
+        hypothesis_text,
+        sample_info,
     )
 }
 
