@@ -10,6 +10,7 @@ use crate::models::ai::{
 };
 use crate::services::analytics_service::AnalyticsService;
 use crate::services::experiment_service::ExperimentService;
+use crate::services::prompts;
 
 pub struct AiService {
     pub pg: PgPool,
@@ -88,45 +89,21 @@ impl AiService {
             .iter()
             .filter(|e| matches!(e.status, crate::models::ExperimentStatus::Running))
             .count();
-        let exp_names: Vec<_> = experiments.iter().map(|e| &e.name).collect();
+        let exp_names: Vec<&str> = experiments.iter().map(|e| e.name.as_str()).collect();
 
-        let system_prompt = "You are an expert experimentation strategist. Always respond with valid JSON matching the requested schema.";
-        let user_prompt = format!(
-            r#"Based on this platform state, suggest 5 high-impact A/B test experiments.
-
-Platform context:
-- Total experiments: {}
-- Running experiments: {}
-- Existing experiment names: {}
-- Active experiments delta: {}
-- Daily exposures: {}
-- Primary conversion rate: {}%
-- Guardrail breaches: {}
-
-Return a JSON object with key "suggestions" containing an array of 5 objects, each with:
-- name (string)
-- description (string)
-- hypothesis_draft (string)
-- primary_metric (string, e.g. "click_rate", "conversion_rate", "revenue_per_user")
-- predicted_impact_score (number 0.0-1.0)
-- experiment_type (one of: "abtest", "multivariate", "featuregate", "holdout")
-- variants (array of objects with: name, description, allocation_percent, is_control)
-- telemetry_touchpoints (array of telemetry event name strings)"#,
+        let user_prompt = prompts::suggest_experiments_user(
             experiments.len(),
             running_count,
-            exp_names
-                .iter()
-                .take(10)
-                .map(|n| n.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
+            &exp_names,
             overview.summary.active_experiments_delta,
             overview.summary.daily_exposures,
-            overview.summary.primary_conversion_rate * 100.0,
+            overview.summary.primary_conversion_rate,
             overview.summary.guardrail_breaches,
         );
 
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::SUGGEST_EXPERIMENTS_SYSTEM, &user_prompt)
+            .await?;
         let suggestions = json_resp
             .get("suggestions")
             .ok_or_else(|| anyhow!("Missing 'suggestions' key in LLM response"))?;
@@ -135,26 +112,12 @@ Return a JSON object with key "suggestions" containing an array of 5 objects, ea
     }
 
     pub async fn draft_hypothesis(&self, req: DraftHypothesisRequest) -> Result<HypothesisDraft> {
-        let system_prompt =
-            "You are an expert in statistical hypothesis testing. Always respond with valid JSON.";
-        let user_prompt = format!(
-            r#"Draft a hypothesis for this experiment.
+        let user_prompt =
+            prompts::draft_hypothesis_user(&req.experiment_description, &req.metric_type);
 
-Experiment description: {}
-Metric type: {}
-
-Return a JSON object with:
-- null_hypothesis (string)
-- alternative_hypothesis (string)
-- expected_effect_size (number, e.g. 0.05 for 5%)
-- metric_type (same as input: "{}")
-- significance_level (number, typically 0.05)
-- power (number, typically 0.80)
-- rationale (string, 2-3 sentences explaining the reasoning)"#,
-            req.experiment_description, req.metric_type, req.metric_type,
-        );
-
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::DRAFT_HYPOTHESIS_SYSTEM, &user_prompt)
+            .await?;
         serde_json::from_value(json_resp)
             .map_err(|e| anyhow!("Failed to deserialize hypothesis draft: {}", e))
     }
@@ -199,44 +162,27 @@ Return a JSON object with:
             })
             .unwrap_or_default();
 
-        let system_prompt = "You are an expert at writing experiment 1-pagers for product teams. Always respond with valid JSON.";
-        let user_prompt = format!(
-            r#"Write a 1-pager for this experiment.
+        let variants_str = experiment
+            .variants
+            .iter()
+            .map(|v| v.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
 
-Name: {}
-Description: {}
-Type: {:?}
-Primary metric: {}
-Status: {:?}
-Variants: {}
-Hypothesis: {}
-Sample sizes: {}
-
-Return a JSON object with:
-- experiment_name (string)
-- objective (string, 1-2 sentences)
-- hypothesis (string)
-- success_metrics (array of strings)
-- guardrail_metrics (array of strings)
-- estimated_duration_days (integer)
-- sample_size_estimate (integer)
-- risks (array of strings, 2-4 risks)"#,
-            experiment.name,
-            experiment.description,
-            experiment.experiment_type,
-            experiment.primary_metric,
-            experiment.status,
-            experiment
-                .variants
-                .iter()
-                .map(|v| v.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-            hypothesis_text,
-            sample_info,
+        let user_prompt = prompts::draft_one_pager_user(
+            &experiment.name,
+            &experiment.description,
+            &format!("{:?}", experiment.experiment_type),
+            &experiment.primary_metric,
+            &format!("{:?}", experiment.status),
+            &variants_str,
+            &hypothesis_text,
+            &sample_info,
         );
 
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::DRAFT_ONE_PAGER_SYSTEM, &user_prompt)
+            .await?;
         serde_json::from_value(json_resp)
             .map_err(|e| anyhow!("Failed to deserialize 1-pager: {}", e))
     }
@@ -245,19 +191,11 @@ Return a JSON object with:
         &self,
         experiment_description: &str,
     ) -> Result<MetricSuggestionsResponse> {
-        let system_prompt = "You are an expert in product analytics and experimentation metrics. Always respond with valid JSON.";
-        let user_prompt = format!(
-            r#"Suggest primary and guardrail metrics for this experiment.
+        let user_prompt = prompts::suggest_metrics_user(experiment_description);
 
-Experiment description: {}
-
-Return a JSON object with:
-- primary_metrics (array of objects with: metric_name, telemetry_event, metric_type (proportion/continuous/count), description)
-- guardrail_metrics (array of objects with: metric_name, telemetry_event, metric_type, description)"#,
-            experiment_description,
-        );
-
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::SUGGEST_METRICS_SYSTEM, &user_prompt)
+            .await?;
         serde_json::from_value(json_resp)
             .map_err(|e| anyhow!("Failed to deserialize metric suggestions: {}", e))
     }
@@ -292,22 +230,16 @@ Return a JSON object with:
             })
             .unwrap_or_else(|| "No analysis data yet".to_string());
 
-        let system_prompt =
-            "You are a concise experimentation analyst. Always respond with valid JSON.";
-        let user_prompt = format!(
-            r#"Summarize this experiment in 2 sentences.
-
-Name: {}
-Status: {:?}
-Primary metric: {}
-Results: {}
-
-Return JSON with:
-- summary (string, exactly 2 sentences)"#,
-            experiment.name, experiment.status, experiment.primary_metric, results_text,
+        let user_prompt = prompts::summarize_experiment_user(
+            &experiment.name,
+            &format!("{:?}", experiment.status),
+            &experiment.primary_metric,
+            &results_text,
         );
 
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::SUMMARIZE_EXPERIMENT_SYSTEM, &user_prompt)
+            .await?;
         let summary = json_resp
             .get("summary")
             .and_then(|v| v.as_str())
@@ -365,58 +297,20 @@ Return JSON with:
             .map(|d| format!("{}m {}s", d / 60, d % 60))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let system_prompt = "\
-You are an expert UX analyst who specialises in reconstructing user experiences \
-from raw behavioural telemetry. You write with clarity and precision — your narratives \
-help product teams understand exactly what a real person thought and did during a session.";
-
-        let user_prompt = format!(
-            r#"Below is the full telemetry log for a single browser session. \
-Reconstruct this user's journey as a vivid narrative. Your description must: \
-
-1. Walk through their journey chronologically, referencing REAL timestamps, page paths, and \
-   event names from the log. Describe the rhythm — rapid-fire clicks signal confidence or \
-   excitement; long pauses suggest hesitation, distraction, or reading.
-2. Identify the emotional arc: moments of engagement, confusion, momentum, or frustration. \
-   Ground each observation in specific data points (e.g. "fourteen clicks in the first 8 seconds \
-   on /pricing suggest intense comparison behaviour").
-3. Call out any pivots, back-navigations, repeated interactions with the same selector, or \
-   abrupt drop-offs — and speculate on what drove them.
-4. Close with a sharp summary of what this session reveals about the user's intent, their \
-   success or failure in achieving it, and one concrete UX insight a product team could act on.
-
-Be vivid. Be specific. Sound like a senior researcher narrating a usability lab recording.
-
-Important notes:
-- Use the event log data verbatim to ground your narrative — don't make up events or timelines.
-- Don't speculate wildly about the user's feelings or motivations. Base your insights on the data.
-- Highlight/style specific data points (timestamps, event names, page paths) to support your narrative.
-
---- SESSION METADATA ---
-User:          {}
-Entry URL:     {}
-Referrer:      {}
-User agent:    {}
-Session start: {}
-Duration:      {}
-Total events:  {}
-
---- EVENT LOG (offset from session start | type | name | path [selector] (x,y)) ---
-{}
-
-Return a JSON object with a single key "journey" whose value is the full narrative (plain text, \
-paragraph breaks with \n\n, no markdown)."#,
+        let user_prompt = prompts::session_journey_user(
             user_id.unwrap_or("anonymous"),
             entry_url,
             referrer.unwrap_or("direct / unknown"),
             user_agent.unwrap_or("unknown"),
             started_at,
-            duration_str,
+            &duration_str,
             events.len(),
-            event_log,
+            &event_log,
         );
 
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::SESSION_JOURNEY_SYSTEM, &user_prompt)
+            .await?;
         Ok(json_resp
             .get("journey")
             .and_then(|v| v.as_str())
@@ -432,33 +326,27 @@ paragraph breaks with \n\n, no markdown)."#,
         p_value: Option<f64>,
         sample_size: Option<i64>,
     ) -> Result<String> {
-        let system_prompt =
-            "You are a concise experimentation analyst. Always respond with valid JSON.";
-        let user_prompt = format!(
-            r#"Generate a 2-sentence narrative for this experiment insight.
+        let effect_size_str = effect_size
+            .map(|v| format!("{:.4}", v))
+            .unwrap_or_else(|| "N/A".to_string());
+        let p_value_str = p_value
+            .map(|v| format!("{:.4}", v))
+            .unwrap_or_else(|| "N/A".to_string());
+        let sample_size_str = sample_size
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "N/A".to_string());
 
-Insight type: {}
-Experiment: {}
-Effect size: {}
-P-value: {}
-Sample size: {}
-
-Return JSON with:
-- narrative (string, exactly 2 sentences)"#,
+        let user_prompt = prompts::insight_narrative_user(
             insight_type,
             experiment_name,
-            effect_size
-                .map(|v| format!("{:.4}", v))
-                .unwrap_or_else(|| "N/A".to_string()),
-            p_value
-                .map(|v| format!("{:.4}", v))
-                .unwrap_or_else(|| "N/A".to_string()),
-            sample_size
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "N/A".to_string()),
+            &effect_size_str,
+            &p_value_str,
+            &sample_size_str,
         );
 
-        let json_resp = self.call_llm_json(system_prompt, &user_prompt).await?;
+        let json_resp = self
+            .call_llm_json(prompts::INSIGHT_NARRATIVE_SYSTEM, &user_prompt)
+            .await?;
         Ok(json_resp
             .get("narrative")
             .and_then(|v| v.as_str())

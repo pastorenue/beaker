@@ -38,14 +38,16 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
         }
     }, [modelList, selectedModel]);
 
-    const systemPrompt = `You are an AI support assistant for an A/B testing platform. Format your responses clearly: use paragraphs with blank lines between them, bullet points for lists, and code blocks for any code or configuration. Keep responses concise but well-structured. Current experiment context: ${experimentContext ?? 'No experiment selected'}.`;
+    const systemPrompt = experimentContext
+        ? `Current experiment context: ${experimentContext}`
+        : '';
 
     const chatMutation = useMutation({
         mutationFn: async (payload: { prompt: string }) => {
             const response = await aiApi.chat({
                 model: selectedModel || undefined,
                 messages: [
-                    { role: 'system', content: systemPrompt },
+                    ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
                     ...messages.map((message) => ({ role: message.role, content: message.text })),
                     { role: 'user', content: payload.prompt },
                 ],
@@ -81,7 +83,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
             body: JSON.stringify({
                 model: selectedModel || undefined,
                 messages: [
-                    { role: 'system', content: systemPrompt },
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                     ...messages.map((message) => ({ role: message.role, content: message.text })),
                     { role: 'user', content: prompt },
                 ],
@@ -221,7 +223,7 @@ export const AiSupportDrawer: React.FC<AiSupportDrawerProps> = ({ isOpen, onClos
                         messages={messages}
                         lastUsage={lastUsage}
                         selectedModel={selectedModel}
-                        modelOptions={modelList?.models ?? ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen-qwq-32b']}
+                        modelOptions={modelList?.models ?? ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'deepseek-r1-distill-llama-70b']}
                         input={input}
                         isBusy={isStreaming || chatMutation.isPending}
                         onModelChange={setSelectedModel}

@@ -9,9 +9,11 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::config::Config;
+use crate::mcp::server::McpServer;
 use crate::middleware::auth::AuthedUser;
 use crate::models::ai::{DraftHypothesisRequest, DraftOnePagerRequest, SuggestMetricsRequest};
 use crate::services::ai_service::AiService;
+use crate::services::prompts;
 use crate::services::{AnalyticsService, ExperimentService};
 use sqlx::PgPool;
 
@@ -54,15 +56,146 @@ pub struct ChatResponse {
     pub usage: Option<Value>,
 }
 
-#[derive(Debug, Deserialize)]
-struct LiteLLMChatResponse {
-    model: String,
-    choices: Vec<LiteLLMChoice>,
+// Write-capable tools are excluded from the LLM tool list to prevent
+// autonomous mutation of platform state without user confirmation.
+const WRITE_TOOLS: &[&str] = &[
+    "create_experiment",
+    "start_experiment",
+    "pause_experiment",
+    "stop_experiment",
+    "dismiss_ai_insight",
+];
+
+fn mcp_tools_as_openai(mcp: &McpServer) -> Vec<Value> {
+    let tool_list = mcp.list_tools();
+    let empty = vec![];
+    tool_list["tools"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|t| t["name"].as_str().is_none_or(|n| !WRITE_TOOLS.contains(&n)))
+        .map(|t| {
+            serde_json::json!({
+                "type": "function",
+                "function": {
+                    "name": t["name"],
+                    "description": t["description"],
+                    "parameters": t["inputSchema"]
+                }
+            })
+        })
+        .collect()
 }
 
-#[derive(Debug, Deserialize)]
-struct LiteLLMChoice {
-    message: ChatMessage,
+/// Runs the agentic tool-use loop (max 5 rounds), mutating `messages` in place.
+/// Returns `Ok(Some(result))` when the model produces a text response,
+/// `Ok(None)` when all rounds are exhausted without a text response,
+/// or `Err(HttpResponse)` on network/parse errors.
+async fn resolve_tool_calls(
+    client: &reqwest::Client,
+    url: &str,
+    api_key: Option<&str>,
+    model: &str,
+    messages: &mut Vec<Value>,
+    tools: &[Value],
+    temperature: f32,
+    max_tokens: u32,
+    mcp: &McpServer,
+    account_id: Uuid,
+) -> Result<Option<Value>, HttpResponse> {
+    for _ in 0..5 {
+        let mut request = client.post(url);
+        if let Some(key) = api_key {
+            request = request.bearer_auth(key);
+        }
+
+        let body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "tools": tools,
+            "tool_choice": "auto",
+        });
+
+        let result: Value = match request.json(&body).send().await {
+            Ok(resp) => match resp.json::<Value>().await {
+                Ok(v) => v,
+                Err(err) => {
+                    return Err(HttpResponse::BadRequest().json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", err)
+                    })));
+                }
+            },
+            Err(err) => {
+                return Err(HttpResponse::BadGateway().json(serde_json::json!({
+                    "error": format!("Failed to reach AI service: {}", err)
+                })));
+            }
+        };
+
+        let finish_reason = result
+            .get("choices")
+            .and_then(|c| c.as_array())
+            .and_then(|a| a.first())
+            .and_then(|c| c.get("finish_reason"))
+            .and_then(|r| r.as_str())
+            .unwrap_or("");
+
+        if finish_reason != "tool_calls" {
+            return Ok(Some(result));
+        }
+
+        let assistant_msg = result
+            .get("choices")
+            .and_then(|c| c.as_array())
+            .and_then(|a| a.first())
+            .and_then(|c| c.get("message"))
+            .cloned()
+            .unwrap_or(serde_json::json!({}));
+
+        let tool_calls = assistant_msg
+            .get("tool_calls")
+            .and_then(|tc| tc.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        messages.push(assistant_msg);
+
+        for tc in &tool_calls {
+            let call_id = tc.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let fn_name = tc
+                .get("function")
+                .and_then(|f| f.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let fn_args_str = tc
+                .get("function")
+                .and_then(|f| f.get("arguments"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("{}");
+            let fn_args: Value = match serde_json::from_str(fn_args_str) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::warn!("Failed to parse tool args for {}: {}", fn_name, e);
+                    serde_json::json!({})
+                }
+            };
+
+            let tool_result = mcp
+                .call_tool(fn_name, &fn_args, account_id)
+                .await
+                .unwrap_or_else(|e| serde_json::json!({ "error": e }));
+
+            messages.push(serde_json::json!({
+                "role": "tool",
+                "tool_call_id": call_id,
+                "content": serde_json::to_string(&tool_result).unwrap_or_default(),
+            }));
+        }
+    }
+
+    Ok(None)
 }
 
 #[derive(Debug, Serialize)]
@@ -196,7 +329,12 @@ async fn models(config: web::Data<Config>) -> impl Responder {
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
-async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
+async fn chat(
+    config: web::Data<Config>,
+    mcp: web::Data<McpServer>,
+    user: web::ReqData<AuthedUser>,
+    payload: web::Json<ChatRequest>,
+) -> impl Responder {
     let Some(base_url) = config.ai_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "error": "AI_BASE_URL is not configured"
@@ -220,66 +358,121 @@ async fn chat(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> imp
 
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
-    let mut request = client.post(&url);
-    if let Some(api_key) = config.ai_api_key.as_ref() {
-        request = request.bearer_auth(api_key);
-    }
 
     let temperature = payload.temperature.unwrap_or(0.4);
-    let max_tokens = payload.max_tokens.unwrap_or(512);
+    let max_tokens = payload.max_tokens.unwrap_or(2048);
+    let account_id = user.account_id;
 
-    let body = serde_json::json!({
-        "model": model,
-        "messages": payload.messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
+    // Build message list, replacing any existing system message with CHAT_SYSTEM
+    // and appending any context the frontend passed as additional context.
+    let frontend_context: Option<String> = payload.messages.iter().find_map(|m| {
+        if m.role == "system" {
+            Some(m.content.clone())
+        } else {
+            None
+        }
     });
+    let system_content = match frontend_context {
+        Some(ctx) if !ctx.is_empty() => format!("{}\n\n{}", prompts::CHAT_SYSTEM, ctx),
+        _ => prompts::CHAT_SYSTEM.to_string(),
+    };
+    let mut messages: Vec<Value> = std::iter::once(serde_json::json!({
+        "role": "system",
+        "content": system_content
+    }))
+    .chain(
+        payload
+            .messages
+            .iter()
+            .filter(|m| m.role != "system")
+            .map(|m| serde_json::json!({ "role": m.role, "content": m.content })),
+    )
+    .collect();
 
-    match request.json(&body).send().await {
-        Ok(resp) => match resp.json::<Value>().await {
-            Ok(result) => {
-                let model = result
-                    .get("model")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or(&default_model)
-                    .to_string();
-                let message = result
-                    .get("choices")
-                    .and_then(|choices| choices.as_array())
-                    .and_then(|choices| choices.first())
-                    .and_then(|choice| choice.get("message"))
-                    .and_then(|message| {
-                        serde_json::from_value::<ChatMessage>(message.clone()).ok()
-                    });
+    let tools = mcp_tools_as_openai(&mcp);
 
-                if let Some(message) = message {
-                    if let Some(usage) = result.get("usage") {
-                        log::info!("AI usage: {}", usage);
-                    }
-                    return HttpResponse::Ok().json(ChatResponse {
-                        model,
-                        message,
-                        usage: result.get("usage").cloned(),
-                    });
-                }
-
-                HttpResponse::BadRequest().json(serde_json::json!({
-                    "error": "No choices returned from model"
-                }))
+    let result = match resolve_tool_calls(
+        &client,
+        &url,
+        config.ai_api_key.as_deref(),
+        &model,
+        &mut messages,
+        &tools,
+        temperature,
+        max_tokens,
+        &mcp,
+        account_id,
+    )
+    .await
+    {
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            // Tool loop exhausted; make a final call without tools to force a text response
+            let mut request = client.post(&url);
+            if let Some(api_key) = config.ai_api_key.as_ref() {
+                request = request.bearer_auth(api_key);
             }
-            Err(err) => HttpResponse::BadRequest().json(serde_json::json!({
-                "error": format!("Failed to parse response: {}", err)
-            })),
-        },
-        Err(err) => HttpResponse::BadGateway().json(serde_json::json!({
-            "error": format!("Failed to reach AI service: {}", err)
-        })),
+            let body = serde_json::json!({
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            });
+            match request.json(&body).send().await {
+                Ok(resp) => match resp.json::<Value>().await {
+                    Ok(v) => v,
+                    Err(err) => {
+                        return HttpResponse::BadRequest().json(serde_json::json!({
+                            "error": format!("Failed to parse response: {}", err)
+                        }))
+                    }
+                },
+                Err(err) => {
+                    return HttpResponse::BadGateway().json(serde_json::json!({
+                        "error": format!("Failed to reach AI service: {}", err)
+                    }))
+                }
+            }
+        }
+        Err(resp) => return resp,
+    };
+
+    let resp_model = result
+        .get("model")
+        .and_then(|value| value.as_str())
+        .unwrap_or(&default_model)
+        .to_string();
+    let message = result
+        .get("choices")
+        .and_then(|choices| choices.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|choice| choice.get("message"))
+        .and_then(|message| serde_json::from_value::<ChatMessage>(message.clone()).ok());
+
+    if let Some(message) = message {
+        if let Some(usage) = result.get("usage") {
+            log::info!("AI usage: {}", usage);
+        }
+        return HttpResponse::Ok().json(ChatResponse {
+            model: resp_model,
+            message,
+            usage: result.get("usage").cloned(),
+        });
     }
+
+    HttpResponse::BadRequest().json(serde_json::json!({
+        "error": "No choices returned from model"
+    }))
 }
 
 #[rate_limit(group = "api-default")]
 #[circuit_breaker(failure_threshold = 10, recovery_timeout = 30)]
-async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>) -> impl Responder {
+async fn chat_stream(
+    config: web::Data<Config>,
+    mcp: web::Data<McpServer>,
+    user: web::ReqData<AuthedUser>,
+    payload: web::Json<ChatRequest>,
+) -> impl Responder {
     let Some(base_url) = config.ai_base_url.clone() else {
         return HttpResponse::BadRequest().json(serde_json::json!({
             "error": "AI_BASE_URL is not configured"
@@ -303,23 +496,69 @@ async fn chat_stream(config: web::Data<Config>, payload: web::Json<ChatRequest>)
 
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
-    let mut request = client.post(&url);
-    if let Some(api_key) = config.ai_api_key.as_ref() {
-        request = request.bearer_auth(api_key);
+    let temperature = payload.temperature.unwrap_or(0.4);
+    let max_tokens = payload.max_tokens.unwrap_or(2048);
+    let account_id = user.account_id;
+
+    // Build message list with CHAT_SYSTEM prepended
+    let frontend_context: Option<String> = payload.messages.iter().find_map(|m| {
+        if m.role == "system" {
+            Some(m.content.clone())
+        } else {
+            None
+        }
+    });
+    let system_content = match frontend_context {
+        Some(ctx) if !ctx.is_empty() => format!("{}\n\n{}", prompts::CHAT_SYSTEM, ctx),
+        _ => prompts::CHAT_SYSTEM.to_string(),
+    };
+    let mut messages: Vec<Value> = std::iter::once(serde_json::json!({
+        "role": "system",
+        "content": system_content
+    }))
+    .chain(
+        payload
+            .messages
+            .iter()
+            .filter(|m| m.role != "system")
+            .map(|m| serde_json::json!({ "role": m.role, "content": m.content })),
+    )
+    .collect();
+
+    let tools = mcp_tools_as_openai(&mcp);
+
+    if let Err(resp) = resolve_tool_calls(
+        &client,
+        &url,
+        config.ai_api_key.as_deref(),
+        &model,
+        &mut messages,
+        &tools,
+        temperature,
+        max_tokens,
+        &mcp,
+        account_id,
+    )
+    .await
+    {
+        return resp;
     }
 
-    let temperature = payload.temperature.unwrap_or(0.4);
-    let max_tokens = payload.max_tokens.unwrap_or(512);
+    // Final streaming call — no tools, to avoid infinite loop
+    let mut stream_request = client.post(&url);
+    if let Some(api_key) = config.ai_api_key.as_ref() {
+        stream_request = stream_request.bearer_auth(api_key);
+    }
 
-    let body = serde_json::json!({
+    let stream_body = serde_json::json!({
         "model": model,
-        "messages": payload.messages,
+        "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": true,
     });
 
-    let response = match request.json(&body).send().await {
+    let response = match stream_request.json(&stream_body).send().await {
         Ok(resp) => resp,
         Err(err) => {
             return HttpResponse::BadGateway().json(serde_json::json!({
