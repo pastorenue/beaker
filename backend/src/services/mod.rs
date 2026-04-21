@@ -1,5 +1,4 @@
 pub mod ai_service;
-pub mod prompts;
 pub mod analytics_service;
 pub mod auth_service;
 pub mod cuped_service;
@@ -11,6 +10,7 @@ pub mod invite_service;
 pub mod notification_service;
 pub mod oauth_service;
 pub mod polling_service;
+pub mod prompts;
 pub mod sdk_token_service;
 pub mod targeting;
 pub mod telemetry_service;

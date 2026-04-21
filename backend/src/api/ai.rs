@@ -56,23 +56,24 @@ pub struct ChatResponse {
     pub usage: Option<Value>,
 }
 
-#[derive(Debug, Deserialize)]
-struct LiteLLMChatResponse {
-    model: String,
-    choices: Vec<LiteLLMChoice>,
-}
-
-#[derive(Debug, Deserialize)]
-struct LiteLLMChoice {
-    message: ChatMessage,
-}
+// Write-capable tools are excluded from the LLM tool list to prevent
+// autonomous mutation of platform state without user confirmation.
+const WRITE_TOOLS: &[&str] = &[
+    "create_experiment",
+    "start_experiment",
+    "pause_experiment",
+    "stop_experiment",
+    "dismiss_ai_insight",
+];
 
 fn mcp_tools_as_openai(mcp: &McpServer) -> Vec<Value> {
     let tool_list = mcp.list_tools();
+    let empty = vec![];
     tool_list["tools"]
         .as_array()
-        .unwrap_or(&vec![])
+        .unwrap_or(&empty)
         .iter()
+        .filter(|t| t["name"].as_str().map_or(true, |n| !WRITE_TOOLS.contains(&n)))
         .map(|t| {
             serde_json::json!({
                 "type": "function",
@@ -84,6 +85,117 @@ fn mcp_tools_as_openai(mcp: &McpServer) -> Vec<Value> {
             })
         })
         .collect()
+}
+
+/// Runs the agentic tool-use loop (max 5 rounds), mutating `messages` in place.
+/// Returns `Ok(Some(result))` when the model produces a text response,
+/// `Ok(None)` when all rounds are exhausted without a text response,
+/// or `Err(HttpResponse)` on network/parse errors.
+async fn resolve_tool_calls(
+    client: &reqwest::Client,
+    url: &str,
+    api_key: Option<&str>,
+    model: &str,
+    messages: &mut Vec<Value>,
+    tools: &[Value],
+    temperature: f32,
+    max_tokens: u32,
+    mcp: &McpServer,
+    account_id: Uuid,
+) -> Result<Option<Value>, HttpResponse> {
+    for _ in 0..5 {
+        let mut request = client.post(url);
+        if let Some(key) = api_key {
+            request = request.bearer_auth(key);
+        }
+
+        let body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "tools": tools,
+            "tool_choice": "auto",
+        });
+
+        let result: Value = match request.json(&body).send().await {
+            Ok(resp) => match resp.json::<Value>().await {
+                Ok(v) => v,
+                Err(err) => {
+                    return Err(HttpResponse::BadRequest().json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", err)
+                    })));
+                }
+            },
+            Err(err) => {
+                return Err(HttpResponse::BadGateway().json(serde_json::json!({
+                    "error": format!("Failed to reach AI service: {}", err)
+                })));
+            }
+        };
+
+        let finish_reason = result
+            .get("choices")
+            .and_then(|c| c.as_array())
+            .and_then(|a| a.first())
+            .and_then(|c| c.get("finish_reason"))
+            .and_then(|r| r.as_str())
+            .unwrap_or("");
+
+        if finish_reason != "tool_calls" {
+            return Ok(Some(result));
+        }
+
+        let assistant_msg = result
+            .get("choices")
+            .and_then(|c| c.as_array())
+            .and_then(|a| a.first())
+            .and_then(|c| c.get("message"))
+            .cloned()
+            .unwrap_or(serde_json::json!({}));
+
+        let tool_calls = assistant_msg
+            .get("tool_calls")
+            .and_then(|tc| tc.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        messages.push(assistant_msg);
+
+        for tc in &tool_calls {
+            let call_id = tc.get("id").and_then(|v| v.as_str()).unwrap_or("");
+            let fn_name = tc
+                .get("function")
+                .and_then(|f| f.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let fn_args_str = tc
+                .get("function")
+                .and_then(|f| f.get("arguments"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("{}");
+            let fn_args: Value = match serde_json::from_str(fn_args_str) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::warn!("Failed to parse tool args for {}: {}", fn_name, e);
+                    serde_json::json!({})
+                }
+            };
+
+            let tool_result = mcp
+                .call_tool(fn_name, &fn_args, account_id)
+                .await
+                .unwrap_or_else(|e| serde_json::json!({ "error": e }));
+
+            messages.push(serde_json::json!({
+                "role": "tool",
+                "tool_call_id": call_id,
+                "content": serde_json::to_string(&tool_result).unwrap_or_default(),
+            }));
+        }
+    }
+
+    Ok(None)
 }
 
 #[derive(Debug, Serialize)]
@@ -248,7 +360,7 @@ async fn chat(
     let client = reqwest::Client::new();
 
     let temperature = payload.temperature.unwrap_or(0.4);
-    let max_tokens = payload.max_tokens.unwrap_or(512);
+    let max_tokens = payload.max_tokens.unwrap_or(2048);
     let account_id = user.account_id;
 
     // Build message list, replacing any existing system message with CHAT_SYSTEM
@@ -279,108 +391,50 @@ async fn chat(
 
     let tools = mcp_tools_as_openai(&mcp);
 
-    // Agentic tool-use loop — max 5 rounds
-    let mut last_result: Option<Value> = None;
-    for _ in 0..5 {
-        let mut request = client.post(&url);
-        if let Some(api_key) = config.ai_api_key.as_ref() {
-            request = request.bearer_auth(api_key);
-        }
-
-        let body = serde_json::json!({
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "tools": tools,
-            "tool_choice": "auto",
-        });
-
-        let result: Value = match request.json(&body).send().await {
-            Ok(resp) => match resp.json::<Value>().await {
-                Ok(v) => v,
+    let result = match resolve_tool_calls(
+        &client,
+        &url,
+        config.ai_api_key.as_deref(),
+        &model,
+        &mut messages,
+        &tools,
+        temperature,
+        max_tokens,
+        &mcp,
+        account_id,
+    )
+    .await
+    {
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            // Tool loop exhausted; make a final call without tools to force a text response
+            let mut request = client.post(&url);
+            if let Some(api_key) = config.ai_api_key.as_ref() {
+                request = request.bearer_auth(api_key);
+            }
+            let body = serde_json::json!({
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            });
+            match request.json(&body).send().await {
+                Ok(resp) => match resp.json::<Value>().await {
+                    Ok(v) => v,
+                    Err(err) => {
+                        return HttpResponse::BadRequest().json(serde_json::json!({
+                            "error": format!("Failed to parse response: {}", err)
+                        }))
+                    }
+                },
                 Err(err) => {
-                    return HttpResponse::BadRequest().json(serde_json::json!({
-                        "error": format!("Failed to parse response: {}", err)
+                    return HttpResponse::BadGateway().json(serde_json::json!({
+                        "error": format!("Failed to reach AI service: {}", err)
                     }))
                 }
-            },
-            Err(err) => {
-                return HttpResponse::BadGateway().json(serde_json::json!({
-                    "error": format!("Failed to reach AI service: {}", err)
-                }))
             }
-        };
-
-        let finish_reason = result
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|a| a.first())
-            .and_then(|c| c.get("finish_reason"))
-            .and_then(|r| r.as_str())
-            .unwrap_or("");
-
-        if finish_reason != "tool_calls" {
-            last_result = Some(result);
-            break;
         }
-
-        // Extract tool calls from the assistant message
-        let assistant_msg = result
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|a| a.first())
-            .and_then(|c| c.get("message"))
-            .cloned()
-            .unwrap_or(serde_json::json!({}));
-
-        let tool_calls = assistant_msg
-            .get("tool_calls")
-            .and_then(|tc| tc.as_array())
-            .cloned()
-            .unwrap_or_default();
-
-        // Append the assistant message (with tool_calls) to history
-        messages.push(assistant_msg.clone());
-
-        // Execute each tool call and append result messages
-        for tc in &tool_calls {
-            let call_id = tc.get("id").and_then(|v| v.as_str()).unwrap_or("");
-            let fn_name = tc
-                .get("function")
-                .and_then(|f| f.get("name"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let fn_args_str = tc
-                .get("function")
-                .and_then(|f| f.get("arguments"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("{}");
-            let fn_args: Value =
-                serde_json::from_str(fn_args_str).unwrap_or(serde_json::json!({}));
-
-            let tool_result = mcp
-                .call_tool(fn_name, &fn_args, account_id)
-                .await
-                .unwrap_or_else(|e| serde_json::json!({ "error": e }));
-
-            messages.push(serde_json::json!({
-                "role": "tool",
-                "tool_call_id": call_id,
-                "content": serde_json::to_string(&tool_result).unwrap_or_default(),
-            }));
-        }
-
-        last_result = Some(result);
-    }
-
-    let result = match last_result {
-        Some(r) => r,
-        None => {
-            return HttpResponse::InternalServerError().json(serde_json::json!({
-                "error": "No response from AI service"
-            }))
-        }
+        Err(resp) => return resp,
     };
 
     let resp_model = result
@@ -443,7 +497,7 @@ async fn chat_stream(
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let temperature = payload.temperature.unwrap_or(0.4);
-    let max_tokens = payload.max_tokens.unwrap_or(512);
+    let max_tokens = payload.max_tokens.unwrap_or(2048);
     let account_id = user.account_id;
 
     // Build message list with CHAT_SYSTEM prepended
@@ -473,93 +527,21 @@ async fn chat_stream(
 
     let tools = mcp_tools_as_openai(&mcp);
 
-    // Pre-resolve tool calls non-streamingly (max 5 rounds)
-    for _ in 0..5 {
-        let mut request = client.post(&url);
-        if let Some(api_key) = config.ai_api_key.as_ref() {
-            request = request.bearer_auth(api_key);
-        }
-
-        let body = serde_json::json!({
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "tools": tools,
-            "tool_choice": "auto",
-        });
-
-        let result: Value = match request.json(&body).send().await {
-            Ok(resp) => match resp.json::<Value>().await {
-                Ok(v) => v,
-                Err(err) => {
-                    return HttpResponse::BadRequest().json(serde_json::json!({
-                        "error": format!("Failed to parse response: {}", err)
-                    }))
-                }
-            },
-            Err(err) => {
-                return HttpResponse::BadGateway().json(serde_json::json!({
-                    "error": format!("Failed to reach AI service: {}", err)
-                }))
-            }
-        };
-
-        let finish_reason = result
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|a| a.first())
-            .and_then(|c| c.get("finish_reason"))
-            .and_then(|r| r.as_str())
-            .unwrap_or("");
-
-        if finish_reason != "tool_calls" {
-            // No tool calls — fall through to streaming with enriched messages
-            break;
-        }
-
-        let assistant_msg = result
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|a| a.first())
-            .and_then(|c| c.get("message"))
-            .cloned()
-            .unwrap_or(serde_json::json!({}));
-
-        let tool_calls = assistant_msg
-            .get("tool_calls")
-            .and_then(|tc| tc.as_array())
-            .cloned()
-            .unwrap_or_default();
-
-        messages.push(assistant_msg.clone());
-
-        for tc in &tool_calls {
-            let call_id = tc.get("id").and_then(|v| v.as_str()).unwrap_or("");
-            let fn_name = tc
-                .get("function")
-                .and_then(|f| f.get("name"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let fn_args_str = tc
-                .get("function")
-                .and_then(|f| f.get("arguments"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("{}");
-            let fn_args: Value =
-                serde_json::from_str(fn_args_str).unwrap_or(serde_json::json!({}));
-
-            let tool_result = mcp
-                .call_tool(fn_name, &fn_args, account_id)
-                .await
-                .unwrap_or_else(|e| serde_json::json!({ "error": e }));
-
-            messages.push(serde_json::json!({
-                "role": "tool",
-                "tool_call_id": call_id,
-                "content": serde_json::to_string(&tool_result).unwrap_or_default(),
-            }));
-        }
+    if let Err(resp) = resolve_tool_calls(
+        &client,
+        &url,
+        config.ai_api_key.as_deref(),
+        &model,
+        &mut messages,
+        &tools,
+        temperature,
+        max_tokens,
+        &mcp,
+        account_id,
+    )
+    .await
+    {
+        return resp;
     }
 
     // Final streaming call — no tools, to avoid infinite loop
